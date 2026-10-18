@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
 import { AdminPage } from "@/components/admin/page";
-import { addDays } from "@/lib/format";
 import { KanbanBoard, type KanbanItem } from "./kanban-board";
 
 export const metadata = { title: "Modifications" };
@@ -8,8 +7,8 @@ export const metadata = { title: "Modifications" };
 export default async function ModificationsAdminPage() {
   const [requests, admins] = await Promise.all([
     prisma.changeRequest.findMany({
-      where: { OR: [{ status: { not: "TERMINEE" } }, { completedAt: { gte: addDays(-30) } }] },
-      orderBy: [{ urgency: "desc" }, { createdAt: "asc" }],
+      orderBy: [{ urgency: "desc" }, { completedAt: "desc" }, { createdAt: "asc" }],
+      take: 300,
       include: { site: { include: { client: { select: { name: true } } } }, _count: { select: { attachments: true, comments: true } } },
     }),
     prisma.user.findMany({ where: { role: "ADMIN" }, orderBy: { firstName: "asc" } }),
@@ -17,7 +16,7 @@ export default async function ModificationsAdminPage() {
 
   const items: KanbanItem[] = requests.map((r) => ({
     id: r.id, title: r.title, description: r.description, page: r.page, urgency: r.urgency, status: r.status,
-    createdAt: r.createdAt.toISOString(), confirmedAt: r.confirmedAt?.toISOString() ?? null, reopenedAt: r.reopenedAt?.toISOString() ?? null, assigneeId: r.assigneeId,
+    createdAt: r.createdAt.toISOString(), completedAt: r.completedAt?.toISOString() ?? null, confirmedAt: r.confirmedAt?.toISOString() ?? null, reopenedAt: r.reopenedAt?.toISOString() ?? null, assigneeId: r.assigneeId,
     siteName: r.site.name, siteId: r.site.id, clientName: r.site.client.name, attachments: r._count.attachments, comments: r._count.comments,
   }));
 
