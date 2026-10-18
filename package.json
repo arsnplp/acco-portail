@@ -11,7 +11,8 @@
     "db:deploy": "prisma migrate deploy",
     "db:seed": "tsx --env-file=.env prisma/seed.ts",
     "db:studio": "prisma studio",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:diff": "sh -c 'set -a; . ./.env; set +a; prisma migrate diff --from-url \"$DIRECT_URL\" --to-schema-datamodel prisma/schema.prisma --script'"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

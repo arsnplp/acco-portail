@@ -7,8 +7,7 @@ import { SITE_STATUS, PROJECT_STEPS } from "@/lib/labels";
 import { fmtDate, fmtPrice } from "@/lib/format";
 import { ClientForms } from "./forms";
 import { cancelSubscription, sendInvitation } from "../actions";
-import { UploadDocumentForm } from "@/app/admin/documents/upload-form";
-import { DOC_KIND } from "@/components/documents/list";
+import { FolderOpen, ChevronRight } from "lucide-react";
 import { SubmitButton } from "@/components/ui/submit-button";
 
 export default async function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -20,10 +19,11 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
       memberships: { include: { user: true } },
       subscriptions: { orderBy: { startedAt: "desc" }, include: { site: { select: { name: true } } } },
       documents: { orderBy: { createdAt: "desc" } },
-      _count: { select: { orders: true } },
+      _count: { select: { orders: true, documentRequests: { where: { status: "EN_ATTENTE" } } } },
     },
   });
   if (!client) notFound();
+  const pendingDocs = client._count.documentRequests;
 
   return (
     <AdminPage title={client.name} back={{ href: "/admin/clients", label: "Clients" }}>
@@ -81,12 +81,10 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
       </div>
 
       <SectionTitle emoji="📄">Documents</SectionTitle>
-      <div className="grid gap-2">
-        {client.documents.map((d) => (
-          <Card key={d.id} className="flex items-center gap-2 py-3"><Badge tone={DOC_KIND[d.kind].tone}>{DOC_KIND[d.kind].label}</Badge><p className="truncate text-sm text-title">{d.title}</p><span className="ml-auto text-xs text-muted">{fmtDate(d.createdAt)}</span></Card>
-        ))}
-        <UploadDocumentForm clients={[{ id: client.id, name: client.name, sites: client.sites.map((s) => ({ id: s.id, name: s.name })) }]} defaultClientId={client.id} lockClient />
-      </div>
+      <Card href={`/admin/clients/${client.id}/documents`} className="flex items-center justify-between gap-3 py-3">
+        <div className="flex items-center gap-3"><FolderOpen size={20} strokeWidth={1.5} className="text-text" /><div><p className="font-medium text-title">Espace documents</p><p className="text-xs text-text">{client.documents.length} document{client.documents.length > 1 ? "s" : ""}{pendingDocs > 0 ? ` · ${pendingDocs} demande${pendingDocs > 1 ? "s" : ""} en attente` : ""}</p></div></div>
+        <div className="flex items-center gap-2">{pendingDocs > 0 && <Badge tone="pink">{pendingDocs}</Badge>}<ChevronRight size={18} className="text-text" /></div>
+      </Card>
       <div className="mt-3"><Card href={`/admin/messages/${client.id}`} className="py-3 text-sm font-medium text-title">💬 Voir les échanges avec ce client</Card></div>
 
       <ClientForms client={{ id: client.id, name: client.name, address: client.address, phone: client.phone, email: client.email, siren: client.siren }} sites={client.sites.map((s) => ({ id: s.id, name: s.name }))} />

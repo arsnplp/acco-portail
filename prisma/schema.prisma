@@ -129,6 +129,12 @@ enum NotificationKind {
   COMMANDE_VALIDEE
   RECOMPENSE_PARRAINAGE
   ALERTE_SITE
+  DOCUMENT_DISPONIBLE
+}
+
+enum DocumentRequestStatus {
+  EN_ATTENTE
+  TERMINEE
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -145,18 +151,19 @@ model Client {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  memberships   ClientMembership[]
-  invitations   Invitation[]
-  sites         Site[]
-  orders        Order[]
-  subscriptions Subscription[]
-  conversation  Conversation?
-  documents     Document[]
-  referralsMade Referral[]         @relation("ReferralsMade")
-  referredBy    Referral?          @relation("ReferredClient")
-  reviewPrompts ReviewPrompt[]
-  notifications Notification[]
-  referralCode  String             @unique @default(cuid())
+  memberships      ClientMembership[]
+  invitations      Invitation[]
+  sites            Site[]
+  orders           Order[]
+  subscriptions    Subscription[]
+  conversation     Conversation?
+  documents        Document[]
+  documentRequests DocumentRequest[]
+  referralsMade    Referral[]         @relation("ReferralsMade")
+  referredBy       Referral?          @relation("ReferredClient")
+  reviewPrompts    ReviewPrompt[]
+  notifications    Notification[]
+  referralCode     String             @unique @default(cuid())
 }
 
 model User {
@@ -178,6 +185,7 @@ model User {
   notificationPref  NotificationPreference?
   historyEntries    SiteHistoryEntry[]
   validatedOrders   Order[]                 @relation("ValidatedOrders")
+  documentRequests  DocumentRequest[]
 }
 
 model ClientMembership {
@@ -231,21 +239,22 @@ model Site {
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
 
-  client          Client               @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  assets          SiteAsset[]
-  history         SiteHistoryEntry[]
-  healthChecks    SiteHealthCheck[]
-  contactRequests ContactRequest[]
-  searchStats     SearchStatsMonthly[]
-  recaps          MonthlyRecap[]
-  reviews         Review[]
-  changeRequests  ChangeRequest[]
-  guideProgress   GuideProgress[]
-  subscriptions   Subscription[]
-  orders          Order[]
-  messages        Message[]
-  documents       Document[]
-  notifications   Notification[]
+  client           Client               @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  assets           SiteAsset[]
+  history          SiteHistoryEntry[]
+  healthChecks     SiteHealthCheck[]
+  contactRequests  ContactRequest[]
+  searchStats      SearchStatsMonthly[]
+  recaps           MonthlyRecap[]
+  reviews          Review[]
+  changeRequests   ChangeRequest[]
+  guideProgress    GuideProgress[]
+  subscriptions    Subscription[]
+  orders           Order[]
+  messages         Message[]
+  documents        Document[]
+  documentRequests DocumentRequest[]
+  notifications    Notification[]
 
   @@index([clientId])
 }
@@ -598,11 +607,34 @@ model Document {
   sizeBytes   Int?
   createdAt   DateTime     @default(now())
 
-  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  site   Site?  @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  client  Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  site    Site?            @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  request DocumentRequest?
 
   @@index([clientId])
   @@index([siteId])
+}
+
+/// Demande de document faite par le client (ex. « ma facture de septembre »)
+model DocumentRequest {
+  id          String                @id @default(cuid())
+  clientId    String
+  siteId      String?
+  kind        DocumentKind
+  message     String?
+  status      DocumentRequestStatus @default(EN_ATTENTE)
+  requestedBy String?
+  documentId  String?               @unique
+  fulfilledAt DateTime?
+  createdAt   DateTime              @default(now())
+
+  client    Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  site      Site?     @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  requester User?     @relation(fields: [requestedBy], references: [id], onDelete: SetNull)
+  document  Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+
+  @@index([clientId, status])
+  @@index([status])
 }
 
 // ─────────────────────────────────────────────────────────────

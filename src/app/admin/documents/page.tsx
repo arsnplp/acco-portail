@@ -2,37 +2,42 @@ import { prisma } from "@/lib/prisma";
 import { AdminPage } from "@/components/admin/page";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { SubmitButton } from "@/components/ui/submit-button";
-import { DOC_KIND } from "@/components/documents/list";
-import { fmtDate } from "@/lib/format";
-import { UploadDocumentForm } from "./upload-form";
-import { deleteDocument } from "./actions";
+import { requestLabel } from "@/lib/documents";
+import { timeAgo } from "@/lib/format";
 
 export const metadata = { title: "Documents" };
 
-export default async function DocumentsAdminPage({ searchParams }: { searchParams: Promise<{ client?: string }> }) {
-  const { client: preClient } = await searchParams;
-  const [clients, documents] = await Promise.all([
-    prisma.client.findMany({ orderBy: { name: "asc" }, include: { sites: { select: { id: true, name: true } } } }),
-    prisma.document.findMany({ orderBy: { createdAt: "desc" }, take: 100, include: { client: { select: { name: true } }, site: { select: { name: true } } } }),
+export default async function DocumentsOverviewPage() {
+  const [clients, pending] = await Promise.all([
+    prisma.client.findMany({
+      orderBy: { name: "asc" },
+      include: { _count: { select: { documents: true, documentRequests: { where: { status: "EN_ATTENTE" } } } } },
+    }),
+    prisma.documentRequest.findMany({ where: { status: "EN_ATTENTE" }, orderBy: { createdAt: "asc" }, include: { client: { select: { id: true, name: true } } } }),
   ]);
+
   return (
     <AdminPage title="Documents">
-      <SectionTitle emoji="⬆️">Déposer un document</SectionTitle>
-      <UploadDocumentForm clients={clients.map((c) => ({ id: c.id, name: c.name, sites: c.sites }))} defaultClientId={preClient} />
+      <SectionTitle emoji="⏳">Demandes en attente ({pending.length})</SectionTitle>
+      {pending.length === 0 ? <p className="text-sm text-text">Rien à traiter.</p> : (
+        <div className="grid gap-2">
+          {pending.map((r) => (
+            <Card key={r.id} href={`/admin/clients/${r.client.id}/documents`} className="flex items-center justify-between gap-3 py-3">
+              <div className="min-w-0"><p className="truncate font-medium text-title">{requestLabel(r)}</p><p className="text-xs text-text">{r.client.name} · {timeAgo(r.createdAt)}</p></div>
+              <Badge tone="yellow">En attente</Badge>
+            </Card>
+          ))}
+        </div>
+      )}
 
-      <SectionTitle emoji="📄">Derniers documents</SectionTitle>
+      <SectionTitle emoji="🗂️">Espace documents par client</SectionTitle>
       <div className="grid gap-2">
-        {documents.map((d) => (
-          <Card key={d.id} className="flex items-center justify-between gap-3 py-3">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2"><Badge tone={DOC_KIND[d.kind].tone}>{DOC_KIND[d.kind].label}</Badge><p className="truncate font-medium text-title">{d.title}</p></div>
-              <p className="mt-1 text-xs text-text">{d.client.name}{d.site ? ` · ${d.site.name}` : ""} · {fmtDate(d.createdAt)}</p>
-            </div>
-            <form action={deleteDocument.bind(null, d.id)}><SubmitButton variant="ghost" size="sm" pendingLabel="…">Supprimer</SubmitButton></form>
+        {clients.map((c) => (
+          <Card key={c.id} href={`/admin/clients/${c.id}/documents`} className="flex items-center justify-between gap-3 py-3">
+            <div><p className="font-medium text-title">{c.name}</p><p className="text-xs text-text">{c._count.documents} document{c._count.documents > 1 ? "s" : ""}</p></div>
+            {c._count.documentRequests > 0 ? <Badge tone="pink">{c._count.documentRequests} à traiter</Badge> : <Badge tone="green">À jour</Badge>}
           </Card>
         ))}
-        {documents.length === 0 && <p className="text-sm text-text">Aucun document.</p>}
       </div>
     </AdminPage>
   );

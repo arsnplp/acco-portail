@@ -6,18 +6,20 @@ export const metadata = { title: "Tableau de bord" };
 
 export default async function AdminHome() {
   const in60 = addDays(60);
-  const [openChanges, ordersTodo, newReferrals, endingSoon, clients, sites] = await Promise.all([
+  const [openChanges, ordersTodo, newReferrals, endingSoon, clients, sites, docRequests] = await Promise.all([
     prisma.changeRequest.count({ where: { status: { not: "TERMINEE" } } }),
     prisma.order.count({ where: { status: "A_TRAITER" } }),
     prisma.referral.count({ where: { status: "ENVOYEE" } }),
     prisma.subscription.count({ where: { status: "ACTIF", commitmentEndsAt: { lte: in60, gte: new Date() } } }),
     prisma.client.count(),
     prisma.site.count(),
+    prisma.documentRequest.count({ where: { status: "EN_ATTENTE" } }),
   ]);
 
   const tiles: Array<[string, number, string]> = [
     ["Demandes de modif ouvertes", openChanges, "/admin/modifications"],
     ["Commandes à traiter", ordersTodo, "/admin/commandes"],
+    ["Demandes de documents", docRequests, "/admin/documents"],
     ["Nouvelles recommandations", newReferrals, "/admin/recommandations"],
     ["Engagements qui se terminent sous 60 j", endingSoon, "/admin/clients"],
     ["Clients", clients, "/admin/clients"],
