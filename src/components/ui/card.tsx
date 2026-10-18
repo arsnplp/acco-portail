@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 
-export function Card({ className, children, href }: { className?: string; children: React.ReactNode; href?: string }) {
+export function Card({ className, children, href, id }: { className?: string; children: React.ReactNode; href?: string; id?: string }) {
   const cls = cn("block rounded-card border border-border bg-surface p-4", href && "hover:border-text transition-colors", className);
-  if (href) return <Link href={href} className={cls}>{children}</Link>;
-  return <div className={cls}>{children}</div>;
+  if (href) return <Link href={href} id={id} className={cls}>{children}</Link>;
+  return <div id={id} className={cls}>{children}</div>;
 }
 
 export function SectionTitle({ emoji, children, action }: { emoji?: string; children: React.ReactNode; action?: React.ReactNode }) {

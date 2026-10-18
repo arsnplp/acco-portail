@@ -197,6 +197,20 @@ async function main() {
     skipDuplicates: true,
   });
 
+  // ── Offres
+  const OFFERS = [
+    { slug: "plaquette-avis-google", name: "Plaquette avis Google", benefit: "Recevez plus d’avis Google grâce à une plaquette NFC + QR sur votre comptoir.", description: "Vos clients approchent leur téléphone, la page d’avis s’ouvre. Vous suivez vos avis dans l’app et répondez en un tap avec une réponse déjà rédigée.", priceCents: 1900, setupCents: 4900, billing: "MENSUEL", module: "AVIS", order: 1 },
+    { slug: "fiche-google-optimisee", name: "Fiche Google optimisée", benefit: "Apparaissez mieux sur Google Maps avec une fiche complète et à jour.", description: "Photos, horaires, catégories, description, services : on remplit tout et on vous explique quoi faire ensuite.", priceCents: 14900, setupCents: null, billing: "PONCTUEL", module: "NONE", order: 2 },
+    { slug: "page-supplementaire", name: "Page supplémentaire", benefit: "Une nouvelle page pour un nouveau service ou une nouvelle offre.", description: null, priceCents: 9000, setupCents: null, billing: "PONCTUEL", module: "NONE", order: 3 },
+    { slug: "photos-pro", name: "Photos professionnelles", benefit: "Une séance photo de votre boutique et de vos produits pour un site qui donne envie.", description: "Demi-journée sur place, 30 photos retouchées, intégrées sur votre site.", priceCents: 29000, setupCents: null, billing: "PONCTUEL", module: "NONE", order: 4 },
+    { slug: "campagne-google-ads", name: "Campagne Google Ads", benefit: "Des clients en plus dès cette semaine, dans votre zone.", description: "Budget publicitaire en plus. Suivi mensuel des résultats dans votre récap.", priceCents: 19900, setupCents: null, billing: "MENSUEL", module: "NONE", order: 5 },
+  ] as const;
+  for (const o of OFFERS) await prisma.offer.upsert({ where: { slug: o.slug }, create: { ...o }, update: { ...o } });
+  const plaquette = await prisma.offer.findUniqueOrThrow({ where: { slug: "plaquette-avis-google" } });
+  if ((await prisma.promotion.count({ where: { offerId: plaquette.id } })) === 0) {
+    await prisma.promotion.create({ data: { offerId: plaquette.id, label: "Offre de lancement", promoPriceCents: 1400, endsAt: inDays(30) } });
+  }
+
   console.log("Seed OK");
   console.log("Comptes de démo (lien magique) :", DEMO_CLIENT_USERS.map((u) => u.email).join(", "));
 }
