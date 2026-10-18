@@ -40,7 +40,7 @@ export function SiteForms({ site, properties = [] }: { site: SiteInfo; propertie
           <Field label="Fiche Google (location id)"><Input name="googleLocationId" defaultValue={site.googleLocationId ?? ""} placeholder="locations/123…" /></Field>
         </div>
         <Field label="URL de la capture"><Input name="screenshotUrl" defaultValue={site.screenshotUrl ?? ""} placeholder="https://" /></Field>
-        <p className="text-xs text-muted">Passer en « En ligne » enregistre la mise en ligne dans l’historique et prévient le client.</p>
+        <p className="text-xs text-muted">Passer en « En ligne » enregistre la mise en ligne dans l’historique et prévient le client. Si la propriété Search Console est vide, elle est retrouvée depuis le domaine de l’URL, puis 12 mois de chiffres sont récupérés automatiquement.</p>
         <FormError message={s1.error} />
         <div className="flex items-center gap-3">
           <SubmitButton size="sm">Enregistrer</SubmitButton>

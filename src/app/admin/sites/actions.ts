@@ -16,18 +16,28 @@ export async function updateSite(siteId: string, _prev: ActionState, formData: F
   const status = d.status as SiteStatus;
   const projectStep = d.projectStep as ProjectStep;
   const goesLive = before.status !== "EN_LIGNE" && status === "EN_LIGNE";
+  const url = d.url?.trim() || null;
+
+  // Propriété Search Console : saisie, sinon devinée depuis le domaine du site (sc-domain:exemple.fr) si Google y a accès.
+  let searchConsoleProp = d.searchConsoleProp?.trim() || null;
+  if (!searchConsoleProp && url && status === "EN_LIGNE") {
+    const { listProperties } = await import("@/lib/google-search");
+    const host = new URL(url).hostname.replace(/^www\./, "");
+    const props = await listProperties();
+    searchConsoleProp = props.find((p) => p === `sc-domain:${host}`) ?? props.find((p) => p.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "") === host) ?? null;
+  }
 
   await prisma.$transaction(async (tx) => {
     await tx.site.update({
       where: { id: siteId },
       data: {
         name: d.name.trim(),
-        url: d.url?.trim() || null,
+        url,
         previewUrl: d.previewUrl?.trim() || null,
         screenshotUrl: d.screenshotUrl?.trim() || null,
         status,
         projectStep: goesLive ? "MISE_EN_LIGNE" : projectStep,
-        searchConsoleProp: d.searchConsoleProp?.trim() || null,
+        searchConsoleProp,
         googleLocationId: d.googleLocationId?.trim() || null,
         launchedAt: goesLive ? new Date() : before.launchedAt,
       },
@@ -39,8 +49,17 @@ export async function updateSite(siteId: string, _prev: ActionState, formData: F
       });
     }
   });
+  // Première liaison à une propriété (ou propriété changée) : on récupère 12 mois et on prépare le récap du mois dernier.
+  if (status === "EN_LIGNE" && searchConsoleProp && searchConsoleProp !== before.searchConsoleProp) {
+    const { syncSiteMonth, buildRecap, previousMonth } = await import("@/lib/recaps");
+    let { year, month } = previousMonth();
+    for (let i = 0; i < 12; i++) { await syncSiteMonth(siteId, year, month); month -= 1; if (month === 0) { month = 12; year -= 1; } }
+    const t = previousMonth();
+    await buildRecap(siteId, t.year, t.month);
+  }
+
   revalidatePath(`/admin/sites/${siteId}`);
-  revalidatePath(`/sites/${siteId}`);
+  revalidatePath(`/sites/${siteId}`, "layout");
   return { ok: true };
 }
 
