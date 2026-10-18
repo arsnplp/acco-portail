@@ -9,7 +9,10 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { CHANGE_STATUS, SITE_STATUS } from "@/lib/labels";
 import { fmtDateShort } from "@/lib/format";
 import { SiteForms } from "./forms";
-import { addAssetRequest } from "../actions";
+import { addAssetRequest, syncSearchConsole, generateRecap } from "../actions";
+import { searchConsoleConfigured, serviceAccountEmail } from "@/lib/google-search";
+import { aiConfigured } from "@/lib/ai";
+import { monthLabel } from "@/lib/recaps";
 
 export default async function SiteAdminPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -21,6 +24,8 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
       history: { orderBy: { happenedAt: "desc" } },
       changeRequests: { where: { status: { not: "TERMINEE" } }, orderBy: { createdAt: "desc" } },
       subscriptions: { where: { status: "ACTIF" } },
+      searchStats: { orderBy: [{ year: "desc" }, { month: "desc" }], take: 1 },
+      recaps: { orderBy: [{ year: "desc" }, { month: "desc" }], take: 1 },
     },
   });
   if (!site) notFound();
@@ -55,6 +60,31 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
               </Card>
             ))}
           </div>
+        </>
+      )}
+
+      {site.status === "EN_LIGNE" && (
+        <>
+          <SectionTitle emoji="📊">Search Console et récap mensuel</SectionTitle>
+          <Card className="space-y-3">
+            <p className="text-xs text-text">
+              {searchConsoleConfigured() ? <>Compte de service Google actif ({serviceAccountEmail()}). {site.searchConsoleProp ? `Propriété : ${site.searchConsoleProp}` : "Renseignez la propriété Search Console ci-dessous."}</> : <>Mode démo : Google n’est pas encore connecté (GOOGLE_SERVICE_ACCOUNT_JSON absent), les chiffres sont simulés.</>}
+              {" "}{aiConfigured() ? "Résumés rédigés par Claude." : "Résumés rédigés par gabarit (mode développement, pas de clé Claude)."}
+            </p>
+            <p className="text-xs text-text">
+              Dernier mois synchronisé : {site.searchStats[0] ? monthLabel(site.searchStats[0].year, site.searchStats[0].month) : "aucun"} · Dernier récap : {site.recaps[0] ? `${monthLabel(site.recaps[0].year, site.recaps[0].month)}${site.recaps[0].sentAt ? " (envoyé)" : " (non envoyé)"}` : "aucun"}
+            </p>
+            <div className="flex flex-wrap items-end gap-2">
+              <form action={syncSearchConsole.bind(null, site.id)} className="flex items-end gap-2">
+                <label className="text-xs text-text">Mois à récupérer<Input name="months" inputMode="numeric" defaultValue={12} className="mt-1 w-20 py-2 text-sm" /></label>
+                <SubmitButton size="sm" variant="secondary" pendingLabel="Synchro…">Synchroniser</SubmitButton>
+              </form>
+              <form action={generateRecap.bind(null, site.id)} className="flex items-end gap-2">
+                <label className="flex h-11 items-center gap-2 text-xs text-text"><input type="checkbox" name="notify" className="accent-white" /> Envoyer au client</label>
+                <SubmitButton size="sm" pendingLabel="Génération…">Générer le récap du mois dernier</SubmitButton>
+              </form>
+            </div>
+          </Card>
         </>
       )}
 

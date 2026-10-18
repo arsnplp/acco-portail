@@ -211,6 +211,17 @@ async function main() {
     await prisma.promotion.create({ data: { offerId: plaquette.id, label: "Offre de lancement", promoPriceCents: 1400, endsAt: inDays(30) } });
   }
 
+  // ── Résultats Search Console (démo) : 12 mois + 2 récaps par site en ligne
+  const { syncSiteMonth, buildRecap, previousMonth } = await import("../src/lib/recaps");
+  for (const site of [siteBoul, siteTraiteur]) {
+    let { year, month } = previousMonth();
+    for (let i = 0; i < 12; i++) { await syncSiteMonth(site.id, year, month); month -= 1; if (month === 0) { month = 12; year -= 1; } }
+    const t = previousMonth();
+    const p2 = t.month === 1 ? { year: t.year - 1, month: 12 } : { year: t.year, month: t.month - 1 };
+    await buildRecap(site.id, p2.year, p2.month);
+    await buildRecap(site.id, t.year, t.month);
+  }
+
   console.log("Seed OK");
   console.log("Comptes de démo (lien magique) :", DEMO_CLIENT_USERS.map((u) => u.email).join(", "));
 }

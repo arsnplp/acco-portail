@@ -68,3 +68,25 @@ export async function addAssetRequest(siteId: string, formData: FormData) {
   revalidatePath(`/admin/sites/${siteId}`);
   revalidatePath(`/sites/${siteId}`);
 }
+
+export async function syncSearchConsole(siteId: string, formData: FormData) {
+  await requireAdmin();
+  const months = Math.min(24, Math.max(1, parseInt(String(formData.get("months") ?? "12"), 10) || 12));
+  const { syncSiteMonth, previousMonth } = await import("@/lib/recaps");
+  let { year, month } = previousMonth();
+  for (let i = 0; i < months; i++) {
+    await syncSiteMonth(siteId, year, month);
+    month -= 1; if (month === 0) { month = 12; year -= 1; }
+  }
+  revalidatePath(`/admin/sites/${siteId}`);
+  revalidatePath(`/sites/${siteId}/resultats`);
+}
+
+export async function generateRecap(siteId: string, formData: FormData) {
+  await requireAdmin();
+  const { buildRecap, previousMonth } = await import("@/lib/recaps");
+  const t = previousMonth();
+  await buildRecap(siteId, t.year, t.month, { notify: formData.get("notify") === "on" });
+  revalidatePath(`/admin/sites/${siteId}`);
+  revalidatePath(`/sites/${siteId}/resultats`);
+}
