@@ -83,7 +83,7 @@ function DoneDialog({ items, onClose, onMove }: { items: KanbanItem[]; onClose: 
     [items, client],
   );
   const dateLabel = (iso: string) => new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" }).format(new Date(iso));
-  let lastMonth = "";
+  const monthOf = (iso: string) => new Intl.DateTimeFormat("fr-FR", { month: "long", year: "numeric" }).format(new Date(iso));
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-6" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div ref={ref} role="dialog" aria-modal aria-label="Modifications terminées" className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-t-2xl border border-border bg-bg sm:rounded-2xl">
@@ -97,10 +97,11 @@ function DoneDialog({ items, onClose, onMove }: { items: KanbanItem[]; onClose: 
         </div>
         <div className="overflow-y-auto p-4">
           <ol className="relative ml-2 border-l border-border">
-            {sorted.map((r) => {
+            {sorted.map((r, i) => {
               const d = r.completedAt ?? r.createdAt;
-              const month = new Intl.DateTimeFormat("fr-FR", { month: "long", year: "numeric" }).format(new Date(d));
-              const showMonth = month !== lastMonth; lastMonth = month;
+              const month = monthOf(d);
+              const prev = sorted[i - 1];
+              const showMonth = !prev || monthOf(prev.completedAt ?? prev.createdAt) !== month;
               return (
                 <li key={r.id} className="relative pl-6 pb-5 last:pb-0">
                   {showMonth && <p className="-ml-6 mb-3 text-xs font-semibold uppercase tracking-wide text-muted">{month}</p>}
