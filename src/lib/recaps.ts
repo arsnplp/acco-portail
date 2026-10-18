@@ -17,7 +17,17 @@ export function previousMonth(d = new Date()) {
 export async function syncSiteMonth(siteId: string, year: number, month: number) {
   const site = await prisma.site.findUniqueOrThrow({ where: { id: siteId } });
   const property = site.searchConsoleProp;
-  const stats = property && (await searchConsoleConfigured()) ? await fetchMonthStats(property, year, month) : demoMonthStats(site.siteKey, year, month);
+  let stats = null;
+  if (property && (await searchConsoleConfigured())) {
+    try {
+      stats = await fetchMonthStats(property, year, month);
+    } catch (e) {
+      console.warn(`[search-console] ${site.name} (${property}) : ${(e as Error).message}`);
+      return null; // propriété inaccessible : pas de chiffres inventés pour un vrai site
+    }
+  } else {
+    stats = demoMonthStats(site.siteKey, year, month);
+  }
   if (!stats) return null;
   return prisma.searchStatsMonthly.upsert({
     where: { siteId_year_month: { siteId, year, month } },

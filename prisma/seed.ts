@@ -86,7 +86,6 @@ async function main() {
       projectStep: "MISE_EN_LIGNE",
       launchedAt: daysAgo(210),
       siteKey: "demo-boulangerie-dupont",
-      searchConsoleProp: "sc-domain:boulangerie-dupont.fr",
       history: {
         create: [
           {
@@ -207,6 +206,9 @@ async function main() {
   ] as const;
   for (const o of OFFERS) await prisma.offer.upsert({ where: { slug: o.slug }, create: { ...o }, update: { ...o } });
   const plaquette = await prisma.offer.findUniqueOrThrow({ where: { slug: "plaquette-avis-google" } });
+  if (!(await prisma.subscription.findFirst({ where: { siteId: siteTraiteur.id, module: "AVIS" } }))) {
+    await prisma.subscription.create({ data: { clientId: boulangerie.id, siteId: siteTraiteur.id, offerId: plaquette.id, label: "Plaquette avis Google", module: "AVIS", billing: "MENSUEL", priceCents: 1900, startedAt: daysAgo(30), commitmentEndsAt: inDays(335) } });
+  }
   if ((await prisma.promotion.count({ where: { offerId: plaquette.id } })) === 0) {
     await prisma.promotion.create({ data: { offerId: plaquette.id, label: "Offre de lancement", promoPriceCents: 1400, endsAt: inDays(30) } });
   }

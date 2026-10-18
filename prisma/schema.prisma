@@ -243,6 +243,9 @@ model Site {
   siteKey           String      @unique @default(cuid()) // clé des formulaires
   searchConsoleProp String? // ex. sc-domain:example.fr
   googleLocationId  String? // fiche Google Business Profile
+  reviewsSyncedAt   DateTime?
+  reviewAverage     Float?
+  reviewTotal       Int?
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
 
@@ -382,6 +385,7 @@ model Review {
   source         ReviewSource @default(DEMO)
   externalId     String? // id Google
   authorName     String
+  authorPhotoUrl String?
   rating         Int // 1-5
   text           String?
   reply          String?

@@ -109,3 +109,11 @@ export async function generateRecap(siteId: string, formData: FormData) {
   revalidatePath(`/admin/sites/${siteId}`);
   revalidatePath(`/sites/${siteId}/resultats`);
 }
+
+export async function syncReviewsAction(siteId: string) {
+  await requireAdmin();
+  const { syncReviews } = await import("@/lib/reviews");
+  await syncReviews(siteId, { notify: true });
+  revalidatePath(`/admin/sites/${siteId}`);
+  revalidatePath(`/sites/${siteId}/avis`);
+}

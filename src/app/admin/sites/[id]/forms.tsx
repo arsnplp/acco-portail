@@ -10,7 +10,7 @@ import { PROJECT_STEPS } from "@/lib/labels";
 
 type SiteInfo = { id: string; name: string; url: string | null; previewUrl: string | null; screenshotUrl: string | null; status: SiteStatus; projectStep: ProjectStep; searchConsoleProp: string | null; googleLocationId: string | null };
 
-export function SiteForms({ site, properties = [] }: { site: SiteInfo; properties?: string[] }) {
+export function SiteForms({ site, properties = [], locations = [] }: { site: SiteInfo; properties?: string[]; locations?: { id: string; title: string; address?: string }[] }) {
   const [s1, a1] = useActionState<ActionState, FormData>(updateSite.bind(null, site.id), {});
   const [s2, a2] = useActionState<ActionState, FormData>(addHistoryEntry.bind(null, site.id), {});
   return (
@@ -37,7 +37,13 @@ export function SiteForms({ site, properties = [] }: { site: SiteInfo; propertie
             <Input name="searchConsoleProp" list="sc-properties" defaultValue={site.searchConsoleProp ?? ""} placeholder="sc-domain:monsite.fr" />
             <datalist id="sc-properties">{properties.map((p) => <option key={p} value={p} />)}</datalist>
           </Field>
-          <Field label="Fiche Google (location id)"><Input name="googleLocationId" defaultValue={site.googleLocationId ?? ""} placeholder="locations/123…" /></Field>
+          <Field label="Fiche Google">
+            {locations.length > 0 ? (
+              <Select name="googleLocationId" defaultValue={site.googleLocationId ?? ""}><option value="">Aucune</option>{locations.map((l) => <option key={l.id} value={l.id}>{l.title}{l.address ? ` · ${l.address}` : ""}</option>)}</Select>
+            ) : (
+              <Input name="googleLocationId" defaultValue={site.googleLocationId ?? ""} placeholder="accounts/123/locations/456" />
+            )}
+          </Field>
         </div>
         <Field label="URL de la capture"><Input name="screenshotUrl" defaultValue={site.screenshotUrl ?? ""} placeholder="https://" /></Field>
         <p className="text-xs text-muted">Passer en « En ligne » enregistre la mise en ligne dans l’historique et prévient le client. Si la propriété Search Console est vide, elle est retrouvée depuis le domaine de l’URL, puis 12 mois de chiffres sont récupérés automatiquement.</p>

@@ -9,7 +9,8 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { CHANGE_STATUS, SITE_STATUS } from "@/lib/labels";
 import { fmtDateShort } from "@/lib/format";
 import { SiteForms } from "./forms";
-import { addAssetRequest, syncSearchConsole, generateRecap } from "../actions";
+import { addAssetRequest, syncSearchConsole, generateRecap, syncReviewsAction } from "../actions";
+import { businessApiEnabled, getReviewsProvider } from "@/lib/reviews-provider";
 import { searchConsoleConfigured, listProperties } from "@/lib/google-search";
 import { connectedGoogleEmail } from "@/lib/google-oauth";
 import { aiConfigured } from "@/lib/ai";
@@ -31,6 +32,9 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
   });
   if (!site) notFound();
   const [googleOn, googleEmail, properties] = site.status === "EN_LIGNE" ? await Promise.all([searchConsoleConfigured(), connectedGoogleEmail(), listProperties()]) : [false, null, []];
+  const avisActive = site.subscriptions.some((x) => x.module === "AVIS");
+  const locations = avisActive && businessApiEnabled() ? await (await getReviewsProvider()).listLocations().catch(() => []) : [];
+  const reviewCount = avisActive ? await prisma.review.count({ where: { siteId: site.id } }) : 0;
 
   return (
     <AdminPage title={site.name} back={{ href: `/admin/clients/${site.clientId}`, label: site.client.name }} action={<Badge tone={SITE_STATUS[site.status].tone}>{SITE_STATUS[site.status].label}</Badge>}>
@@ -90,7 +94,20 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
         </>
       )}
 
-      <SiteForms properties={properties} site={{ id: site.id, name: site.name, url: site.url, previewUrl: site.previewUrl, screenshotUrl: site.screenshotUrl, status: site.status, projectStep: site.projectStep, searchConsoleProp: site.searchConsoleProp, googleLocationId: site.googleLocationId }} />
+      {avisActive && (
+        <>
+          <SectionTitle emoji="⭐">Avis Google</SectionTitle>
+          <Card className="space-y-2">
+            <p className="text-xs text-text">
+              {businessApiEnabled() ? (site.googleLocationId ? `Fiche liée : ${site.googleLocationId}` : <span className="text-yellow">Choisissez la fiche Google dans les paramètres ci-dessous.</span>) : "Mode démo : avis d’exemple tant que Google n’a pas validé l’accès à l’API Business Profile (GOOGLE_BUSINESS_API_ENABLED=false)."}
+              {" "}{reviewCount} avis en base · dernière synchro : {site.reviewsSyncedAt ? fmtDateShort(site.reviewsSyncedAt) : "jamais"}.
+            </p>
+            <form action={syncReviewsAction.bind(null, site.id)}><SubmitButton size="sm" variant="secondary" pendingLabel="Synchro…">Synchroniser les avis</SubmitButton></form>
+          </Card>
+        </>
+      )}
+
+      <SiteForms properties={properties} locations={locations} site={{ id: site.id, name: site.name, url: site.url, previewUrl: site.previewUrl, screenshotUrl: site.screenshotUrl, status: site.status, projectStep: site.projectStep, searchConsoleProp: site.searchConsoleProp, googleLocationId: site.googleLocationId }} />
 
       {site.status === "EN_CREATION" && (
         <>
