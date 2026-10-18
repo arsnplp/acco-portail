@@ -5,9 +5,9 @@ const base =
 
 export function Label({ children, hint, htmlFor }: { children: React.ReactNode; hint?: string; htmlFor?: string }) {
   return (
-    <label htmlFor={htmlFor} className="block text-sm font-medium text-text-strong mb-2">
-      {children}
-      {hint && <span className="ml-1 font-normal text-muted">{hint}</span>}
+    <label htmlFor={htmlFor} className="mb-2 flex items-baseline gap-1 overflow-hidden whitespace-nowrap text-sm font-medium text-text-strong">
+      <span className="shrink-0">{children}</span>
+      {hint && <span className="truncate font-normal text-muted" title={hint}>{hint}</span>}
     </label>
   );
 }

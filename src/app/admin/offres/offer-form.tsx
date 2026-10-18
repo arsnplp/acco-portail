@@ -16,7 +16,7 @@ export function OfferForm({ offer }: { offer?: Offer }) {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Field label="Prix (€)"><Input name="price" inputMode="decimal" defaultValue={offer ? (offer.priceCents / 100).toString() : ""} required /></Field>
         <Field label="Facturation"><Select name="billing" defaultValue={offer?.billing ?? "MENSUEL"}><option value="MENSUEL">Mensuel</option><option value="PONCTUEL">Ponctuel</option></Select></Field>
-        <Field label="Frais fixes (€)" hint="(ex. plaquette)"><Input name="setup" inputMode="decimal" defaultValue={offer?.setupCents != null ? (offer.setupCents / 100).toString() : ""} /></Field>
+        <Field label="Frais fixes (€)" hint="(optionnel)"><Input name="setup" inputMode="decimal" defaultValue={offer?.setupCents != null ? (offer.setupCents / 100).toString() : ""} /></Field>
         <Field label="Module débloqué"><Select name="module" defaultValue={offer?.module ?? "NONE"}><option value="NONE">Aucun</option><option value="AVIS">Avis Google</option></Select></Field>
       </div>
       <Field label="Ordre d’affichage"><Input name="order" inputMode="numeric" defaultValue={offer?.order ?? 0} className="w-24" /></Field>
