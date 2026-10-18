@@ -1,8 +1,70 @@
-export default function Page() {
+import { prisma } from "@/lib/prisma";
+import { AdminPage } from "@/components/admin/page";
+import { Card, SectionTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Field, Input } from "@/components/ui/field";
+import { SubmitButton } from "@/components/ui/submit-button";
+import { oauthConfigured, connectedGoogleEmail } from "@/lib/google-oauth";
+import { listProperties } from "@/lib/google-search";
+import { aiConfigured } from "@/lib/ai";
+import { saveSettings, disconnectGoogleAction } from "./actions";
+
+export const metadata = { title: "Paramètres" };
+
+const GOOGLE_MSG: Record<string, string> = {
+  ok: "Google est connecté.",
+  refuse: "Connexion annulée.",
+  "sans-jeton": "Google n’a pas renvoyé de jeton durable. Déconnectez l’app Acco dans votre compte Google (myaccount.google.com → Sécurité → Connexions tierces) puis réessayez.",
+  erreur: "Erreur pendant la connexion, réessayez.",
+  "non-configure": "Ajoutez GOOGLE_OAUTH_CLIENT_ID et GOOGLE_OAUTH_CLIENT_SECRET dans .env.",
+};
+
+export default async function ParametresPage({ searchParams }: { searchParams: Promise<{ google?: string }> }) {
+  const { google } = await searchParams;
+  const [settings, email] = await Promise.all([prisma.setting.findMany(), connectedGoogleEmail()]);
+  const get = (k: string) => settings.find((s) => s.key === k)?.value ?? "";
+  const properties = email ? await listProperties() : [];
+  const sites = email ? await prisma.site.findMany({ where: { status: "EN_LIGNE" }, select: { name: true, searchConsoleProp: true } }) : [];
+
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6">
-      <h1 className="text-2xl capitalize">parametres</h1>
-      <p className="mt-2 text-text">Cette section arrive dans une prochaine étape.</p>
-    </main>
+    <AdminPage title="Paramètres">
+      <SectionTitle emoji="🔗">Google (Search Console et fiche Google)</SectionTitle>
+      <Card className="space-y-3">
+        {google && <p className={`text-sm ${google === "ok" ? "text-green" : "text-pink"}`}>{GOOGLE_MSG[google] ?? ""}</p>}
+        {email ? (
+          <>
+            <div className="flex items-center justify-between gap-3">
+              <div><p className="font-medium text-title">Connecté avec {email}</p><p className="text-xs text-text">{properties.length} propriété{properties.length > 1 ? "s" : ""} Search Console accessible{properties.length > 1 ? "s" : ""}.</p></div>
+              <form action={disconnectGoogleAction}><SubmitButton variant="ghost" size="sm" pendingLabel="…">Déconnecter</SubmitButton></form>
+            </div>
+            {properties.length > 0 && (
+              <ul className="grid gap-1 text-xs text-text-strong">
+                {properties.map((p) => {
+                  const linked = sites.find((s) => s.searchConsoleProp === p);
+                  return <li key={p} className="flex items-center justify-between gap-2 rounded-sm border border-border px-3 py-1.5"><code>{p}</code>{linked ? <Badge tone="green">{linked.name}</Badge> : <span className="text-muted">non lié</span>}</li>;
+                })}
+              </ul>
+            )}
+            <p className="text-xs text-muted">Pour lier un site : Sites → le site → Propriété Search Console (la liste se propose toute seule), puis « Synchroniser ».</p>
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-text">Connectez le compte Google d’Acco qui a accès aux Search Console de vos clients. Les chiffres réels remplaceront les chiffres de démo.</p>
+            {oauthConfigured() ? <Button href="/api/google/connect">Connecter Google</Button> : <p className="text-sm text-yellow">Renseignez GOOGLE_OAUTH_CLIENT_ID et GOOGLE_OAUTH_CLIENT_SECRET dans .env puis redémarrez.</p>}
+          </>
+        )}
+      </Card>
+
+      <SectionTitle emoji="🤖">Résumés et réponses par IA</SectionTitle>
+      <Card><p className="text-sm text-text">{aiConfigured() ? <span className="text-green">Clé Claude active : les récaps et les réponses aux avis sont rédigés par l’IA.</span> : "Mode développement : récaps et réponses aux avis rédigés par gabarit. Ajoutez ANTHROPIC_API_KEY dans .env pour activer l’IA."}</p></Card>
+
+      <SectionTitle emoji="⚙️">Agence</SectionTitle>
+      <form action={saveSettings} className="space-y-3 rounded-card border border-border bg-surface p-4">
+        <Field label="Lien « Laisser un avis » sur la fiche Google d’Acco"><Input name="google_review_url" defaultValue={get("google_review_url")} placeholder="https://g.page/r/…/review" /></Field>
+        <Field label="Récompense de parrainage"><Input name="referral_reward_label" defaultValue={get("referral_reward_label")} placeholder="1 mois d’abonnement offert" /></Field>
+        <SubmitButton size="sm">Enregistrer</SubmitButton>
+      </form>
+    </AdminPage>
   );
 }

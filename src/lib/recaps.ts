@@ -17,7 +17,7 @@ export function previousMonth(d = new Date()) {
 export async function syncSiteMonth(siteId: string, year: number, month: number) {
   const site = await prisma.site.findUniqueOrThrow({ where: { id: siteId } });
   const property = site.searchConsoleProp;
-  const stats = property && searchConsoleConfigured() ? await fetchMonthStats(property, year, month) : demoMonthStats(site.siteKey, year, month);
+  const stats = property && (await searchConsoleConfigured()) ? await fetchMonthStats(property, year, month) : demoMonthStats(site.siteKey, year, month);
   if (!stats) return null;
   return prisma.searchStatsMonthly.upsert({
     where: { siteId_year_month: { siteId, year, month } },

@@ -10,7 +10,8 @@ import { CHANGE_STATUS, SITE_STATUS } from "@/lib/labels";
 import { fmtDateShort } from "@/lib/format";
 import { SiteForms } from "./forms";
 import { addAssetRequest, syncSearchConsole, generateRecap } from "../actions";
-import { searchConsoleConfigured, serviceAccountEmail } from "@/lib/google-search";
+import { searchConsoleConfigured, listProperties } from "@/lib/google-search";
+import { connectedGoogleEmail } from "@/lib/google-oauth";
 import { aiConfigured } from "@/lib/ai";
 import { monthLabel } from "@/lib/recaps";
 
@@ -29,6 +30,7 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
     },
   });
   if (!site) notFound();
+  const [googleOn, googleEmail, properties] = site.status === "EN_LIGNE" ? await Promise.all([searchConsoleConfigured(), connectedGoogleEmail(), listProperties()]) : [false, null, []];
 
   return (
     <AdminPage title={site.name} back={{ href: `/admin/clients/${site.clientId}`, label: site.client.name }} action={<Badge tone={SITE_STATUS[site.status].tone}>{SITE_STATUS[site.status].label}</Badge>}>
@@ -68,7 +70,7 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
           <SectionTitle emoji="📊">Search Console et récap mensuel</SectionTitle>
           <Card className="space-y-3">
             <p className="text-xs text-text">
-              {searchConsoleConfigured() ? <>Compte de service Google actif ({serviceAccountEmail()}). {site.searchConsoleProp ? `Propriété : ${site.searchConsoleProp}` : "Renseignez la propriété Search Console ci-dessous."}</> : <>Mode démo : Google n’est pas encore connecté (GOOGLE_SERVICE_ACCOUNT_JSON absent), les chiffres sont simulés.</>}
+              {googleOn ? <>Google connecté{googleEmail ? ` (${googleEmail})` : ""}. {site.searchConsoleProp ? `Propriété : ${site.searchConsoleProp}` : <span className="text-yellow">Choisissez la propriété Search Console dans les paramètres ci-dessous.</span>}</> : <>Mode démo : Google n’est pas connecté (Paramètres → Connecter Google), les chiffres sont simulés.</>}
               {" "}{aiConfigured() ? "Résumés rédigés par Claude." : "Résumés rédigés par gabarit (mode développement, pas de clé Claude)."}
             </p>
             <p className="text-xs text-text">
@@ -88,7 +90,7 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
         </>
       )}
 
-      <SiteForms site={{ id: site.id, name: site.name, url: site.url, previewUrl: site.previewUrl, screenshotUrl: site.screenshotUrl, status: site.status, projectStep: site.projectStep, searchConsoleProp: site.searchConsoleProp, googleLocationId: site.googleLocationId }} />
+      <SiteForms properties={properties} site={{ id: site.id, name: site.name, url: site.url, previewUrl: site.previewUrl, screenshotUrl: site.screenshotUrl, status: site.status, projectStep: site.projectStep, searchConsoleProp: site.searchConsoleProp, googleLocationId: site.googleLocationId }} />
 
       {site.status === "EN_CREATION" && (
         <>

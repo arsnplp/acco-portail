@@ -10,7 +10,7 @@ import { PROJECT_STEPS } from "@/lib/labels";
 
 type SiteInfo = { id: string; name: string; url: string | null; previewUrl: string | null; screenshotUrl: string | null; status: SiteStatus; projectStep: ProjectStep; searchConsoleProp: string | null; googleLocationId: string | null };
 
-export function SiteForms({ site }: { site: SiteInfo }) {
+export function SiteForms({ site, properties = [] }: { site: SiteInfo; properties?: string[] }) {
   const [s1, a1] = useActionState<ActionState, FormData>(updateSite.bind(null, site.id), {});
   const [s2, a2] = useActionState<ActionState, FormData>(addHistoryEntry.bind(null, site.id), {});
   return (
@@ -33,7 +33,10 @@ export function SiteForms({ site }: { site: SiteInfo }) {
           </Field>
           <Field label="URL de production"><Input name="url" defaultValue={site.url ?? ""} placeholder="https://" /></Field>
           <Field label="Lien préprod"><Input name="previewUrl" defaultValue={site.previewUrl ?? ""} placeholder="https://" /></Field>
-          <Field label="Propriété Search Console"><Input name="searchConsoleProp" defaultValue={site.searchConsoleProp ?? ""} placeholder="sc-domain:monsite.fr" /></Field>
+          <Field label="Propriété Search Console">
+            <Input name="searchConsoleProp" list="sc-properties" defaultValue={site.searchConsoleProp ?? ""} placeholder="sc-domain:monsite.fr" />
+            <datalist id="sc-properties">{properties.map((p) => <option key={p} value={p} />)}</datalist>
+          </Field>
           <Field label="Fiche Google (location id)"><Input name="googleLocationId" defaultValue={site.googleLocationId ?? ""} placeholder="locations/123…" /></Field>
         </div>
         <Field label="URL de la capture"><Input name="screenshotUrl" defaultValue={site.screenshotUrl ?? ""} placeholder="https://" /></Field>

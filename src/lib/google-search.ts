@@ -1,4 +1,5 @@
 import { JWT } from "google-auth-library";
+import { connectedGoogleClient } from "@/lib/google-oauth";
 
 export type MonthStats = { clicks: number; impressions: number; position: number; topQueries: { query: string; clicks: number; impressions: number; position: number }[] };
 
@@ -14,7 +15,25 @@ function serviceAccount() {
   }
 }
 
-export const searchConsoleConfigured = () => Boolean(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+/** Client Google utilisable : compte Acco connecté (OAuth) sinon compte de service, sinon null (mode démo). */
+export async function googleClient() {
+  return (await connectedGoogleClient()) ?? serviceAccount();
+}
+
+export const searchConsoleConfigured = async () => Boolean(await googleClient());
+
+/** Propriétés Search Console accessibles avec le compte connecté. */
+export async function listProperties() {
+  const client = await googleClient();
+  if (!client) return [];
+  try {
+    const res = await client.request<{ siteEntry?: { siteUrl: string; permissionLevel: string }[] }>({ url: "https://searchconsole.googleapis.com/webmasters/v3/sites" });
+    return (res.data.siteEntry ?? []).filter((s) => s.permissionLevel !== "siteUnverifiedUser").map((s) => s.siteUrl).sort();
+  } catch (e) {
+    console.warn("[search-console] liste des propriétés impossible :", (e as Error).message);
+    return [];
+  }
+}
 
 /** Email du compte de service à ajouter comme utilisateur sur chaque propriété Search Console. */
 export function serviceAccountEmail() {
@@ -29,7 +48,7 @@ export function monthBounds(year: number, month: number) {
 
 /** Chiffres d'un mois pour une propriété (ex. sc-domain:monsite.fr ou https://monsite.fr/). */
 export async function fetchMonthStats(property: string, year: number, month: number): Promise<MonthStats | null> {
-  const client = serviceAccount();
+  const client = await googleClient();
   if (!client) return null;
   const { startDate, endDate } = monthBounds(year, month);
   const url = `https://searchconsole.googleapis.com/webmasters/v3/sites/${encodeURIComponent(property)}/searchAnalytics/query`;
