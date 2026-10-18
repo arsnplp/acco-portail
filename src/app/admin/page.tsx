@@ -13,13 +13,13 @@ export default async function AdminHome() {
     prisma.subscription.count({ where: { status: "ACTIF", commitmentEndsAt: { lte: in60, gte: new Date() } } }),
     prisma.client.count(),
     prisma.site.count(),
-    prisma.documentRequest.count({ where: { status: "EN_ATTENTE", direction: "VERS_EQUIPE" } }),
+    prisma.documentRequest.count({ where: { status: "EN_ATTENTE", direction: "VERS_CLIENT" } }),
   ]);
 
   const tiles: Array<[string, number, string]> = [
     ["Demandes de modif ouvertes", openChanges, "/admin/modifications"],
     ["Commandes à traiter", ordersTodo, "/admin/commandes"],
-    ["Demandes de documents", docRequests, "/admin/documents"],
+    ["Documents attendus des clients", docRequests, "/admin/documents"],
     ["Nouvelles recommandations", newReferrals, "/admin/recommandations"],
     ["Engagements qui se terminent sous 60 j", endingSoon, "/admin/clients"],
     ["Clients", clients, "/admin/clients"],

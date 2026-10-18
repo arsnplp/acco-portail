@@ -7,8 +7,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { DocumentSections } from "@/components/documents/list";
 import { UploadDocumentForm } from "@/app/admin/documents/upload-form";
 import { AskClientDocumentForm } from "@/app/admin/documents/ask-form";
-import { closeRequest, cancelRequest, deleteDocument } from "@/app/admin/documents/actions";
-import { DOC_KIND, requestLabel } from "@/lib/documents";
+import { cancelRequest, deleteDocument } from "@/app/admin/documents/actions";
 import { fmtDate, timeAgo } from "@/lib/format";
 
 export default async function ClientDocumentsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -22,31 +21,13 @@ export default async function ClientDocumentsPage({ params }: { params: Promise<
     },
   });
   if (!client) notFound();
-  const fromClient = client.documentRequests.filter((r) => r.direction === "VERS_EQUIPE" && r.status === "EN_ATTENTE");
   const awaitingClient = client.documentRequests.filter((r) => r.direction === "VERS_CLIENT" && r.status === "EN_ATTENTE");
-  const done = client.documentRequests.filter((r) => r.status === "TERMINEE").slice(0, 12);
+  const done = client.documentRequests.filter((r) => r.direction === "VERS_CLIENT" && r.status === "TERMINEE").slice(0, 12);
   const sites = client.sites;
-  const badge = fromClient.length > 0 ? <Badge tone="pink">{fromClient.length} à traiter</Badge> : awaitingClient.length > 0 ? <Badge tone="yellow">{awaitingClient.length} attendu{awaitingClient.length > 1 ? "s" : ""} du client</Badge> : undefined;
+  const badge = awaitingClient.length > 0 ? <Badge tone="yellow">{awaitingClient.length} attendu{awaitingClient.length > 1 ? "s" : ""} du client</Badge> : undefined;
 
   return (
     <AdminPage title="Documents" back={{ href: `/admin/clients/${client.id}`, label: client.name }} action={badge}>
-      <SectionTitle emoji="📥">Le client vous demande</SectionTitle>
-      {fromClient.length === 0 ? <p className="text-sm text-text">Aucune demande en attente.</p> : (
-        <div className="grid gap-3">
-          {fromClient.map((r) => (
-            <Card key={r.id} className="border-pink/40">
-              <div className="flex items-start justify-between gap-3">
-                <div><p className="font-semibold text-title">{requestLabel(r)}</p><p className="text-xs text-text">Demandé par {r.requester?.firstName ?? "le client"} {timeAgo(r.createdAt)}{r.site ? ` · ${r.site.name}` : ""}</p></div>
-                <form action={closeRequest.bind(null, r.id)}><SubmitButton variant="ghost" size="sm" pendingLabel="…">Clore sans fichier</SubmitButton></form>
-              </div>
-              <div className="mt-4 border-t border-border pt-4">
-                <UploadDocumentForm clientId={client.id} sites={sites} compact submitLabel="Envoyer ce document" defaults={{ kind: r.kind, siteId: r.siteId, requestId: r.id, title: r.kind === "AUTRE" ? (r.message ?? "") : `${DOC_KIND[r.kind].label}${r.message ? ` — ${r.message}` : ""}` }} />
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
-
       <SectionTitle emoji="📤">Vous attendez du client</SectionTitle>
       <div className="grid gap-2">
         {awaitingClient.map((r) => (
@@ -75,18 +56,15 @@ export default async function ClientDocumentsPage({ params }: { params: Promise<
 
       {done.length > 0 && (
         <>
-          <SectionTitle emoji="✅">Terminées</SectionTitle>
+          <SectionTitle emoji="✅">Reçus du client</SectionTitle>
           <div className="grid gap-2">
             {done.map((r) => (
               <Card key={r.id} className="flex items-center justify-between gap-3 py-3">
                 <div className="min-w-0">
-                  <p className="truncate text-sm text-text-strong">{r.direction === "VERS_CLIENT" ? r.message : requestLabel(r)}</p>
-                  <p className="text-xs text-muted">
-                    {r.direction === "VERS_CLIENT" ? (r.document ? `Déposé par le client le ${fmtDate(r.document.createdAt)}` : "Annulée") : r.document ? `Envoyé : ${r.document.title}` : "Close sans fichier"}
-                    {r.fulfilledAt && r.direction !== "VERS_CLIENT" ? ` · ${fmtDate(r.fulfilledAt)}` : ""}
-                  </p>
+                  <p className="truncate text-sm text-text-strong">{r.message}</p>
+                  <p className="text-xs text-muted">{r.document ? `Déposé par le client le ${fmtDate(r.document.createdAt)}` : "Close"}</p>
                 </div>
-                <Badge tone={r.direction === "VERS_CLIENT" ? "blue" : "green"}>{r.direction === "VERS_CLIENT" ? "Reçu du client" : "Envoyé"}</Badge>
+                <Badge tone="blue">Reçu du client</Badge>
               </Card>
             ))}
           </div>

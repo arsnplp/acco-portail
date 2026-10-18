@@ -9,7 +9,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 type Props = {
   clientId: string;
   sites: { id: string; name: string }[];
-  defaults?: { kind?: DocumentKind; siteId?: string | null; title?: string; requestId?: string };
+  defaults?: { kind?: DocumentKind; siteId?: string | null; title?: string };
   compact?: boolean;
   submitLabel?: string;
 };
@@ -19,7 +19,6 @@ export function UploadDocumentForm({ clientId, sites, defaults, compact, submitL
   return (
     <form action={action} className={`space-y-3 ${compact ? "" : "rounded-card border border-border bg-surface p-4"}`} key={state.ok ? "reset" : "form"}>
       <input type="hidden" name="clientId" value={clientId} />
-      {defaults?.requestId && <input type="hidden" name="requestId" value={defaults.requestId} />}
       <div className="grid gap-3 sm:grid-cols-3">
         <Field label="Type">
           <Select name="kind" defaultValue={defaults?.kind ?? "FACTURE"}><option value="CONTRAT">Contrat</option><option value="FACTURE">Facture</option><option value="DEVIS">Devis</option><option value="AUTRE">Autre</option></Select>

@@ -19,7 +19,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
       memberships: { include: { user: true } },
       subscriptions: { orderBy: { startedAt: "desc" }, include: { site: { select: { name: true } } } },
       documents: { orderBy: { createdAt: "desc" } },
-      _count: { select: { orders: true, documentRequests: { where: { status: "EN_ATTENTE", direction: "VERS_EQUIPE" } } } },
+      _count: { select: { orders: true, documentRequests: { where: { status: "EN_ATTENTE", direction: "VERS_CLIENT" } } } },
     },
   });
   if (!client) notFound();
@@ -82,8 +82,8 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
 
       <SectionTitle emoji="📄">Documents</SectionTitle>
       <Card href={`/admin/clients/${client.id}/documents`} className="flex items-center justify-between gap-3 py-3">
-        <div className="flex items-center gap-3"><FolderOpen size={20} strokeWidth={1.5} className="text-text" /><div><p className="font-medium text-title">Espace documents</p><p className="text-xs text-text">{client.documents.length} document{client.documents.length > 1 ? "s" : ""}{pendingDocs > 0 ? ` · ${pendingDocs} demande${pendingDocs > 1 ? "s" : ""} en attente` : ""}</p></div></div>
-        <div className="flex items-center gap-2">{pendingDocs > 0 && <Badge tone="pink">{pendingDocs}</Badge>}<ChevronRight size={18} className="text-text" /></div>
+        <div className="flex items-center gap-3"><FolderOpen size={20} strokeWidth={1.5} className="text-text" /><div><p className="font-medium text-title">Espace documents</p><p className="text-xs text-text">{client.documents.length} document{client.documents.length > 1 ? "s" : ""}{pendingDocs > 0 ? ` · ${pendingDocs} attendu${pendingDocs > 1 ? "s" : ""} du client` : ""}</p></div></div>
+        <div className="flex items-center gap-2">{pendingDocs > 0 && <Badge tone="yellow">{pendingDocs}</Badge>}<ChevronRight size={18} className="text-text" /></div>
       </Card>
       <div className="mt-3"><Card href={`/admin/messages/${client.id}`} className="py-3 text-sm font-medium text-title">💬 Voir les échanges avec ce client</Card></div>
 
