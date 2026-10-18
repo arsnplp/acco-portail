@@ -1,0 +1,31 @@
+import { cn } from "@/lib/cn";
+
+export type Tone = "green" | "yellow" | "pink" | "blue" | "neutral";
+
+const tones: Record<Tone, string> = {
+  green: "text-green",
+  yellow: "text-yellow",
+  pink: "text-pink",
+  blue: "text-blue",
+  neutral: "text-text",
+};
+const dots: Record<Tone, string> = {
+  green: "bg-green",
+  yellow: "bg-yellow",
+  pink: "bg-pink",
+  blue: "bg-blue",
+  neutral: "bg-text",
+};
+
+export function Badge({ tone = "neutral", children, className }: { tone?: Tone; children: React.ReactNode; className?: string }) {
+  return (
+    <span className={cn("inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-2 px-2.5 py-1 text-xs font-medium", tones[tone], className)}>
+      <span className={cn("size-1.5 rounded-full", dots[tone])} />
+      {children}
+    </span>
+  );
+}
+
+export function Dot({ tone = "pink", className }: { tone?: Tone; className?: string }) {
+  return <span className={cn("inline-block size-2 rounded-full", dots[tone], className)} />;
+}

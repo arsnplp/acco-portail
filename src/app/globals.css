@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+/* ─── Design tokens Acco (charte relevée sur acco-lab.fr) ───
+   Seules ces valeurs sont autorisées dans l'app. */
+:root {
+  --bg: #0e0e0f;
+  --surface: #1a1a1b;
+  --surface-2: #1e1e22;
+  --border: #252729;
+  --title: #ffffff;
+  --text: #7a7d85;
+  --text-strong: #c9cad0;
+  --muted: #4b4e55;
+
+  --blue: #6f839e;
+  --pink: #d46a6a;
+  --yellow: #e3d59b;
+  --green: #9fb6a3;
+
+  --radius: 12px;
+  --radius-sm: 8px;
+  --nav-h: 64px;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-title: var(--title);
+  --color-text: var(--text);
+  --color-text-strong: var(--text-strong);
+  --color-muted: var(--muted);
+  --color-blue: var(--blue);
+  --color-pink: var(--pink);
+  --color-yellow: var(--yellow);
+  --color-green: var(--green);
+
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-title: var(--font-poppins), var(--font-inter), system-ui, sans-serif;
+
+  --radius-card: var(--radius);
+  --radius-sm: var(--radius-sm);
+}
+
+html {
+  color-scheme: dark;
+  background: var(--bg);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-strong);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-title);
+  color: var(--title);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+::selection {
+  background: var(--blue);
+  color: var(--bg);
+}
+
+/* Zone sûre iPhone pour la barre du bas */
+.pb-nav {
+  padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 16px);
+}
