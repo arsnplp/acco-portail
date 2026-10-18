@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { addDays, fmtDate } from "@/lib/format";
+import { addDays, fmtDate, daysUntil } from "@/lib/format";
 import { cn } from "@/lib/cn";
 
 export const metadata = { title: "Tableau de bord" };
@@ -55,7 +55,7 @@ export default async function AdminHome() {
       ) : (
         <div className="grid gap-2">
           {ending.map((s) => {
-            const days = Math.ceil((s.commitmentEndsAt!.getTime() - Date.now()) / 86400_000);
+            const days = daysUntil(s.commitmentEndsAt!);
             return (
               <Card key={s.id} href={`/admin/clients/${s.client.id}`} className="flex items-center justify-between gap-3 py-3">
                 <div className="min-w-0">

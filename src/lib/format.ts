@@ -20,3 +20,6 @@ export const addDays = (n: number, from = new Date()) => new Date(from.getTime()
 
 /** Numéro de semaine absolu (pour alterner un contenu une semaine sur deux). */
 export const weekIndex = (d = new Date()) => Math.floor(d.getTime() / (7 * 86400_000));
+
+/** Nombre de jours entre maintenant et une date (arrondi au supérieur). */
+export const daysUntil = (d: Date | string) => Math.ceil((new Date(d).getTime() - Date.now()) / 86400_000);
