@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronLeft, Plus } from "lucide-react";
+import { ChevronLeft, Plus, FileText } from "lucide-react";
 import { requireClientSite, siteHealth } from "@/lib/sites";
 import { Badge } from "@/components/ui/badge";
 import { SITE_STATUS } from "@/lib/labels";
@@ -20,11 +20,12 @@ export default async function SiteLayout({ children, params }: { children: React
         <div className="mt-3 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-xl truncate">{site.name}</h1>
-            {site.url && (
-              <a href={site.url} target="_blank" rel="noreferrer" className="text-sm text-text underline-offset-2 hover:underline">
-                Voir le site ↗
-              </a>
-            )}
+            <div className="flex items-center gap-3 text-sm text-text">
+              {site.url && (
+                <a href={site.url} target="_blank" rel="noreferrer" className="underline-offset-2 hover:underline">Voir le site ↗</a>
+              )}
+              <Link href={`/sites/${site.id}/documents`} className="inline-flex items-center gap-1 hover:text-title"><FileText size={14} /> Documents</Link>
+            </div>
           </div>
           <Badge tone={SITE_STATUS[site.status].tone}>{SITE_STATUS[site.status].label}</Badge>
         </div>

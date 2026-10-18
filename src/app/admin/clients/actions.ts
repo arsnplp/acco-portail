@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
-import { createSupabaseAdmin } from "@/lib/supabase/admin";
+import { ensureAuthUser, sendInvitationEmail } from "@/lib/invitations";
 
 export type ActionState = { error?: string };
 
@@ -19,19 +19,6 @@ const clientSchema = z.object({
   ownerFirstName: z.string().trim().min(1, "Prénom du gérant requis"),
   ownerLastName: z.string().trim().optional(),
 });
-
-/** Crée ou retrouve l'utilisateur Supabase Auth SANS envoyer d'email (l'invitation par email arrive à l'étape 3). */
-async function ensureAuthUser(email: string, meta: Record<string, string | undefined>) {
-  const sb = createSupabaseAdmin();
-  const { data: created, error } = await sb.auth.admin.createUser({ email, email_confirm: true, user_metadata: meta });
-  if (!error) return created.user.id;
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) return existing.id;
-  const { data } = await sb.auth.admin.listUsers({ perPage: 1000 });
-  const u = data?.users.find((x) => x.email?.toLowerCase() === email);
-  if (!u) throw new Error(error.message);
-  return u.id;
-}
 
 export async function createClient(_prev: ActionState, formData: FormData): Promise<ActionState> {
   await requireAdmin();
@@ -148,5 +135,13 @@ export async function createSubscription(clientId: string, _prev: ActionState, f
 export async function cancelSubscription(clientId: string, subId: string) {
   await requireAdmin();
   await prisma.subscription.update({ where: { id: subId }, data: { status: "RESILIE", cancelledAt: new Date() } });
+  revalidatePath(`/admin/clients/${clientId}`);
+}
+
+export async function sendInvitation(clientId: string, userId: string) {
+  const admin = await requireAdmin();
+  const [client, user] = await Promise.all([prisma.client.findUnique({ where: { id: clientId } }), prisma.user.findUnique({ where: { id: userId } })]);
+  if (!client || !user) return;
+  await sendInvitationEmail({ email: user.email, firstName: user.firstName, clientName: client.name, clientId, inviterId: admin.id });
   revalidatePath(`/admin/clients/${clientId}`);
 }

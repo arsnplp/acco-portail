@@ -6,7 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { SITE_STATUS, PROJECT_STEPS } from "@/lib/labels";
 import { fmtDate, fmtPrice } from "@/lib/format";
 import { ClientForms } from "./forms";
-import { cancelSubscription } from "../actions";
+import { cancelSubscription, sendInvitation } from "../actions";
+import { UploadDocumentForm } from "@/app/admin/documents/upload-form";
+import { DOC_KIND } from "@/components/documents/list";
 import { SubmitButton } from "@/components/ui/submit-button";
 
 export default async function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -70,13 +72,22 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
               <p className="font-medium text-title">{[m.user.firstName, m.user.lastName].filter(Boolean).join(" ") || m.user.email}</p>
               <p className="text-xs text-text">{m.user.email}</p>
             </div>
-            <Badge tone={m.role === "OWNER" ? "blue" : "neutral"}>{m.role === "OWNER" ? "Gérant" : "Membre"}</Badge>
+            <div className="flex items-center gap-2">
+              <Badge tone={m.role === "OWNER" ? "blue" : "neutral"}>{m.role === "OWNER" ? "Gérant" : "Membre"}</Badge>
+              <form action={sendInvitation.bind(null, client.id, m.userId)}><SubmitButton variant="secondary" size="sm" pendingLabel="Envoi…">Envoyer l’invitation</SubmitButton></form>
+            </div>
           </Card>
         ))}
       </div>
 
       <SectionTitle emoji="📄">Documents</SectionTitle>
-      <p className="text-sm text-text">{client.documents.length} document(s). Dépôt disponible à l’étape 3.</p>
+      <div className="grid gap-2">
+        {client.documents.map((d) => (
+          <Card key={d.id} className="flex items-center gap-2 py-3"><Badge tone={DOC_KIND[d.kind].tone}>{DOC_KIND[d.kind].label}</Badge><p className="truncate text-sm text-title">{d.title}</p><span className="ml-auto text-xs text-muted">{fmtDate(d.createdAt)}</span></Card>
+        ))}
+        <UploadDocumentForm clients={[{ id: client.id, name: client.name, sites: client.sites.map((s) => ({ id: s.id, name: s.name })) }]} defaultClientId={client.id} lockClient />
+      </div>
+      <div className="mt-3"><Card href={`/admin/messages/${client.id}`} className="py-3 text-sm font-medium text-title">💬 Voir les échanges avec ce client</Card></div>
 
       <ClientForms client={{ id: client.id, name: client.name, address: client.address, phone: client.phone, email: client.email, siren: client.siren }} sites={client.sites.map((s) => ({ id: s.id, name: s.name }))} />
     </AdminPage>
