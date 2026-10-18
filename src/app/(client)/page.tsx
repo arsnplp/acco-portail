@@ -6,6 +6,7 @@ import { Card, SectionTitle } from "@/components/ui/card";
 import { Empty } from "@/components/ui/empty";
 import { Badge } from "@/components/ui/badge";
 import { timeAgo } from "@/lib/format";
+import { EnablePush } from "@/components/push/enable-push";
 
 export default async function AccueilPage() {
   const { user, client } = await requireClientContext();
@@ -19,6 +20,8 @@ export default async function AccueilPage() {
 
   return (
     <Page title={`${salut} ${user.firstName ?? ""}`.trim()} subtitle={client.name}>
+      <EnablePush compact />
+
       <SectionTitle emoji="🌐">Vos sites</SectionTitle>
       <div className="grid gap-3">
         {sites.map((s) => (

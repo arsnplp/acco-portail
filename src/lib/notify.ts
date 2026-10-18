@@ -1,12 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import type { NotificationKind } from "@prisma/client";
 import { sendEmail, layout, appUrl } from "@/lib/email";
+import { sendPushToUser } from "@/lib/push";
 
 type Pref = "contactRequests" | "reviews" | "changes" | "recaps" | "messages" | "offers";
 
 /**
- * Crée une notification dans le fil du client et envoie l'email aux membres
- * qui ont gardé l'email actif pour ce type. (Le push arrive à l'étape 5.)
+ * Crée une notification dans le fil du client, puis envoie le push et l'email
+ * aux membres selon leurs préférences (email en secours du push).
  */
 export async function notifyClient(opts: {
   clientId: string;
@@ -26,7 +27,9 @@ export async function notifyClient(opts: {
   await Promise.all(
     members.map(async ({ user }) => {
       const p = user.notificationPref;
-      if (p && (!p.emailEnabled || !p[opts.pref])) return;
+      if (p && !p[opts.pref]) return;
+      if (!p || p.pushEnabled) await sendPushToUser(user.id, { title: opts.title, body: opts.body, url: opts.href ? appUrl(opts.href) : appUrl("/"), tag: opts.kind });
+      if (p && !p.emailEnabled) return;
       await sendEmail({
         to: user.email,
         subject: opts.emailSubject ?? opts.title,

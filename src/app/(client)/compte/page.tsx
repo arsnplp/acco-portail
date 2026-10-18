@@ -9,6 +9,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { fmtPrice, fmtDate } from "@/lib/format";
 import { CompanyForm, ProfileForm, InviteForm, NotificationPrefsForm } from "./forms";
 import { removeMember, switchClient } from "./actions";
+import { EnablePush } from "@/components/push/enable-push";
 
 export const metadata = { title: "Mon compte" };
 
@@ -93,6 +94,7 @@ export default async function ComptePage() {
       <ProfileForm user={{ firstName: user.firstName, lastName: user.lastName, email: user.email }} />
 
       <SectionTitle emoji="🔔">Notifications</SectionTitle>
+      <Card className="mb-3"><EnablePush /></Card>
       <NotificationPrefsForm prefs={prefs} />
 
       <div className="mt-10">

@@ -28,7 +28,15 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
   return (
     <AdminPage title={site.name} back={{ href: `/admin/clients/${site.clientId}`, label: site.client.name }} action={<Badge tone={SITE_STATUS[site.status].tone}>{SITE_STATUS[site.status].label}</Badge>}>
       <SectionTitle emoji="🔑">Clé formulaire</SectionTitle>
-      <Card className="py-3"><code className="text-sm text-text-strong break-all">{site.siteKey}</code><p className="mt-1 text-xs text-muted">À utiliser dans le snippet de formulaire (étape 5).</p></Card>
+      <Card className="py-3">
+        <code className="break-all text-sm text-text-strong">{site.siteKey}</code>
+        <p className="mt-1 text-xs text-muted">Point d’entrée : <code>POST {process.env.NEXT_PUBLIC_APP_URL}/api/forms/{site.siteKey}</code></p>
+        <details className="mt-3">
+          <summary className="cursor-pointer text-xs font-medium text-title">Snippet à coller dans le site</summary>
+          <pre className="mt-2 max-h-72 overflow-auto rounded-sm border border-border bg-bg p-3 text-[11px] leading-relaxed text-text-strong">{snippet(site.siteKey)}</pre>
+          <p className="mt-2 text-xs text-muted">Version complète (HTML et React) dans le dossier <code>snippets/</code> du projet.</p>
+        </details>
+      </Card>
 
       <SectionTitle emoji="🧩">Modules actifs</SectionTitle>
       <div className="flex flex-wrap gap-2">
@@ -77,4 +85,25 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
       )}
     </AdminPage>
   );
+}
+
+function snippet(siteKey: string) {
+  return `<form id="acco-form" action="${process.env.NEXT_PUBLIC_APP_URL}/api/forms/${siteKey}" method="post">
+  <input name="name" placeholder="Votre nom" required>
+  <input name="phone" type="tel" placeholder="Téléphone">
+  <input name="email" type="email" placeholder="Email">
+  <select name="type"><option>Demande de devis</option><option>Rendez-vous</option><option>Question</option></select>
+  <textarea name="message" placeholder="Votre message" required></textarea>
+  <div style="position:absolute;left:-9999px"><input name="website" tabindex="-1"></div>
+  <div class="cf-turnstile" data-sitekey="${process.env.TURNSTILE_SITE_KEY || "TURNSTILE_SITE_KEY"}"></div>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <button type="submit">Envoyer</button>
+</form>
+<script>
+document.getElementById("acco-form").addEventListener("submit", async (e) => {
+  e.preventDefault(); const f = e.target; const d = new FormData(f); d.set("pageUrl", location.href);
+  const r = await fetch(f.action, { method: "POST", body: d }).then((x) => x.json());
+  alert(r.ok ? "Merci ! Nous vous répondons très vite." : "Oups : " + r.error); if (r.ok) f.reset(); window.turnstile && turnstile.reset();
+});
+</script>`;
 }
