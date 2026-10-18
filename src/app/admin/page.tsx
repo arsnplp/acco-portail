@@ -1,42 +1,73 @@
 import { prisma } from "@/lib/prisma";
-import { Card } from "@/components/ui/card";
-import { addDays } from "@/lib/format";
+import { Card, SectionTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { addDays, fmtDate } from "@/lib/format";
+import { cn } from "@/lib/cn";
 
 export const metadata = { title: "Tableau de bord" };
 
 export default async function AdminHome() {
   const in60 = addDays(60);
-  const [openChanges, ordersTodo, newReferrals, endingSoon, clients, sites, docRequests] = await Promise.all([
+  const convs = await prisma.conversation.findMany({ select: { id: true, teamReadAt: true } });
+  const [openChanges, ordersTodo, docsAwaited, newReferrals, unreadPerConv, ending, clients, sites] = await Promise.all([
     prisma.changeRequest.count({ where: { status: { not: "TERMINEE" } } }),
     prisma.order.count({ where: { status: "A_TRAITER" } }),
+    prisma.documentRequest.count({ where: { status: "EN_ATTENTE", direction: "VERS_CLIENT" } }),
     prisma.referral.count({ where: { status: "ENVOYEE" } }),
-    prisma.subscription.count({ where: { status: "ACTIF", commitmentEndsAt: { lte: in60, gte: new Date() } } }),
+    Promise.all(convs.map((c) => prisma.message.count({ where: { conversationId: c.id, author: { role: "CLIENT" }, createdAt: { gt: c.teamReadAt ?? new Date(0) } } }))),
+    prisma.subscription.findMany({
+      where: { status: "ACTIF", commitmentEndsAt: { lte: in60, gte: new Date() } },
+      orderBy: { commitmentEndsAt: "asc" },
+      include: { client: { select: { id: true, name: true } }, site: { select: { name: true } } },
+    }),
     prisma.client.count(),
     prisma.site.count(),
-    prisma.documentRequest.count({ where: { status: "EN_ATTENTE", direction: "VERS_CLIENT" } }),
   ]);
+  const unreadMessages = unreadPerConv.reduce((a, b) => a + b, 0);
 
-  const tiles: Array<[string, number, string]> = [
-    ["Demandes de modif ouvertes", openChanges, "/admin/modifications"],
-    ["Commandes à traiter", ordersTodo, "/admin/commandes"],
-    ["Documents attendus des clients", docRequests, "/admin/documents"],
-    ["Nouvelles recommandations", newReferrals, "/admin/recommandations"],
-    ["Engagements qui se terminent sous 60 j", endingSoon, "/admin/clients"],
-    ["Clients", clients, "/admin/clients"],
-    ["Sites", sites, "/admin/sites"],
+  const todo: Array<{ label: string; n: number; href: string }> = [
+    { label: "Modifications ouvertes", n: openChanges, href: "/admin/modifications" },
+    { label: "Messages non lus", n: unreadMessages, href: "/admin/messages" },
+    { label: "Commandes à traiter", n: ordersTodo, href: "/admin/commandes" },
+    { label: "Nouvelles recommandations", n: newReferrals, href: "/admin/recommandations" },
+    { label: "Documents attendus des clients", n: docsAwaited, href: "/admin/documents" },
   ];
+  const total = todo.reduce((a, t) => a + t.n, 0);
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6">
       <h1 className="text-2xl">Tableau de bord</h1>
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {tiles.map(([label, n, href]) => (
-          <Card key={label} href={href}>
-            <p className="text-3xl font-title font-extrabold text-title">{n}</p>
-            <p className="mt-1 text-sm text-text">{label}</p>
+      <p className="mt-1 text-sm text-text">{clients} client{clients > 1 ? "s" : ""} · {sites} site{sites > 1 ? "s" : ""} · {total === 0 ? "rien à traiter, tout est à jour" : `${total} chose${total > 1 ? "s" : ""} à traiter`}</p>
+
+      <SectionTitle emoji="✅">À traiter</SectionTitle>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {todo.map((t) => (
+          <Card key={t.href} href={t.href} className={cn(t.n > 0 && "border-pink/40")}>
+            <p className={cn("font-title text-3xl font-extrabold", t.n > 0 ? "text-title" : "text-muted")}>{t.n}</p>
+            <p className="mt-1 text-sm text-text">{t.label}</p>
           </Card>
         ))}
       </div>
+
+      <SectionTitle emoji="⏳">Engagements qui se terminent sous 60 jours</SectionTitle>
+      {ending.length === 0 ? (
+        <p className="text-sm text-text">Aucun engagement n’arrive à échéance dans les deux prochains mois.</p>
+      ) : (
+        <div className="grid gap-2">
+          {ending.map((s) => {
+            const days = Math.ceil((s.commitmentEndsAt!.getTime() - Date.now()) / 86400_000);
+            return (
+              <Card key={s.id} href={`/admin/clients/${s.client.id}`} className="flex items-center justify-between gap-3 py-3">
+                <div className="min-w-0">
+                  <p className="font-medium text-title">{s.client.name}</p>
+                  <p className="text-xs text-text">{s.label}{s.site ? ` · ${s.site.name}` : ""} · fin le {fmtDate(s.commitmentEndsAt!)}</p>
+                </div>
+                <Badge tone={days <= 30 ? "pink" : "yellow"}>dans {days} j</Badge>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </main>
   );
 }

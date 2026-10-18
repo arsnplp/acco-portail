@@ -141,15 +141,16 @@ async function main() {
     update: {},
   });
 
-  await prisma.subscription.createMany({
-    data: [
-      { clientId: boulangerie.id, siteId: siteBoul.id, label: "Site vitrine — abonnement", billing: "MENSUEL", priceCents: 4900, monthlyQuota: 2, startedAt: daysAgo(210), commitmentEndsAt: inDays(45) },
-      { clientId: boulangerie.id, siteId: siteTraiteur.id, label: "Site vitrine — abonnement", billing: "MENSUEL", priceCents: 4900, monthlyQuota: 2, startedAt: daysAgo(40), commitmentEndsAt: inDays(325) },
-    ],
-    skipDuplicates: true,
-  });
+  if ((await prisma.subscription.count({ where: { clientId: boulangerie.id, label: "Site vitrine — abonnement" } })) === 0) {
+    await prisma.subscription.createMany({
+      data: [
+        { clientId: boulangerie.id, siteId: siteBoul.id, label: "Site vitrine — abonnement", billing: "MENSUEL", priceCents: 4900, monthlyQuota: 2, startedAt: daysAgo(210), commitmentEndsAt: inDays(45) },
+        { clientId: boulangerie.id, siteId: siteTraiteur.id, label: "Site vitrine — abonnement", billing: "MENSUEL", priceCents: 4900, monthlyQuota: 2, startedAt: daysAgo(40), commitmentEndsAt: inDays(325) },
+      ],
+    });
+  }
 
-  await prisma.notification.createMany({
+  if ((await prisma.notification.count({ where: { clientId: boulangerie.id } })) === 0) await prisma.notification.createMany({
     data: [
       { clientId: boulangerie.id, siteId: siteBoul.id, kind: "DEMANDE_CONTACT", title: "Nouvelle demande de Sophie Martin", body: "Commande de gâteau d’anniversaire", href: `/sites/${siteBoul.id}/activite`, createdAt: daysAgo(1) },
       { clientId: boulangerie.id, siteId: siteBoul.id, kind: "MODIFICATION_TERMINEE", title: "Modification terminée", body: "Changer la photo d’accueil", href: `/sites/${siteBoul.id}/modifications`, createdAt: daysAgo(5) },
@@ -191,10 +192,9 @@ async function main() {
     update: {},
   });
 
-  await prisma.subscription.createMany({
-    data: [{ clientId: plombier.id, label: "Site vitrine — abonnement", billing: "MENSUEL", priceCents: 4900, monthlyQuota: 2, startedAt: daysAgo(8), commitmentEndsAt: inDays(357) }],
-    skipDuplicates: true,
-  });
+  if ((await prisma.subscription.count({ where: { clientId: plombier.id } })) === 0) {
+    await prisma.subscription.create({ data: { clientId: plombier.id, label: "Site vitrine — abonnement", billing: "MENSUEL", priceCents: 4900, monthlyQuota: 2, startedAt: daysAgo(8), commitmentEndsAt: inDays(357) } });
+  }
 
   // ── Offres
   const OFFERS = [
