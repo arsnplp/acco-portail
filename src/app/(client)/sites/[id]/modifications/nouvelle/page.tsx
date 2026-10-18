@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { BackLink } from "@/components/ui/back-link";
 import { requireClientSite } from "@/lib/sites";
 import { NewChangeForm } from "./form";
 
@@ -10,9 +9,7 @@ export default async function NouvellePage({ params }: { params: Promise<{ id: s
   const { site } = await requireClientSite(id);
   return (
     <div>
-      <Link href={`/sites/${site.id}/modifications`} className="inline-flex items-center gap-1 text-sm text-text hover:text-title">
-        <ChevronLeft size={16} /> Modifications
-      </Link>
+      <BackLink fallback={`/sites/${site.id}/modifications`} label="Modifications" />
       <h2 className="mt-3 text-xl">Que souhaitez-vous changer ?</h2>
       <p className="mt-1 text-sm text-text">Décrivez simplement, on s’occupe du reste.</p>
       <div className="mt-5">

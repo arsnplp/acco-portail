@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, CheckCircle2, Paperclip } from "lucide-react";
+import { CheckCircle2, Paperclip } from "lucide-react";
+import { BackLink } from "@/components/ui/back-link";
 import { requireClientSite } from "@/lib/sites";
 import { prisma } from "@/lib/prisma";
 import { signedUrl } from "@/lib/storage";
@@ -28,9 +28,7 @@ export default async function ChangeDetailPage({ params, searchParams }: { param
 
   return (
     <div>
-      <Link href={`/sites/${site.id}/modifications`} className="inline-flex items-center gap-1 text-sm text-text hover:text-title">
-        <ChevronLeft size={16} /> Modifications
-      </Link>
+      <BackLink fallback={`/sites/${site.id}/modifications`} label="Modifications" />
 
       {creee && (
         <Card className="mt-3 flex items-start gap-3 border-green/40">

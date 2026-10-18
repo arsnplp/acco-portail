@@ -1,5 +1,5 @@
-import Link from "next/link";
-import { ChevronLeft, Upload } from "lucide-react";
+import { Upload } from "lucide-react";
+import { BackLink } from "@/components/ui/back-link";
 import { requireClientContext } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Page } from "@/components/page";
@@ -20,7 +20,7 @@ export default async function DocumentsPage() {
 
   return (
     <Page title="Documents" subtitle="Vos contrats, factures et devis, déposés par l’équipe Acco.">
-      <Link href="/compte" className="-mt-4 mb-4 inline-flex items-center gap-1 text-sm text-text hover:text-title"><ChevronLeft size={16} /> Mon compte</Link>
+      <BackLink fallback="/compte" label="Mon compte" className="-mt-4 mb-4" />
 
       {toProvide.length > 0 && (
         <>

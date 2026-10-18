@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ChevronLeft, Plus, FileText } from "lucide-react";
+import { Plus, FileText } from "lucide-react";
+import { BackLink } from "@/components/ui/back-link";
 import { requireClientSite, siteHealth } from "@/lib/sites";
 import { Badge } from "@/components/ui/badge";
 import { SITE_STATUS } from "@/lib/labels";
@@ -14,9 +15,7 @@ export default async function SiteLayout({ children, params }: { children: React
   return (
     <main className="mx-auto w-full max-w-lg flex-1 pb-nav">
       <div className="px-4 pt-4">
-        <Link href="/sites" className="inline-flex items-center gap-1 text-sm text-text hover:text-title">
-          <ChevronLeft size={16} /> Mes sites
-        </Link>
+        <BackLink fallback="/sites" label="Mes sites" />
         <div className="mt-3 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-xl truncate">{site.name}</h1>

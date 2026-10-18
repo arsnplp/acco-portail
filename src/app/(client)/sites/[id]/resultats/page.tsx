@@ -49,8 +49,8 @@ export default async function ResultatsPage({ params }: { params: Promise<{ id: 
           {top.map((q, i) => (
             <div key={q.query} className="flex items-center gap-3 px-4 py-3">
               <span className="w-5 text-sm text-muted">{i + 1}</span>
-              <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-title">{q.query}</p><p className="text-xs text-text">position {q.position}</p></div>
-              <span className="text-sm text-text-strong">{q.clicks} visite{q.clicks > 1 ? "s" : ""}</span>
+              <p className="min-w-0 flex-1 truncate text-sm font-medium text-title">{q.query}</p>
+              <span className="shrink-0 text-xs text-text">position {q.position}</span>
             </div>
           ))}
         </Card>
