@@ -6,7 +6,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const user = await requireAdmin();
   return (
     <>
-      <Header initials={initials(user)} avatarUrl={user.avatarUrl} accountHref="/admin/parametres" right={<span className="text-xs text-text mr-1">Équipe</span>} />
+      <Header width="max-w-3xl" initials={initials(user)} avatarUrl={user.avatarUrl} accountHref="/admin/parametres" right={<span className="mr-1 text-xs text-text">Équipe</span>} />
       <AdminNav />
       {children}
     </>
