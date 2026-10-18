@@ -17,3 +17,6 @@ export function timeAgo(d: Date | string) {
 }
 
 export const addDays = (n: number, from = new Date()) => new Date(from.getTime() + n * 86400_000);
+
+/** Numéro de semaine absolu (pour alterner un contenu une semaine sur deux). */
+export const weekIndex = (d = new Date()) => Math.floor(d.getTime() / (7 * 86400_000));

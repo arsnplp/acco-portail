@@ -6,6 +6,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireClientSite, changeQuota } from "@/lib/sites";
 import { uploadFile } from "@/lib/storage";
+import { maybeCreateReviewPrompt } from "@/lib/review-prompt";
 
 export type ChangeFormState = { error?: string };
 
@@ -47,9 +48,11 @@ export async function createChangeRequest(siteId: string, _prev: ChangeFormState
 }
 
 export async function confirmChange(siteId: string, reqId: string) {
-  const { site } = await requireClientSite(siteId);
-  await prisma.changeRequest.updateMany({ where: { id: reqId, siteId: site.id, status: "TERMINEE", confirmedAt: null }, data: { confirmedAt: new Date() } });
+  const { site, client } = await requireClientSite(siteId);
+  const r = await prisma.changeRequest.updateMany({ where: { id: reqId, siteId: site.id, status: "TERMINEE", confirmedAt: null }, data: { confirmedAt: new Date() } });
+  if (r.count > 0) await maybeCreateReviewPrompt(client.id, "MODIFICATION_CONFIRMEE");
   revalidatePath(`/sites/${site.id}/modifications`);
+  revalidatePath("/");
 }
 
 export async function reopenChange(siteId: string, reqId: string, formData: FormData) {

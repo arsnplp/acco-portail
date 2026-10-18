@@ -66,7 +66,10 @@ export default async function ComptePage() {
       </div>
 
       <SectionTitle emoji="🤝">Recommandations</SectionTitle>
-      <Card className="py-3"><p className="text-sm text-text">Recommandez Acco à un commerçant et gagnez une récompense. Disponible bientôt (étape 8).</p></Card>
+      <Card href="/compte/recommandations" className="flex items-center justify-between py-3">
+        <div><p className="font-medium text-title">Recommander Acco</p><p className="text-xs text-text">Votre lien à partager, vos recommandations et leur avancement.</p></div>
+        <ChevronRight size={18} className="text-text" />
+      </Card>
 
       <SectionTitle emoji="⭐">Noter Acco</SectionTitle>
       <Card className="flex items-center justify-between gap-3 py-3">

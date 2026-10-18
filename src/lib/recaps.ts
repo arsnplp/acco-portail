@@ -3,6 +3,7 @@ import { fetchMonthStats, demoMonthStats, searchConsoleConfigured } from "@/lib/
 import { summarizeMonth } from "@/lib/ai";
 import { notifyClient } from "@/lib/notify";
 import { layout, appUrl } from "@/lib/email";
+import { maybeCreateReviewPrompt } from "@/lib/review-prompt";
 
 export const MONTHS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
 export const monthLabel = (year: number, month: number) => `${MONTHS[month - 1]} ${year}`;
@@ -76,6 +77,7 @@ export async function buildRecap(siteId: string, year: number, month: number, op
         <p>${summary}</p>`, { label: "Voir mes résultats", href: appUrl(href) }),
     });
     await prisma.monthlyRecap.update({ where: { id: recap.id }, data: { sentAt: new Date() } });
+    if (isPositive) await maybeCreateReviewPrompt(site.clientId, "RECAP_POSITIF");
   }
   return recap;
 }

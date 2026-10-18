@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import type { ProjectStep, SiteStatus } from "@prisma/client";
+import { maybeCreateReviewPrompt } from "@/lib/review-prompt";
 
 export type ActionState = { error?: string; ok?: boolean };
 
@@ -49,6 +50,7 @@ export async function updateSite(siteId: string, _prev: ActionState, formData: F
       });
     }
   });
+  if (goesLive) await maybeCreateReviewPrompt(before.clientId, "SITE_EN_LIGNE");
   // Première liaison à une propriété (ou propriété changée) : on récupère 12 mois et on prépare le récap du mois dernier.
   if (status === "EN_LIGNE" && searchConsoleProp && searchConsoleProp !== before.searchConsoleProp) {
     const { syncSiteMonth, buildRecap, previousMonth } = await import("@/lib/recaps");
