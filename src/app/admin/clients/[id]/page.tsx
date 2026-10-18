@@ -19,7 +19,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
       memberships: { include: { user: true } },
       subscriptions: { orderBy: { startedAt: "desc" }, include: { site: { select: { name: true } } } },
       documents: { orderBy: { createdAt: "desc" } },
-      _count: { select: { orders: true, documentRequests: { where: { status: "EN_ATTENTE" } } } },
+      _count: { select: { orders: true, documentRequests: { where: { status: "EN_ATTENTE", direction: "VERS_EQUIPE" } } } },
     },
   });
   if (!client) notFound();

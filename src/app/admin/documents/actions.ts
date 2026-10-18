@@ -65,3 +65,27 @@ export async function closeRequest(requestId: string) {
   const req = await prisma.documentRequest.update({ where: { id: requestId }, data: { status: "TERMINEE", fulfilledAt: new Date() } });
   revalidate(req.clientId);
 }
+
+/** L'équipe demande un document au client (Kbis, RIB, logo…). Le client le dépose depuis son espace. */
+export async function askClientDocument(clientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const admin = await requireAdmin();
+  const kind = String(formData.get("kind") ?? "AUTRE") as DocumentKind;
+  const message = String(formData.get("message") ?? "").trim().slice(0, 300);
+  const siteId = String(formData.get("siteId") ?? "") || null;
+  if (!message) return { error: "Dites quel document vous attendez (ex. « Kbis de moins de 3 mois »)." };
+  await prisma.documentRequest.create({ data: { clientId, siteId, kind, message, direction: "VERS_CLIENT", requestedBy: admin.id } });
+  await notifyClient({
+    clientId, siteId, kind: "DOCUMENT_DEMANDE", pref: "messages",
+    title: "Acco a besoin d’un document",
+    body: message, href: "/compte/documents",
+    emailSubject: `Un document à nous envoyer : ${message}`,
+  });
+  revalidate(clientId);
+  return { ok: true };
+}
+
+export async function cancelRequest(requestId: string) {
+  await requireAdmin();
+  const req = await prisma.documentRequest.delete({ where: { id: requestId } });
+  revalidate(req.clientId);
+}

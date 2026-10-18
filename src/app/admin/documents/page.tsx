@@ -3,28 +3,54 @@ import { AdminPage } from "@/components/admin/page";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { requestLabel } from "@/lib/documents";
-import { timeAgo } from "@/lib/format";
+import { timeAgo, addDays } from "@/lib/format";
 
 export const metadata = { title: "Documents" };
 
 export default async function DocumentsOverviewPage() {
-  const [clients, pending] = await Promise.all([
+  const [clients, fromClients, awaitingClients, recentDeposits] = await Promise.all([
     prisma.client.findMany({
       orderBy: { name: "asc" },
-      include: { _count: { select: { documents: true, documentRequests: { where: { status: "EN_ATTENTE" } } } } },
+      include: { _count: { select: { documents: true, documentRequests: { where: { status: "EN_ATTENTE", direction: "VERS_EQUIPE" } } } } },
     }),
-    prisma.documentRequest.findMany({ where: { status: "EN_ATTENTE" }, orderBy: { createdAt: "asc" }, include: { client: { select: { id: true, name: true } } } }),
+    prisma.documentRequest.findMany({ where: { status: "EN_ATTENTE", direction: "VERS_EQUIPE" }, orderBy: { createdAt: "asc" }, include: { client: { select: { id: true, name: true } } } }),
+    prisma.documentRequest.findMany({ where: { status: "EN_ATTENTE", direction: "VERS_CLIENT" }, orderBy: { createdAt: "asc" }, include: { client: { select: { id: true, name: true } } } }),
+    prisma.document.findMany({ where: { uploadedByClient: true, createdAt: { gte: addDays(-14) } }, orderBy: { createdAt: "desc" }, include: { client: { select: { id: true, name: true } } } }),
   ]);
 
   return (
     <AdminPage title="Documents">
-      <SectionTitle emoji="⏳">Demandes en attente ({pending.length})</SectionTitle>
-      {pending.length === 0 ? <p className="text-sm text-text">Rien à traiter.</p> : (
+      <SectionTitle emoji="📥">Les clients vous demandent ({fromClients.length})</SectionTitle>
+      {fromClients.length === 0 ? <p className="text-sm text-text">Rien à traiter.</p> : (
         <div className="grid gap-2">
-          {pending.map((r) => (
+          {fromClients.map((r) => (
             <Card key={r.id} href={`/admin/clients/${r.client.id}/documents`} className="flex items-center justify-between gap-3 py-3">
               <div className="min-w-0"><p className="truncate font-medium text-title">{requestLabel(r)}</p><p className="text-xs text-text">{r.client.name} · {timeAgo(r.createdAt)}</p></div>
+              <Badge tone="pink">À traiter</Badge>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <SectionTitle emoji="📤">Vous attendez des clients ({awaitingClients.length})</SectionTitle>
+      {awaitingClients.length === 0 ? <p className="text-sm text-text">Aucun document attendu.</p> : (
+        <div className="grid gap-2">
+          {awaitingClients.map((r) => (
+            <Card key={r.id} href={`/admin/clients/${r.client.id}/documents`} className="flex items-center justify-between gap-3 py-3">
+              <div className="min-w-0"><p className="truncate font-medium text-title">{r.message}</p><p className="text-xs text-text">{r.client.name} · demandé {timeAgo(r.createdAt)}</p></div>
               <Badge tone="yellow">En attente</Badge>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <SectionTitle emoji="📬">Déposés par les clients (14 derniers jours)</SectionTitle>
+      {recentDeposits.length === 0 ? <p className="text-sm text-text">Aucun dépôt récent.</p> : (
+        <div className="grid gap-2">
+          {recentDeposits.map((d) => (
+            <Card key={d.id} href={`/admin/clients/${d.client.id}/documents`} className="flex items-center justify-between gap-3 py-3">
+              <div className="min-w-0"><p className="truncate font-medium text-title">{d.title}</p><p className="text-xs text-text">{d.client.name} · {timeAgo(d.createdAt)}</p></div>
+              <Badge tone="blue">Reçu</Badge>
             </Card>
           ))}
         </div>

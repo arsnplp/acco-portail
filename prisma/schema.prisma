@@ -130,6 +130,13 @@ enum NotificationKind {
   RECOMPENSE_PARRAINAGE
   ALERTE_SITE
   DOCUMENT_DISPONIBLE
+  DOCUMENT_DEMANDE
+}
+
+/// VERS_EQUIPE : le client demande un document à Acco. VERS_CLIENT : Acco demande un document au client.
+enum DocumentRequestDirection {
+  VERS_EQUIPE
+  VERS_CLIENT
 }
 
 enum DocumentRequestStatus {
@@ -597,15 +604,16 @@ model Message {
 // ─────────────────────────────────────────────────────────────
 
 model Document {
-  id          String       @id @default(cuid())
-  clientId    String
-  siteId      String?
-  kind        DocumentKind
-  title       String
-  storagePath String
-  fileName    String
-  sizeBytes   Int?
-  createdAt   DateTime     @default(now())
+  id               String       @id @default(cuid())
+  clientId         String
+  siteId           String?
+  kind             DocumentKind
+  title            String
+  storagePath      String
+  fileName         String
+  sizeBytes        Int?
+  uploadedByClient Boolean      @default(false)
+  createdAt        DateTime     @default(now())
 
   client  Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
   site    Site?            @relation(fields: [siteId], references: [id], onDelete: SetNull)
@@ -617,16 +625,17 @@ model Document {
 
 /// Demande de document faite par le client (ex. « ma facture de septembre »)
 model DocumentRequest {
-  id          String                @id @default(cuid())
+  id          String                   @id @default(cuid())
   clientId    String
   siteId      String?
   kind        DocumentKind
   message     String?
-  status      DocumentRequestStatus @default(EN_ATTENTE)
+  status      DocumentRequestStatus    @default(EN_ATTENTE)
+  direction   DocumentRequestDirection @default(VERS_EQUIPE)
   requestedBy String?
-  documentId  String?               @unique
+  documentId  String?                  @unique
   fulfilledAt DateTime?
-  createdAt   DateTime              @default(now())
+  createdAt   DateTime                 @default(now())
 
   client    Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
   site      Site?     @relation(fields: [siteId], references: [id], onDelete: SetNull)

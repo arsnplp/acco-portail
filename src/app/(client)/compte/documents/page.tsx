@@ -9,6 +9,9 @@ import { DocumentSections } from "@/components/documents/list";
 import { RequestDocumentForm } from "./request-form";
 import { requestLabel } from "@/lib/documents";
 import { timeAgo } from "@/lib/format";
+import { Upload } from "lucide-react";
+import { AutoUploadInput } from "@/components/ui/auto-upload";
+import { uploadRequestedDocument } from "./actions";
 
 export const metadata = { title: "Documents" };
 
@@ -19,12 +22,33 @@ export default async function DocumentsPage() {
     prisma.documentRequest.findMany({ where: { clientId: client.id }, orderBy: { createdAt: "desc" }, take: 20 }),
     prisma.site.findMany({ where: { clientId: client.id }, select: { id: true, name: true }, orderBy: { createdAt: "asc" } }),
   ]);
-  const pending = requests.filter((r) => r.status === "EN_ATTENTE");
+  const pending = requests.filter((r) => r.status === "EN_ATTENTE" && r.direction === "VERS_EQUIPE");
+  const toProvide = requests.filter((r) => r.status === "EN_ATTENTE" && r.direction === "VERS_CLIENT");
   const done = requests.filter((r) => r.status === "TERMINEE").slice(0, 5);
 
   return (
     <Page title="Documents" subtitle="Contrats, factures et devis.">
       <Link href="/compte" className="-mt-4 mb-4 inline-flex items-center gap-1 text-sm text-text hover:text-title"><ChevronLeft size={16} /> Mon compte</Link>
+
+      {toProvide.length > 0 && (
+        <>
+          <SectionTitle emoji="📤">L’équipe Acco vous demande</SectionTitle>
+          <div className="grid gap-2">
+            {toProvide.map((r) => (
+              <Card key={r.id} className="flex items-center justify-between gap-3 border-yellow/50 py-3">
+                <div className="min-w-0"><p className="truncate font-medium text-title">{r.message}</p><p className="text-xs text-text">Demandé {timeAgo(r.createdAt)}</p></div>
+                <form action={uploadRequestedDocument.bind(null, r.id)}>
+                  <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-card bg-title px-3 text-sm font-semibold text-bg">
+                    <Upload size={14} /> Envoyer
+                    <AutoUploadInput accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" />
+                  </label>
+                </form>
+              </Card>
+            ))}
+          </div>
+          <div className="mt-6" />
+        </>
+      )}
 
       <RequestDocumentForm sites={sites} />
 
@@ -51,8 +75,8 @@ export default async function DocumentsPage() {
           <div className="grid gap-2">
             {done.map((r) => (
               <Card key={r.id} className="flex items-center justify-between gap-3 py-3">
-                <p className="truncate text-sm text-text-strong">{requestLabel(r)}</p>
-                <Badge tone="green">Reçu</Badge>
+                <p className="truncate text-sm text-text-strong">{r.direction === "VERS_CLIENT" ? r.message : requestLabel(r)}</p>
+                <Badge tone="green">{r.direction === "VERS_CLIENT" ? "Envoyé" : "Reçu"}</Badge>
               </Card>
             ))}
           </div>

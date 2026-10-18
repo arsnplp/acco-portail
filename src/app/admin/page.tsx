@@ -13,7 +13,7 @@ export default async function AdminHome() {
     prisma.subscription.count({ where: { status: "ACTIF", commitmentEndsAt: { lte: in60, gte: new Date() } } }),
     prisma.client.count(),
     prisma.site.count(),
-    prisma.documentRequest.count({ where: { status: "EN_ATTENTE" } }),
+    prisma.documentRequest.count({ where: { status: "EN_ATTENTE", direction: "VERS_EQUIPE" } }),
   ]);
 
   const tiles: Array<[string, number, string]> = [
