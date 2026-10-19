@@ -44,7 +44,7 @@ export function AdminNav() {
 
   return (
     <nav className="sticky top-14 z-20 border-b border-border bg-bg/95 backdrop-blur">
-      <ul ref={listRef} className="mx-auto flex max-w-3xl gap-1 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <ul ref={listRef} className="mx-auto flex max-w-3xl gap-1 overflow-x-auto overscroll-x-contain px-4 [scrollbar-width:none] [touch-action:pan-x] [&::-webkit-scrollbar]:hidden">
         {ITEMS.map(([href, label]) => {
           const active = href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
           return (

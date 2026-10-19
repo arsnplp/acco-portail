@@ -16,7 +16,7 @@ export function SiteTabs({ siteId, enabled }: { siteId: string; enabled: boolean
   const pathname = usePathname();
   return (
     <div className="mt-5 border-b border-border">
-      <ul className="flex gap-1 overflow-x-auto px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <ul className="flex gap-1 overflow-x-auto overscroll-x-contain px-3 [scrollbar-width:none] [touch-action:pan-x] [&::-webkit-scrollbar]:hidden">
         {TABS.map(([slug, label]) => {
           const href = `/sites/${siteId}/${slug}`;
           const active = pathname.startsWith(href);
