@@ -21,15 +21,30 @@ const ITEMS = [
 export function AdminNav() {
   const pathname = usePathname();
   const activeRef = useRef<HTMLAnchorElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
 
-  // Téléphone : l'onglet actif se cale dans la zone visible.
+  // L'onglet actif se cale dans la zone visible.
   useEffect(() => {
     activeRef.current?.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
   }, [pathname]);
 
+  // Souris : la molette fait défiler la barre horizontalement.
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      if (el.scrollWidth <= el.clientWidth) return;
+      e.preventDefault();
+      el.scrollLeft += e.deltaY;
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
   return (
     <nav className="sticky top-14 z-20 border-b border-border bg-bg/95 backdrop-blur">
-      <ul className="mx-auto flex max-w-3xl gap-1 overflow-x-auto px-4 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden">
+      <ul ref={listRef} className="mx-auto flex max-w-3xl gap-1 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {ITEMS.map(([href, label]) => {
           const active = href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
           return (
