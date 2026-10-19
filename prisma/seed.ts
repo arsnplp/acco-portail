@@ -35,6 +35,7 @@ const daysAgo = (n: number) => new Date(Date.now() - n * 86400_000);
 const inDays = (n: number) => new Date(Date.now() + n * 86400_000);
 
 async function main() {
+  if (!(process.env.NEXT_PUBLIC_APP_URL ?? "").includes("localhost")) throw new Error("Seed de démo refusé hors environnement local (NEXT_PUBLIC_APP_URL n'est pas localhost).");
   // ── Équipe
   for (const a of ADMINS) {
     const id = await ensureAuthUser(a.email, { first_name: a.firstName, last_name: a.lastName, role: "ADMIN" });
