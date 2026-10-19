@@ -13,7 +13,7 @@ export default async function ConnexionPage({
     <main className="flex-1 flex flex-col items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm">
         <div className="flex justify-center mb-10">
-          <Image src="/brand/logo-acco.webp" alt="Acco" width={140} height={44} priority className="h-10 w-auto" />
+          <Image src="/brand/acco-wordmark-600.png" alt="Acco" width={600} height={134} priority className="h-9 w-auto" />
         </div>
         <h1 className="text-2xl mb-2">Bienvenue</h1>
         <p className="text-text mb-8">

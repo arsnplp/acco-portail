@@ -24,9 +24,9 @@ export async function sendEmail(opts: { to: string; subject: string; html: strin
 export function layout(title: string, bodyHtml: string, cta?: { label: string; href: string }) {
   return `<!doctype html><html lang="fr"><body style="margin:0;background:#f4f4f5;font-family:Inter,Helvetica,Arial,sans-serif;color:#18181b">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
-<table role="presentation" width="100%" style="max-width:520px;background:#fff;border:1px solid #e4e4e7;border-radius:12px"><tr><td style="padding:28px 28px 8px">
-<img src="${APP}/brand/logo-acco.webp" alt="Acco" height="28" style="height:28px">
-</td></tr><tr><td style="padding:8px 28px 0">
+<table role="presentation" width="100%" style="max-width:520px;background:#fff;border:1px solid #e4e4e7;border-radius:12px;overflow:hidden"><tr><td style="background:#0e0e0f;padding:18px 28px">
+<img src="${APP}/brand/acco-wordmark-600.png" alt="Acco" height="22" style="height:22px;display:block">
+</td></tr><tr><td style="padding:24px 28px 0">
 <h1 style="margin:0 0 12px;font-size:20px;font-weight:800;color:#0e0e0f">${title}</h1>
 <div style="font-size:15px;line-height:1.55;color:#3f3f46">${bodyHtml}</div>
 ${cta ? `<p style="margin:24px 0 8px"><a href="${cta.href}" style="display:inline-block;background:#0e0e0f;color:#fff;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:10px">${cta.label}</a></p>` : ""}

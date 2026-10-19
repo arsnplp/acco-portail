@@ -19,7 +19,7 @@ export default async function ReferralPage({ params }: { params: Promise<{ code:
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col px-6 py-10">
-      <Image src="/brand/logo-acco.webp" alt="Acco" width={120} height={38} className="h-9 w-auto" priority />
+      <Image src="/brand/acco-wordmark-600.png" alt="Acco" width={600} height={134} className="h-8 w-auto" priority />
       <h1 className="mt-8 text-2xl leading-tight">{who} vous recommande Acco</h1>
       <p className="mt-3 text-text">
         Acco crée des sites internet simples et efficaces pour les commerçants et artisans, par abonnement, sans frais cachés.

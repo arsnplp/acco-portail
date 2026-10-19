@@ -5,11 +5,12 @@ import { Avatar } from "@/components/ui/avatar";
 export function Header({ initials, avatarUrl, accountHref = "/compte", right, width = "max-w-lg" }: { initials: string; avatarUrl?: string | null; accountHref?: string; right?: React.ReactNode; width?: string }) {
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-bg/95 backdrop-blur" style={{ paddingTop: "env(safe-area-inset-top)" }}>
-      <div className={`mx-auto flex h-14 items-center justify-between px-4 ${width}`}>
-        <Link href="/" aria-label="Accueil">
-          <Image src="/brand/logo-acco.webp" alt="Acco" width={96} height={30} priority className="h-7 w-auto" />
+      <div className={`mx-auto grid h-14 grid-cols-[1fr_auto_1fr] items-center px-4 ${width}`}>
+        <span />
+        <Link href="/" aria-label="Accueil" className="flex items-center">
+          <Image src="/brand/acco-wordmark-600.png" alt="Acco" width={600} height={134} priority className="h-[22px] w-auto" />
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-end gap-2">
           {right}
           <Link href={accountHref} aria-label="Mon compte">
             <Avatar initials={initials} src={avatarUrl} />
