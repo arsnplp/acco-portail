@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import { saveServices } from "./actions";
+import { saveServices, type ServicesState } from "./actions";
 import { Input } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import type { SecretKey, FeatureKey } from "@/lib/settings";
@@ -20,12 +20,13 @@ const SERVICES: Array<{ title: string; emoji: string; feature?: FeatureKey; feat
 ];
 
 export function ServicesForm({ secrets, toggles, googleConnected }: { secrets: Status; toggles: Record<FeatureKey, boolean>; googleConnected: boolean }) {
+  const [state, action] = useActionState<ServicesState, FormData>(saveServices, {});
   const [show, setShow] = useState<Record<string, boolean>>({});
   const [typed, setTyped] = useState<Record<string, string>>({});
   const has = (k: SecretKey) => Boolean(secrets[k].masked) || Boolean(typed[k]?.trim());
 
   return (
-    <form action={saveServices} className="grid gap-3">
+    <form action={action} className="grid gap-3">
       {SERVICES.map((svc) => {
         const ready = svc.keys.every((k) => has(k.key)) && (svc.feature !== "feature_business_api" || googleConnected);
         return (
@@ -40,6 +41,8 @@ export function ServicesForm({ secrets, toggles, googleConnected }: { secrets: S
               )}
             </div>
             {svc.featureLabel && <p className="mt-1 text-xs text-text">{svc.featureLabel}</p>}
+            {svc.feature && state.errors?.[svc.feature] && <p className="mt-1 text-xs text-pink">{state.errors[svc.feature]}</p>}
+            {svc.feature && !state.errors?.[svc.feature] && toggles[svc.feature] && ready && <p className="mt-1 text-xs text-green">Activé.</p>}
             {svc.note && <p className="mt-2 text-xs text-muted">{svc.note}</p>}
             {svc.keys.length > 0 && (
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -60,7 +63,7 @@ export function ServicesForm({ secrets, toggles, googleConnected }: { secrets: S
                         />
                         <button type="button" onClick={() => setShow({ ...show, [key]: !show[key] })} aria-label="Afficher" className="flex size-10 shrink-0 items-center justify-center rounded-card border border-border text-text">{show[key] ? <EyeOff size={14} /> : <Eye size={14} />}</button>
                       </div>
-                      <p className="mt-1 text-[11px] text-muted">{help}</p>
+                      {state.errors?.[key] ? <p className="mt-1 text-[11px] text-pink">{state.errors[key]}</p> : state.infos?.[key] ? <p className="mt-1 text-[11px] text-green">{state.infos[key]}</p> : <p className="mt-1 text-[11px] text-muted">{help}</p>}
                       {st.source === "base" && <label className="mt-1 flex items-center gap-1.5 text-[11px] text-muted"><input type="checkbox" name={`${key}__clear`} className="size-3 accent-white" /> Effacer la clé enregistrée</label>}
                     </div>
                   );
@@ -70,8 +73,8 @@ export function ServicesForm({ secrets, toggles, googleConnected }: { secrets: S
           </div>
         );
       })}
-      <div><SubmitButton size="sm">Enregistrer les clés et services</SubmitButton></div>
-      <p className="text-xs text-muted">Les clés sont stockées dans la base (accès équipe uniquement) et affichées masquées. Une clé présente dans le fichier .env du serveur sert de repli.</p>
+      <div className="flex items-center gap-3"><SubmitButton size="sm" pendingLabel="Vérification des clés…">Enregistrer les clés et services</SubmitButton>{state.ok && <span className="text-sm text-green">Enregistré</span>}{state.ok === false && <span className="text-sm text-pink">Certaines clés n’ont pas été enregistrées.</span>}</div>
+      <p className="text-xs text-muted">Chaque clé est testée auprès du service avant d’être enregistrée ; une fonction ne s’active que si ses clés sont valides. Les clés sont stockées dans la base (accès équipe uniquement) et affichées masquées. Une clé présente dans le fichier .env du serveur sert de repli.</p>
     </form>
   );
 }

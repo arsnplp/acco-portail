@@ -64,7 +64,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         {client.subscriptions.length === 0 && <p className="text-sm text-text">Aucun abonnement.</p>}
       </div>
 
-      <SectionTitle emoji="👥">Utilisateurs</SectionTitle>
+      <SectionTitle emoji="👤">Accès du client</SectionTitle>
       <div className="grid gap-2">
         {client.memberships.map((m) => (
           <Card key={m.id} className="flex items-center justify-between py-3">

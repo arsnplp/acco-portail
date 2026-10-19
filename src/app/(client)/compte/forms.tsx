@@ -2,8 +2,7 @@
 
 import { useActionState } from "react";
 import type { NotificationPreference } from "@prisma/client";
-import { UserPlus } from "lucide-react";
-import { updateCompany, updateProfile, inviteMember, updateNotificationPrefs, type ActionState } from "./actions";
+import { updateCompany, updateProfile, updateNotificationPrefs, type ActionState } from "./actions";
 import { Field, Input, FormError } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Card } from "@/components/ui/card";
@@ -42,24 +41,6 @@ export function ProfileForm({ user }: { user: { firstName: string | null; lastNa
       <FormError message={state.error} />
       <div className="flex items-center gap-3"><SubmitButton size="sm" variant="secondary">Enregistrer</SubmitButton>{state.ok && <span className="text-sm text-green">Enregistré</span>}</div>
     </form>
-  );
-}
-
-export function InviteForm() {
-  const [state, action] = useActionState<ActionState, FormData>(inviteMember, {});
-  return (
-    <details className="rounded-card border border-dashed border-border">
-      <summary className="flex cursor-pointer items-center gap-2 p-4 text-sm font-medium text-title"><UserPlus size={16} /> Inviter quelqu’un de mon équipe</summary>
-      <form action={action} className="space-y-3 border-t border-border p-4" key={state.ok ? "ok" : "form"}>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Prénom"><Input name="firstName" required /></Field>
-          <Field label="Email"><Input name="email" type="email" required /></Field>
-        </div>
-        <p className="text-xs text-muted">La personne recevra un email avec un lien pour accéder à cet espace. Elle verra la même chose que vous, sauf cette section.</p>
-        <FormError message={state.error} />
-        <div className="flex items-center gap-3"><SubmitButton size="sm">Envoyer l’invitation</SubmitButton>{state.ok && <span className="text-sm text-green">Invitation envoyée</span>}</div>
-      </form>
-    </details>
   );
 }
 

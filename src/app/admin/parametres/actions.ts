@@ -22,19 +22,44 @@ export async function disconnectGoogleAction() {
   revalidatePath("/admin/sites", "layout");
 }
 
-export async function saveServices(formData: FormData) {
+export type ServicesState = { errors?: Record<string, string>; infos?: Record<string, string>; ok?: boolean };
+
+/** Enregistre les clés après vérification auprès de chaque service ; n'active une fonction que si ses clés sont valides. */
+export async function saveServices(_prev: ServicesState, formData: FormData): Promise<ServicesState> {
   await requireAdmin();
-  const { SECRETS, FEATURES } = await import("@/lib/settings");
-  for (const key of Object.keys(SECRETS)) {
-    const raw = formData.get(key);
-    if (raw === null) continue;
-    const value = String(raw).trim();
-    if (formData.get(`${key}__clear`) === "on") { await prisma.setting.deleteMany({ where: { key } }); continue; }
-    if (value) await prisma.setting.upsert({ where: { key }, create: { key, value }, update: { value } });
-  }
-  for (const key of Object.keys(FEATURES)) {
-    const value = formData.get(key) === "on" ? "true" : "false";
+  const { SECRETS, FEATURES, getSecret } = await import("@/lib/settings");
+  const { verifySecret } = await import("@/lib/verify-keys");
+  const errors: Record<string, string> = {}, infos: Record<string, string> = {};
+
+  for (const key of Object.keys(SECRETS) as Array<keyof typeof SECRETS>) {
+    if (formData.get(`${key}__clear`) === "on") { await prisma.setting.deleteMany({ where: { key } }); infos[key] = "Clé effacée."; continue; }
+    const value = String(formData.get(key) ?? "").trim();
+    if (!value) continue;
+    const v = await verifySecret(key, value);
+    if (!v.ok) { errors[key] = v.error; continue; }
     await prisma.setting.upsert({ where: { key }, create: { key, value }, update: { value } });
+    infos[key] = v.detail ?? "Clé enregistrée.";
+  }
+
+  for (const feature of Object.keys(FEATURES) as Array<keyof typeof FEATURES>) {
+    const wanted = formData.get(feature) === "on";
+    let allowed = wanted;
+    if (wanted) {
+      for (const k of FEATURES[feature].needs) {
+        if (!(await getSecret(k)) || errors[k]) { allowed = false; errors[feature] = "Impossible d’activer : clé manquante ou invalide."; }
+      }
+      if (feature === "feature_business_api" && allowed) {
+        const { connectedGoogleClient } = await import("@/lib/google-oauth");
+        const client = await connectedGoogleClient();
+        if (!client) { allowed = false; errors[feature] = "Connectez d’abord le compte Google."; }
+        else {
+          try { await client.request({ url: "https://mybusinessaccountmanagement.googleapis.com/v1/accounts" }); }
+          catch (e) { allowed = false; const st = (e as { response?: { status?: number } }).response?.status; errors[feature] = st === 403 ? "Google n’a pas encore validé l’accès de ce projet à l’API Business Profile." : `Google répond ${st ?? "une erreur"} : API non activée ou accès non validé.`; }
+        }
+      }
+    }
+    await prisma.setting.upsert({ where: { key: feature }, create: { key: feature, value: String(allowed) }, update: { value: String(allowed) } });
   }
   revalidatePath("/admin", "layout");
+  return { errors, infos, ok: Object.keys(errors).length === 0 };
 }

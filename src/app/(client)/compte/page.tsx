@@ -1,14 +1,13 @@
-import { FileText, LogOut, Star, ChevronRight, Users as UsersIcon } from "lucide-react";
+import { FileText, LogOut, Star, ChevronRight } from "lucide-react";
 import { requireClientContext, displayName } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Page } from "@/components/page";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { SubmitButton } from "@/components/ui/submit-button";
 import { fmtPrice, fmtDate } from "@/lib/format";
-import { CompanyForm, ProfileForm, InviteForm, NotificationPrefsForm } from "./forms";
-import { removeMember, switchClient } from "./actions";
+import { CompanyForm, ProfileForm, NotificationPrefsForm } from "./forms";
+import { switchClient } from "./actions";
 import { EnablePush } from "@/components/push/enable-push";
 
 export const metadata = { title: "Mon compte" };
@@ -16,9 +15,8 @@ export const metadata = { title: "Mon compte" };
 export default async function ComptePage() {
   const { user, client, membership } = await requireClientContext();
   const isOwner = membership.role === "OWNER";
-  const [subs, members, docCount, prefs, reviewUrl] = await Promise.all([
+  const [subs, docCount, prefs, reviewUrl] = await Promise.all([
     prisma.subscription.findMany({ where: { clientId: client.id, status: "ACTIF" }, include: { site: { select: { name: true } } }, orderBy: { startedAt: "asc" } }),
-    prisma.clientMembership.findMany({ where: { clientId: client.id }, include: { user: true }, orderBy: { createdAt: "asc" } }),
     prisma.document.count({ where: { clientId: client.id } }),
     prisma.notificationPreference.findUnique({ where: { userId: user.id } }),
     prisma.setting.findUnique({ where: { key: "google_review_url" } }),
@@ -76,22 +74,6 @@ export default async function ComptePage() {
         <p className="text-sm text-text">Un avis sur Google nous aide énormément. Merci !</p>
         <Button variant="secondary" size="sm" href={reviewUrl?.value ?? "#"}><Star size={14} /> Laisser un avis</Button>
       </Card>
-
-      <SectionTitle emoji="👥">Utilisateurs</SectionTitle>
-      <div className="grid gap-2">
-        {members.map((m) => (
-          <Card key={m.id} className="flex items-center justify-between gap-3 py-3">
-            <div className="min-w-0"><p className="truncate font-medium text-title">{displayName(m.user)}</p><p className="truncate text-xs text-text">{m.user.email}</p></div>
-            <div className="flex items-center gap-2">
-              <Badge tone={m.role === "OWNER" ? "blue" : "neutral"}>{m.role === "OWNER" ? "Gérant" : "Membre"}</Badge>
-              {isOwner && m.role === "MEMBER" && (
-                <form action={removeMember.bind(null, m.userId)}><SubmitButton variant="ghost" size="sm" pendingLabel="…">Retirer</SubmitButton></form>
-              )}
-            </div>
-          </Card>
-        ))}
-        {isOwner ? <InviteForm /> : <p className="flex items-center gap-2 text-xs text-muted"><UsersIcon size={14} /> Seul le gérant peut inviter quelqu’un.</p>}
-      </div>
 
       <SectionTitle emoji="👤">Vous</SectionTitle>
       <ProfileForm user={{ firstName: user.firstName, lastName: user.lastName, email: user.email }} />

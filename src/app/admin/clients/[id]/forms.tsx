@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { updateClient, addMember, createSite, createSubscription, type ActionState } from "../actions";
+import { updateClient, createSite, createSubscription, type ActionState } from "../actions";
 import { Field, Input, Select, FormError } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { SectionTitle } from "@/components/ui/card";
@@ -20,7 +20,6 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
 export function ClientForms({ client, sites }: { client: ClientInfo; sites: { id: string; name: string }[] }) {
   const [s1, a1] = useActionState<ActionState, FormData>(updateClient.bind(null, client.id), {});
   const [s2, a2] = useActionState<ActionState, FormData>(createSite.bind(null, client.id), {});
-  const [s3, a3] = useActionState<ActionState, FormData>(addMember.bind(null, client.id), {});
   const [s4, a4] = useActionState<ActionState, FormData>(createSubscription.bind(null, client.id), {});
 
   return (
@@ -49,17 +48,6 @@ export function ClientForms({ client, sites }: { client: ClientInfo; sites: { id
             </div>
             <Field label="Fin d’engagement"><Input name="commitmentEndsAt" type="date" /></Field>
             <FormError message={s4.error} />
-            <SubmitButton size="sm">Ajouter</SubmitButton>
-          </form>
-        </Panel>
-        <Panel title="Ajouter un utilisateur">
-          <form action={a3} className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Prénom"><Input name="firstName" /></Field>
-              <Field label="Email"><Input name="email" type="email" required /></Field>
-            </div>
-            <p className="text-xs text-muted">Aucun email n’est envoyé pour l’instant.</p>
-            <FormError message={s3.error} />
             <SubmitButton size="sm">Ajouter</SubmitButton>
           </form>
         </Panel>

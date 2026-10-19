@@ -3,10 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireClientContext, CLIENT_COOKIE, displayName } from "@/lib/auth";
-import { ensureAuthUser, sendInvitationEmail } from "@/lib/invitations";
+import { requireClientContext, CLIENT_COOKIE } from "@/lib/auth";
 
 export type ActionState = { error?: string; ok?: boolean };
 
@@ -28,34 +26,6 @@ export async function updateProfile(_prev: ActionState, formData: FormData): Pro
   await prisma.user.update({ where: { id: user.id }, data: { firstName, lastName: lastName || null } });
   revalidatePath("/", "layout");
   return { ok: true };
-}
-
-export async function inviteMember(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const { user, client, membership } = await requireClientContext();
-  if (membership.role !== "OWNER") return { error: "Seul le gérant peut inviter quelqu’un." };
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const firstName = String(formData.get("firstName") ?? "").trim();
-  if (!z.string().email().safeParse(email).success) return { error: "Email invalide." };
-  if (!firstName) return { error: "Le prénom est requis." };
-
-  let userId: string;
-  try {
-    userId = await ensureAuthUser(email, { first_name: firstName });
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : "Impossible de créer le compte." };
-  }
-  await prisma.user.upsert({ where: { id: userId }, create: { id: userId, email, firstName, role: "CLIENT" }, update: {} });
-  await prisma.clientMembership.upsert({ where: { clientId_userId: { clientId: client.id, userId } }, create: { clientId: client.id, userId, role: "MEMBER" }, update: {} });
-  await sendInvitationEmail({ email, firstName, clientName: client.name, invitedBy: displayName(user), clientId: client.id, inviterId: user.id });
-  revalidatePath("/compte");
-  return { ok: true };
-}
-
-export async function removeMember(userId: string) {
-  const { user, client, membership } = await requireClientContext();
-  if (membership.role !== "OWNER" || userId === user.id) return;
-  await prisma.clientMembership.deleteMany({ where: { clientId: client.id, userId, role: "MEMBER" } });
-  revalidatePath("/compte");
 }
 
 export async function updateNotificationPrefs(formData: FormData) {
