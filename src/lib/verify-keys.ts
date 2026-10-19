@@ -14,7 +14,7 @@ export async function verifySecret(key: SecretKey, value: string, extra?: Partia
       }
       case "resend_api_key": {
         const res = await fetch("https://api.resend.com/domains", { headers: { Authorization: `Bearer ${value}` }, signal: AbortSignal.timeout(10_000) });
-        if (res.status === 401 || res.status === 403) return { ok: false, error: "Clé Resend refusée." };
+        if (res.status === 400 || res.status === 401 || res.status === 403) return { ok: false, error: "Clé Resend refusée." };
         if (!res.ok) return { ok: false, error: `Resend répond ${res.status}.` };
         const json = (await res.json()) as { data?: { name: string; status: string }[] };
         const verified = (json.data ?? []).filter((d) => d.status === "verified").map((d) => d.name);
