@@ -76,6 +76,11 @@ h1, h2, h3 {
 }
 .rounded-card :is(div, a) { min-width: 0; }
 
+/* Rien ne dépasse jamais sur les côtés : les éléments de grille et de flex peuvent rétrécir sous la taille de leur contenu,
+   et la page ne défile jamais horizontalement. */
+.grid > *, .flex > * { min-width: 0; }
+html, body { overflow-x: clip; max-width: 100%; }
+
 /* Zone sûre iPhone pour la barre du bas */
 .pb-nav {
   padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 16px);

@@ -6,10 +6,10 @@ export function Header({ initials, avatarUrl, accountHref = "/compte", right, wi
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-bg/95 backdrop-blur" style={{ paddingTop: "env(safe-area-inset-top)" }}>
       <div className={`mx-auto grid h-14 grid-cols-[1fr_auto_1fr] items-center px-4 ${width}`}>
-        <span />
-        <Link href="/" aria-label="Accueil" className="flex items-center">
-          <Image src="/brand/acco-wordmark-600.png" alt="Acco" width={600} height={134} priority className="h-[22px] w-auto" />
+        <Link href="/" aria-label="Accueil" className="flex w-fit items-center">
+          <Image src="/brand/logo-acco.webp" alt="" width={28} height={28} priority className="size-7" />
         </Link>
+        <Image src="/brand/acco-wordmark-600.png" alt="Acco" width={600} height={134} priority className="h-[22px] w-auto select-none" draggable={false} />
         <div className="flex items-center justify-end gap-2">
           {right}
           <Link href={accountHref} aria-label="Mon compte">
