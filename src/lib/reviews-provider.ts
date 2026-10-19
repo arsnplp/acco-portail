@@ -4,6 +4,7 @@
  * - DemoProvider : avis simulés stables, tant que Google n'a pas validé l'accès à l'API.
  */
 import { connectedGoogleClient } from "@/lib/google-oauth";
+import { featureEnabled } from "@/lib/settings";
 
 export type ExternalReview = {
   externalId: string;
@@ -25,7 +26,7 @@ export interface ReviewsProvider {
   reply(locationId: string, externalId: string, text: string): Promise<void>;
 }
 
-export const businessApiEnabled = () => process.env.GOOGLE_BUSINESS_API_ENABLED === "true";
+export const businessApiEnabled = () => featureEnabled("feature_business_api");
 
 const STARS: Record<string, number> = { ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5 };
 
@@ -103,7 +104,7 @@ const demo = new DemoProvider();
 
 /** Fournisseur à utiliser : Google si l'API est validée et le compte connecté, sinon démo. */
 export async function getReviewsProvider(): Promise<ReviewsProvider> {
-  if (!businessApiEnabled()) return demo;
+  if (!(await businessApiEnabled())) return demo;
   const client = await connectedGoogleClient();
   return client ? new GoogleBusinessProvider(client) : demo;
 }

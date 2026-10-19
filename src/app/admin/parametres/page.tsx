@@ -7,8 +7,9 @@ import { Field, Input } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { oauthConfigured, connectedGoogleEmail } from "@/lib/google-oauth";
 import { listProperties } from "@/lib/google-search";
-import { aiConfigured } from "@/lib/ai";
 import { saveSettings, disconnectGoogleAction } from "./actions";
+import { ServicesForm } from "./services-form";
+import { secretsStatus, featureToggles } from "@/lib/settings";
 
 export const metadata = { title: "Paramètres" };
 
@@ -22,7 +23,7 @@ const GOOGLE_MSG: Record<string, string> = {
 
 export default async function ParametresPage({ searchParams }: { searchParams: Promise<{ google?: string }> }) {
   const { google } = await searchParams;
-  const [settings, email] = await Promise.all([prisma.setting.findMany(), connectedGoogleEmail()]);
+  const [settings, email, secrets, toggles] = await Promise.all([prisma.setting.findMany(), connectedGoogleEmail(), secretsStatus(), featureToggles()]);
   const get = (k: string) => settings.find((s) => s.key === k)?.value ?? "";
   const properties = email ? await listProperties() : [];
   const sites = email ? await prisma.site.findMany({ where: { status: "EN_LIGNE" }, select: { name: true, searchConsoleProp: true } }) : [];
@@ -56,8 +57,8 @@ export default async function ParametresPage({ searchParams }: { searchParams: P
         )}
       </Card>
 
-      <SectionTitle emoji="🤖">Résumés et réponses par IA</SectionTitle>
-      <Card><p className="text-sm text-text">{aiConfigured() ? <span className="text-green">Clé Claude active : les récaps et les réponses aux avis sont rédigés par l’IA.</span> : "Mode développement : récaps et réponses aux avis rédigés par gabarit. Ajoutez ANTHROPIC_API_KEY dans .env pour activer l’IA."}</p></Card>
+      <SectionTitle emoji="🔑">Clés et services</SectionTitle>
+      <ServicesForm secrets={secrets} toggles={toggles} googleConnected={Boolean(email)} />
 
       <SectionTitle emoji="⚙️">Agence</SectionTitle>
       <form action={saveSettings} className="space-y-3 rounded-card border border-border bg-surface p-4">

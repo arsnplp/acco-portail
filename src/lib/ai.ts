@@ -1,6 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { featureEnabled, getSecret } from "@/lib/settings";
 
-export const aiConfigured = () => Boolean(process.env.ANTHROPIC_API_KEY);
+export const aiConfigured = () => featureEnabled("feature_ai");
+async function anthropic() { return new Anthropic({ apiKey: (await getSecret("anthropic_api_key")) ?? undefined }); }
 
 export type RecapInput = {
   siteName: string; monthLabel: string;
@@ -12,9 +14,9 @@ const pct = (a: number, b: number | null) => (b === null || b === 0 ? null : Mat
 
 /** Résumé de 3 phrases, en français simple. Claude si la clé est présente, sinon un gabarit (mode développement). */
 export async function summarizeMonth(d: RecapInput): Promise<string> {
-  if (!aiConfigured()) return templateSummary(d);
+  if (!(await aiConfigured())) return templateSummary(d);
   try {
-    const client = new Anthropic();
+    const client = await anthropic();
     const res = await client.messages.create({
       model: "claude-sonnet-5-5",
       max_tokens: 300,
@@ -57,9 +59,9 @@ export async function suggestReviewReply(opts: { businessName: string; authorNam
   const fallback = opts.rating >= 4
     ? `Merci beaucoup ${opts.authorName} pour votre retour ! Toute l’équipe de ${opts.businessName} est ravie de vous avoir accueilli·e. À très bientôt !`
     : `Bonjour ${opts.authorName}, merci d’avoir pris le temps de nous écrire. Nous sommes désolés que votre expérience n’ait pas été à la hauteur. N’hésitez pas à nous contacter directement pour que nous puissions arranger cela. L’équipe de ${opts.businessName}.`;
-  if (!aiConfigured()) return fallback;
+  if (!(await aiConfigured())) return fallback;
   try {
-    const client = new Anthropic();
+    const client = await anthropic();
     const res = await client.messages.create({
       model: "claude-sonnet-5-5",
       max_tokens: 250,

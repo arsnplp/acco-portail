@@ -1,13 +1,14 @@
 import { Resend } from "resend";
+import { getSecret } from "@/lib/settings";
 
 const FROM = process.env.EMAIL_FROM ?? "Acco <contact@acco-lab.fr>";
 const APP = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 /** Envoie un email via Resend. Sans clé (dev), on journalise seulement. */
 export async function sendEmail(opts: { to: string; subject: string; html: string; text?: string }) {
-  const key = process.env.RESEND_API_KEY;
+  const key = await getSecret("resend_api_key");
   if (!key) {
-    console.info(`[email non envoyé — RESEND_API_KEY absente] à ${opts.to} : ${opts.subject}`);
+    console.info(`[email non envoyé — clé Resend absente] à ${opts.to} : ${opts.subject}`);
     return { sent: false as const };
   }
   const resend = new Resend(key);

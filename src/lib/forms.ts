@@ -1,7 +1,9 @@
-/** Vérifie le jeton Cloudflare Turnstile. Sans clé secrète (dev), on accepte. */
+import { featureEnabled, getSecret } from "@/lib/settings";
+
+/** Vérifie le jeton Cloudflare Turnstile. Fonction désactivée ou sans clé : on accepte. */
 export async function verifyTurnstile(token: string | null, ip?: string | null) {
-  const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (!secret) return { ok: true as const, skipped: true as const };
+  if (!(await featureEnabled("feature_turnstile"))) return { ok: true as const, skipped: true as const };
+  const secret = (await getSecret("turnstile_secret_key"))!;
   if (!token) return { ok: false as const, reason: "captcha manquant" };
   const body = new URLSearchParams({ secret, response: token });
   if (ip) body.set("remoteip", ip);

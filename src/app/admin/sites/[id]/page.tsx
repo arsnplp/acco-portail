@@ -15,6 +15,7 @@ import { businessApiEnabled, getReviewsProvider } from "@/lib/reviews-provider";
 import { searchConsoleConfigured, listProperties } from "@/lib/google-search";
 import { connectedGoogleEmail } from "@/lib/google-oauth";
 import { aiConfigured } from "@/lib/ai";
+import { getSecret } from "@/lib/settings";
 import { monthLabel } from "@/lib/recaps";
 
 export default async function SiteAdminPage({ params }: { params: Promise<{ id: string }> }) {
@@ -35,7 +36,8 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
   if (!site) notFound();
   const [googleOn, googleEmail, properties] = site.status === "EN_LIGNE" ? await Promise.all([searchConsoleConfigured(), connectedGoogleEmail(), listProperties()]) : [false, null, []];
   const avisActive = site.subscriptions.some((x) => x.module === "AVIS");
-  const locations = avisActive && businessApiEnabled() ? await (await getReviewsProvider()).listLocations().catch(() => []) : [];
+  const [bizApi, aiOn, turnstileSiteKey] = await Promise.all([businessApiEnabled(), aiConfigured(), getSecret("turnstile_site_key")]);
+  const locations = avisActive && bizApi ? await (await getReviewsProvider()).listLocations().catch(() => []) : [];
   const reviewCount = avisActive ? await prisma.review.count({ where: { siteId: site.id } }) : 0;
 
   return (
@@ -67,7 +69,7 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
         <p className="mt-1 text-xs text-muted">Point d’entrée : <code>POST {process.env.NEXT_PUBLIC_APP_URL}/api/forms/{site.siteKey}</code></p>
         <details className="mt-3">
           <summary className="cursor-pointer text-xs font-medium text-title">Snippet à coller dans le site</summary>
-          <pre className="mt-2 max-h-72 overflow-auto rounded-sm border border-border bg-bg p-3 text-[11px] leading-relaxed text-text-strong">{snippet(site.siteKey)}</pre>
+          <pre className="mt-2 max-h-72 overflow-auto rounded-sm border border-border bg-bg p-3 text-[11px] leading-relaxed text-text-strong">{snippet(site.siteKey, turnstileSiteKey)}</pre>
           <p className="mt-2 text-xs text-muted">Version complète (HTML et React) dans le dossier <code>snippets/</code> du projet.</p>
         </details>
       </Card>
@@ -98,7 +100,7 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
           <Card className="space-y-3">
             <p className="text-xs text-text">
               {googleOn ? <>Google connecté{googleEmail ? ` (${googleEmail})` : ""}. {site.searchConsoleProp ? `Propriété : ${site.searchConsoleProp}` : <span className="text-yellow">Choisissez la propriété Search Console dans les paramètres ci-dessous.</span>}</> : <>Mode démo : Google n’est pas connecté (Paramètres → Connecter Google), les chiffres sont simulés.</>}
-              {" "}{aiConfigured() ? "Résumés rédigés par Claude." : "Résumés rédigés par gabarit (mode développement, pas de clé Claude)."}
+              {" "}{aiOn ? "Résumés rédigés par Claude." : "Résumés rédigés par gabarit (activez Claude dans Paramètres → Clés et services)."}
             </p>
             <p className="text-xs text-text">
               Dernier mois synchronisé : {site.searchStats[0] ? monthLabel(site.searchStats[0].year, site.searchStats[0].month) : "aucun"} · Dernier récap : {site.recaps[0] ? `${monthLabel(site.recaps[0].year, site.recaps[0].month)}${site.recaps[0].sentAt ? " (envoyé)" : " (non envoyé)"}` : "aucun"}
@@ -122,7 +124,7 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
           <SectionTitle emoji="⭐">Avis Google</SectionTitle>
           <Card className="space-y-2">
             <p className="text-xs text-text">
-              {businessApiEnabled() ? (site.googleLocationId ? `Fiche liée : ${site.googleLocationId}` : <span className="text-yellow">Choisissez la fiche Google dans les paramètres ci-dessous.</span>) : "Mode démo : avis d’exemple tant que Google n’a pas validé l’accès à l’API Business Profile (GOOGLE_BUSINESS_API_ENABLED=false)."}
+              {bizApi ? (site.googleLocationId ? `Fiche liée : ${site.googleLocationId}` : <span className="text-yellow">Choisissez la fiche Google dans les paramètres ci-dessous.</span>) : "Mode démo : avis d’exemple tant que Google n’a pas validé l’accès à l’API Business Profile (à activer dans Paramètres → Clés et services)."}
               {" "}{reviewCount} avis en base · dernière synchro : {site.reviewsSyncedAt ? fmtDateShort(site.reviewsSyncedAt) : "jamais"}.
             </p>
             <form action={syncReviewsAction.bind(null, site.id)}><SubmitButton size="sm" variant="secondary" pendingLabel="Synchro…">Synchroniser les avis</SubmitButton></form>
@@ -159,7 +161,7 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
   );
 }
 
-function snippet(siteKey: string) {
+function snippet(siteKey: string, turnstileSiteKey: string | null) {
   return `<form id="acco-form" action="${process.env.NEXT_PUBLIC_APP_URL}/api/forms/${siteKey}" method="post">
   <input name="name" placeholder="Votre nom" required>
   <input name="phone" type="tel" placeholder="Téléphone">
@@ -167,7 +169,7 @@ function snippet(siteKey: string) {
   <select name="type"><option>Demande de devis</option><option>Rendez-vous</option><option>Question</option></select>
   <textarea name="message" placeholder="Votre message" required></textarea>
   <div style="position:absolute;left:-9999px"><input name="website" tabindex="-1"></div>
-  <div class="cf-turnstile" data-sitekey="${process.env.TURNSTILE_SITE_KEY || "TURNSTILE_SITE_KEY"}"></div>
+  <div class="cf-turnstile" data-sitekey="${turnstileSiteKey || "TURNSTILE_SITE_KEY"}"></div>
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <button type="submit">Envoyer</button>
 </form>
