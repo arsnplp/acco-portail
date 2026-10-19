@@ -4,6 +4,7 @@ import { hasModule } from "@/lib/offers";
 import { prisma } from "@/lib/prisma";
 import { syncReviews } from "@/lib/reviews";
 import { Button } from "@/components/ui/button";
+import { MoreList } from "@/components/ui/more-list";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { Empty } from "@/components/ui/empty";
 import { Avatar } from "@/components/ui/avatar";
@@ -52,28 +53,24 @@ export default async function AvisPage({ params }: { params: Promise<{ id: strin
       {unanswered.length === 0 ? (
         <Empty icon={MessageSquareText} title="Vous avez répondu à tout le monde" text="Bravo, c’est ce que Google aime voir." />
       ) : (
-        <div className="grid gap-2">
-          {unanswered.map((r) => (
+        <MoreList title="Avis à répondre" limit={5} items={unanswered.map((r) => (
             <ReviewCard key={r.id} r={r}>
               <ReplyForm siteId={site.id} reviewId={r.id} suggestion={r.suggestedReply} />
             </ReviewCard>
-          ))}
-        </div>
+          ))} />
       )}
 
       {answered.length > 0 && (
         <>
           <SectionTitle emoji="✅">Déjà répondus</SectionTitle>
-          <div className="grid gap-2">
-            {answered.map((r) => (
+          <MoreList title="Avis déjà répondus" labels={answered.map((r) => r.authorName)} limit={5} items={answered.map((r) => (
               <ReviewCard key={r.id} r={r}>
                 <div className="mt-3 rounded-sm border-l-2 border-green pl-3">
                   <p className="text-xs text-green">Votre réponse{r.repliedAt ? ` · ${fmtDateShort(r.repliedAt)}` : ""}</p>
                   <p className="mt-1 text-sm text-text-strong">{r.reply}</p>
                 </div>
               </ReviewCard>
-            ))}
-          </div>
+            ))} />
         </>
       )}
     </div>

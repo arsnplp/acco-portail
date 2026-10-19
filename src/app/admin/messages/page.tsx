@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { AdminPage } from "@/components/admin/page";
+import { MoreList } from "@/components/ui/more-list";
 import { Card } from "@/components/ui/card";
 import { Dot } from "@/components/ui/badge";
 import { timeAgo } from "@/lib/format";
@@ -19,8 +20,7 @@ export default async function InboxPage() {
   return (
     <AdminPage title="Messages">
       <AutoRefresh seconds={30} />
-      <div className="grid gap-2">
-        {convs.map((c, i) => {
+      <MoreList title="Conversations" labels={convs.map((c) => c.client.name)} limit={5} items={convs.map((c, i) => {
           const last = c.messages[0];
           const unread = unreadCounts[i];
           return (
@@ -39,8 +39,7 @@ export default async function InboxPage() {
               </div>
             </Card>
           );
-        })}
-      </div>
+        })} />
     </AdminPage>
   );
 }

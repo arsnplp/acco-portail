@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { AdminPage } from "@/components/admin/page";
+import { MoreList } from "@/components/ui/more-list";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, Input } from "@/components/ui/field";
@@ -23,8 +24,7 @@ export default async function CommandesPage() {
     <AdminPage title="Commandes">
       <SectionTitle emoji="🛎️">À traiter ({todo.length})</SectionTitle>
       {todo.length === 0 ? <p className="text-sm text-text">Rien à traiter.</p> : (
-        <div className="grid gap-3">
-          {todo.map((o) => (
+        <MoreList title="Commandes à traiter" labels={todo.map((o) => `${o.client.name} ${o.offer.name}`)} className="grid gap-3" items={todo.map((o) => (
             <Card key={o.id}>
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -47,21 +47,18 @@ export default async function CommandesPage() {
               </form>
               <form action={refuseOrder.bind(null, o.id)} className="mt-2"><SubmitButton variant="ghost" size="sm" pendingLabel="…">Refuser / sans suite</SubmitButton></form>
             </Card>
-          ))}
-        </div>
+          ))} />
       )}
 
       {done.length > 0 && (
         <>
           <SectionTitle emoji="🗂️">Historique</SectionTitle>
-          <div className="grid gap-2">
-            {done.map((o) => (
+          <MoreList title="Historique des commandes" labels={done.map((o) => `${o.client.name} ${o.offer.name}`)} items={done.map((o) => (
               <Card key={o.id} className="flex items-center justify-between gap-3 py-3">
                 <div className="min-w-0"><p className="truncate font-medium text-title">{o.offer.name}</p><p className="text-xs text-text">{o.client.name}{o.site ? ` · ${o.site.name}` : ""} · {o.validatedBy?.firstName ?? ""} · {timeAgo(o.validatedAt ?? o.createdAt)}</p></div>
                 <Badge tone={o.status === "VALIDEE" ? "green" : "neutral"}>{o.status === "VALIDEE" ? "Validée" : "Refusée"}</Badge>
               </Card>
-            ))}
-          </div>
+            ))} />
         </>
       )}
     </AdminPage>

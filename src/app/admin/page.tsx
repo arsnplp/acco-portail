@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { MoreList } from "@/components/ui/more-list";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { addDays, fmtDate, daysUntil } from "@/lib/format";
@@ -53,8 +54,7 @@ export default async function AdminHome() {
       {ending.length === 0 ? (
         <p className="text-sm text-text">Aucun engagement n’arrive à échéance dans les deux prochains mois.</p>
       ) : (
-        <div className="grid gap-2">
-          {ending.map((s) => {
+        <MoreList title="Engagements à échéance" labels={ending.map((s) => s.client.name)} items={ending.map((s) => {
             const days = daysUntil(s.commitmentEndsAt!);
             return (
               <Card key={s.id} href={`/admin/clients/${s.client.id}`} className="flex items-center justify-between gap-3 py-3">
@@ -65,8 +65,7 @@ export default async function AdminHome() {
                 <Badge tone={days <= 30 ? "pink" : "yellow"}>dans {days} j</Badge>
               </Card>
             );
-          })}
-        </div>
+          })} />
       )}
     </main>
   );

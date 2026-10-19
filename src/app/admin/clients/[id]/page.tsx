@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { AdminPage } from "@/components/admin/page";
+import { MoreList } from "@/components/ui/more-list";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SITE_STATUS, PROJECT_STEPS } from "@/lib/labels";
@@ -42,7 +43,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
 
       <SectionTitle emoji="💳">Abonnements et modules</SectionTitle>
       <div className="grid gap-2">
-        {client.subscriptions.map((s) => (
+        <MoreList title="Abonnements" labels={client.subscriptions.map((s) => s.label)} className="contents" items={client.subscriptions.map((s) => (
           <Card key={s.id} className="flex items-center justify-between gap-3 py-3">
             <div>
               <p className="font-semibold text-title">{s.label}</p>
@@ -60,7 +61,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
               <Badge tone="pink">Résilié</Badge>
             )}
           </Card>
-        ))}
+        ))} />
         {client.subscriptions.length === 0 && <p className="text-sm text-text">Aucun abonnement.</p>}
       </div>
 

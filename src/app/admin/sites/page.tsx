@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { AdminPage } from "@/components/admin/page";
+import { MoreList } from "@/components/ui/more-list";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SITE_STATUS, PROJECT_STEPS } from "@/lib/labels";
@@ -15,8 +16,7 @@ export default async function SitesAdminPage() {
   });
   return (
     <AdminPage title="Sites">
-      <div className="grid gap-2">
-        {sites.map((s) => {
+      <MoreList title="Sites" labels={sites.map((s) => `${s.name} ${s.client.name}`)} limit={5} items={sites.map((s) => {
           const h = s.healthChecks[0];
           const sslDays = h?.sslExpiresAt ? Math.floor((h.sslExpiresAt.getTime() - h.checkedAt.getTime()) / 86400_000) : null;
           return (
@@ -36,8 +36,7 @@ export default async function SitesAdminPage() {
             <Badge tone={SITE_STATUS[s.status].tone}>{SITE_STATUS[s.status].label}</Badge>
           </Card>
           );
-        })}
-      </div>
+        })} />
     </AdminPage>
   );
 }

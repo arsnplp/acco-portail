@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { AdminPage } from "@/components/admin/page";
+import { MoreList } from "@/components/ui/more-list";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { timeAgo, addDays } from "@/lib/format";
@@ -20,37 +21,31 @@ export default async function DocumentsOverviewPage() {
     <AdminPage title="Documents">
       <SectionTitle emoji="📤">Vous attendez des clients ({awaitingClients.length})</SectionTitle>
       {awaitingClients.length === 0 ? <p className="text-sm text-text">Aucun document attendu.</p> : (
-        <div className="grid gap-2">
-          {awaitingClients.map((r) => (
+        <MoreList title="Documents attendus" labels={awaitingClients.map((r) => `${r.client.name} ${r.message ?? ""}`)} items={awaitingClients.map((r) => (
             <Card key={r.id} href={`/admin/clients/${r.client.id}/documents`} className="flex items-center justify-between gap-3 py-3">
               <div className="min-w-0"><p className="truncate font-medium text-title">{r.message}</p><p className="text-xs text-text">{r.client.name} · demandé {timeAgo(r.createdAt)}</p></div>
               <Badge tone="yellow">En attente</Badge>
             </Card>
-          ))}
-        </div>
+          ))} />
       )}
 
       <SectionTitle emoji="📬">Déposés par les clients (14 derniers jours)</SectionTitle>
       {recentDeposits.length === 0 ? <p className="text-sm text-text">Aucun dépôt récent.</p> : (
-        <div className="grid gap-2">
-          {recentDeposits.map((d) => (
+        <MoreList title="Déposés par les clients" labels={recentDeposits.map((d) => `${d.client.name} ${d.title}`)} items={recentDeposits.map((d) => (
             <Card key={d.id} href={`/admin/clients/${d.client.id}/documents`} className="flex items-center justify-between gap-3 py-3">
               <div className="min-w-0"><p className="truncate font-medium text-title">{d.title}</p><p className="text-xs text-text">{d.client.name} · {timeAgo(d.createdAt)}</p></div>
               <Badge tone="blue">Reçu</Badge>
             </Card>
-          ))}
-        </div>
+          ))} />
       )}
 
       <SectionTitle emoji="🗂️">Espace documents par client</SectionTitle>
-      <div className="grid gap-2">
-        {clients.map((c) => (
+      <MoreList title="Espaces documents" labels={clients.map((c) => c.name)} items={clients.map((c) => (
           <Card key={c.id} href={`/admin/clients/${c.id}/documents`} className="flex items-center justify-between gap-3 py-3">
             <div><p className="font-medium text-title">{c.name}</p><p className="text-xs text-text">{c._count.documents} document{c._count.documents > 1 ? "s" : ""}</p></div>
             {c._count.documentRequests > 0 ? <Badge tone="yellow">{c._count.documentRequests} attendu{c._count.documentRequests > 1 ? "s" : ""}</Badge> : <Badge tone="green">À jour</Badge>}
           </Card>
-        ))}
-      </div>
+        ))} />
     </AdminPage>
   );
 }

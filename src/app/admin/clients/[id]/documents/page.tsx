@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { AdminPage } from "@/components/admin/page";
+import { MoreList } from "@/components/ui/more-list";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -30,12 +31,12 @@ export default async function ClientDocumentsPage({ params }: { params: Promise<
     <AdminPage title="Documents" back={{ href: `/admin/clients/${client.id}`, label: client.name }} action={badge}>
       <SectionTitle emoji="📤">Vous attendez du client</SectionTitle>
       <div className="grid gap-2">
-        {awaitingClient.map((r) => (
+        <MoreList title="Attendus du client" limit={3} className="contents" items={awaitingClient.map((r) => (
           <Card key={r.id} className="flex items-center justify-between gap-3 py-3">
             <div className="min-w-0"><p className="truncate font-medium text-title">{r.message}</p><p className="text-xs text-text">Demandé par {r.requester?.firstName ?? "Acco"} {timeAgo(r.createdAt)}{r.site ? ` · ${r.site.name}` : ""}</p></div>
             <div className="flex items-center gap-2"><Badge tone="yellow">En attente</Badge><form action={cancelRequest.bind(null, r.id)}><SubmitButton variant="ghost" size="sm" pendingLabel="…">Annuler</SubmitButton></form></div>
           </Card>
-        ))}
+        ))} />
         <AskClientDocumentForm clientId={client.id} sites={sites} />
       </div>
 
@@ -57,8 +58,7 @@ export default async function ClientDocumentsPage({ params }: { params: Promise<
       {done.length > 0 && (
         <>
           <SectionTitle emoji="✅">Reçus du client</SectionTitle>
-          <div className="grid gap-2">
-            {done.map((r) => (
+          <MoreList title="Reçus du client" labels={done.map((r) => r.message ?? "")} items={done.map((r) => (
               <Card key={r.id} className="flex items-center justify-between gap-3 py-3">
                 <div className="min-w-0">
                   <p className="truncate text-sm text-text-strong">{r.message}</p>
@@ -66,8 +66,7 @@ export default async function ClientDocumentsPage({ params }: { params: Promise<
                 </div>
                 <Badge tone="blue">Reçu du client</Badge>
               </Card>
-            ))}
-          </div>
+            ))} />
         </>
       )}
     </AdminPage>

@@ -3,6 +3,7 @@ import { Globe, Inbox, Star, Gift, Tag } from "lucide-react";
 import { requireClientContext } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Page } from "@/components/page";
+import { MoreList } from "@/components/ui/more-list";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { Empty } from "@/components/ui/empty";
 import { Badge, Dot } from "@/components/ui/badge";
@@ -87,8 +88,7 @@ export default async function AccueilPage() {
       {notifications.length === 0 ? (
         <Empty icon={Inbox} title="Rien de nouveau" text="Les demandes de clients, avis, modifications terminées et récaps apparaîtront ici." />
       ) : (
-        <div className="grid gap-2">
-          {notifications.map((n) => (
+        <MoreList title="Quoi de neuf" limit={5} items={notifications.map((n) => (
             <Card key={n.id} href={n.href ?? undefined} className="py-3">
               <div className="flex items-start gap-3">
                 <span className="mt-0.5 text-lg leading-none" aria-hidden>{KIND_EMOJI[n.kind]}</span>
@@ -102,8 +102,7 @@ export default async function AccueilPage() {
                 </div>
               </div>
             </Card>
-          ))}
-        </div>
+          ))} />
       )}
       <p className="mt-6 text-center text-xs text-muted"><Link href="/compte/recommandations" className="underline-offset-2 hover:underline">Recommander Acco</Link> · <Link href="/offres" className="underline-offset-2 hover:underline">Voir les offres</Link></p>
     </Page>

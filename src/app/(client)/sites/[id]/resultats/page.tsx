@@ -1,6 +1,7 @@
 import { BarChart3, Search } from "lucide-react";
 import { requireClientSite } from "@/lib/sites";
 import { prisma } from "@/lib/prisma";
+import { MoreList } from "@/components/ui/more-list";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { Empty } from "@/components/ui/empty";
 import { LineChart } from "@/components/charts/line-chart";
@@ -59,8 +60,7 @@ export default async function ResultatsPage({ params }: { params: Promise<{ id: 
       {recaps.length > 0 && (
         <>
           <SectionTitle emoji="🗓️">Vos récaps mensuels</SectionTitle>
-          <div className="grid gap-2">
-            {recaps.map((r) => (
+          <MoreList title="Récaps mensuels" limit={3} items={recaps.map((r) => (
               <details key={r.id} className="rounded-card border border-border bg-surface" open={r.id === recaps[0].id}>
                 <summary className="flex cursor-pointer items-center justify-between px-4 py-3">
                   <span className="font-medium text-title">{monthLabel(r.year, r.month)[0].toUpperCase() + monthLabel(r.year, r.month).slice(1)}</span>
@@ -71,8 +71,7 @@ export default async function ResultatsPage({ params }: { params: Promise<{ id: 
                   {r.sentAt && <p className="mt-2 text-xs text-muted">Envoyé le {fmtDate(r.sentAt)}</p>}
                 </div>
               </details>
-            ))}
-          </div>
+            ))} />
         </>
       )}
     </div>

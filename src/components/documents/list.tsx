@@ -1,6 +1,7 @@
 import { FileText, Download } from "lucide-react";
 import type { Document } from "@prisma/client";
 import { signedUrl } from "@/lib/storage";
+import { MoreList } from "@/components/ui/more-list";
 import { Card } from "@/components/ui/card";
 import { Empty } from "@/components/ui/empty";
 import { Dot } from "@/components/ui/badge";
@@ -40,7 +41,7 @@ export function DocumentSections({ documents, emptyText = "Vos contrats, facture
             <Dot tone={DOC_KIND[g.kind].tone} />
             {DOC_KIND[g.kind].plural} <span className="font-normal text-text">({g.docs.length})</span>
           </h3>
-          <div className="grid gap-2">{g.docs.map((d) => <DocumentRow key={d.id} d={d} action={renderAction?.(d)} />)}</div>
+          <MoreList title="Documents" labels={g.docs.map((d) => d.title)} limit={3} items={g.docs.map((d) => <DocumentRow key={d.id} d={d} action={renderAction?.(d)} />)} />
         </section>
       ))}
     </div>

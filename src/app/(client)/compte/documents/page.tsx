@@ -3,6 +3,7 @@ import { BackLink } from "@/components/ui/back-link";
 import { requireClientContext } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Page } from "@/components/page";
+import { MoreList } from "@/components/ui/more-list";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { DocumentSections } from "@/components/documents/list";
 import { AutoUploadInput } from "@/components/ui/auto-upload";
@@ -25,8 +26,7 @@ export default async function DocumentsPage() {
       {toProvide.length > 0 && (
         <>
           <SectionTitle emoji="📤">L’équipe Acco vous demande</SectionTitle>
-          <div className="grid gap-2">
-            {toProvide.map((r) => (
+          <MoreList title="Documents demandés" limit={3} items={toProvide.map((r) => (
               <Card key={r.id} className="flex items-center justify-between gap-3 border-yellow/50 py-3">
                 <div className="min-w-0"><p className="truncate font-medium text-title">{r.message}</p><p className="text-xs text-text">Demandé {timeAgo(r.createdAt)}</p></div>
                 <form action={uploadRequestedDocument.bind(null, r.id)}>
@@ -36,8 +36,7 @@ export default async function DocumentsPage() {
                   </label>
                 </form>
               </Card>
-            ))}
-          </div>
+            ))} />
         </>
       )}
 

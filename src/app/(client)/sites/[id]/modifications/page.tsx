@@ -1,6 +1,7 @@
 import { Plus, Wrench } from "lucide-react";
 import { requireClientSite, changeQuota } from "@/lib/sites";
 import { prisma } from "@/lib/prisma";
+import { MoreList } from "@/components/ui/more-list";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -37,13 +38,13 @@ export default async function ModificationsPage({ params }: { params: Promise<{ 
       {open.length === 0 ? (
         <Empty icon={Wrench} title="Aucune demande en cours" />
       ) : (
-        <div className="grid gap-2">{open.map((r) => <RequestCard key={r.id} siteId={site.id} r={r} />)}</div>
+        <MoreList title="Demandes en cours" limit={5} items={open.map((r) => <RequestCard key={r.id} siteId={site.id} r={r} />)} />
       )}
 
       {closed.length > 0 && (
         <>
           <SectionTitle emoji="✅">Terminées</SectionTitle>
-          <div className="grid gap-2">{closed.map((r) => <RequestCard key={r.id} siteId={site.id} r={r} />)}</div>
+          <MoreList title="Demandes terminées" labels={closed.map((r) => r.title)} limit={5} items={closed.map((r) => <RequestCard key={r.id} siteId={site.id} r={r} />)} />
         </>
       )}
 

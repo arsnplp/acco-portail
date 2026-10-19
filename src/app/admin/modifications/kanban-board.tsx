@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useOptimistic, useRef, useState, useTransition } from "react";
+import { useMemo, useOptimistic, useState, useTransition } from "react";
 import Link from "next/link";
-import { Paperclip, MessageSquare, ArrowRight, ArrowLeft, GripVertical, X } from "lucide-react";
+import { Paperclip, MessageSquare, ArrowRight, ArrowLeft, GripVertical } from "lucide-react";
+import { Dialog } from "@/components/ui/dialog";
 import { Select } from "@/components/ui/field";
 import type { ChangeRequestStatus, Urgency } from "@prisma/client";
 import { Card } from "@/components/ui/card";
@@ -76,7 +77,6 @@ export function KanbanBoard({ items, admins }: { items: KanbanItem[]; admins: Ad
 
 function DoneDialog({ items, onClose, onMove }: { items: KanbanItem[]; onClose: () => void; onMove: (id: string, s: ChangeRequestStatus) => void }) {
   const [client, setClient] = useState("");
-  const ref = useRef<HTMLDivElement>(null);
   const clients = useMemo(() => [...new Set(items.map((i) => i.clientName))].sort((a, b) => a.localeCompare(b, "fr")), [items]);
   const sorted = useMemo(
     () => items.filter((i) => !client || i.clientName === client).sort((a, b) => (b.completedAt ?? b.createdAt).localeCompare(a.completedAt ?? a.createdAt)),
@@ -85,17 +85,16 @@ function DoneDialog({ items, onClose, onMove }: { items: KanbanItem[]; onClose: 
   const dateLabel = (iso: string) => new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" }).format(new Date(iso));
   const monthOf = (iso: string) => new Intl.DateTimeFormat("fr-FR", { month: "long", year: "numeric" }).format(new Date(iso));
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-6" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div ref={ref} role="dialog" aria-modal aria-label="Modifications terminées" className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-t-2xl border border-border bg-bg sm:rounded-2xl">
-        <div className="flex items-center gap-3 border-b border-border px-4 py-3">
-          <h2 className="text-base">Terminées <span className="font-normal text-text">({sorted.length})</span></h2>
-          <Select value={client} onChange={(e) => setClient(e.target.value)} className="ml-auto w-auto max-w-[55%] py-1.5 text-sm">
-            <option value="">Tous les clients</option>
-            {clients.map((c) => <option key={c} value={c}>{c}</option>)}
-          </Select>
-          <button type="button" onClick={onClose} aria-label="Fermer" className="flex size-9 items-center justify-center rounded-full border border-border text-text hover:text-title"><X size={16} /></button>
-        </div>
-        <div className="overflow-y-auto p-4">
+    <Dialog
+      title="Terminées"
+      onClose={onClose}
+      header={
+        <Select value={client} onChange={(e) => setClient(e.target.value)} className="w-auto max-w-[180px] py-1.5 text-sm">
+          <option value="">Tous les clients</option>
+          {clients.map((c) => <option key={c} value={c}>{c}</option>)}
+        </Select>
+      }
+    >
           <ol className="relative ml-2 border-l border-border">
             {sorted.map((r, i) => {
               const d = r.completedAt ?? r.createdAt;
@@ -123,9 +122,7 @@ function DoneDialog({ items, onClose, onMove }: { items: KanbanItem[]; onClose: 
             })}
             {sorted.length === 0 && <li className="pl-6 text-sm text-text">Rien pour ce client.</li>}
           </ol>
-        </div>
-      </div>
-    </div>
+    </Dialog>
   );
 }
 

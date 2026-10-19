@@ -2,6 +2,7 @@ import { FileText, LogOut, Star, ChevronRight } from "lucide-react";
 import { requireClientContext, displayName } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Page } from "@/components/page";
+import { MoreList } from "@/components/ui/more-list";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -51,7 +52,7 @@ export default async function ComptePage() {
 
       <SectionTitle emoji="💳">Abonnements et modules</SectionTitle>
       <div className="grid gap-2">
-        {subs.map((s) => (
+        <MoreList title="Abonnements" limit={3} className="contents" items={subs.map((s) => (
           <Card key={s.id} className="flex items-center justify-between gap-3 py-3">
             <div>
               <p className="font-medium text-title">{s.label}</p>
@@ -59,7 +60,7 @@ export default async function ComptePage() {
             </div>
             <Badge tone="green">Actif</Badge>
           </Card>
-        ))}
+        ))} />
         {subs.length === 0 && <p className="text-sm text-text">Aucun abonnement actif.</p>}
       </div>
 

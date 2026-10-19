@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { AdminPage } from "@/components/admin/page";
+import { MoreList } from "@/components/ui/more-list";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { fmtPrice } from "@/lib/format";
@@ -12,8 +13,7 @@ export default async function OffresAdminPage() {
   const offers = await prisma.offer.findMany({ orderBy: [{ isArchived: "asc" }, { order: "asc" }], include: { promotions: true, _count: { select: { subscriptions: { where: { status: "ACTIF" } }, orders: { where: { status: "A_TRAITER" } } } } } });
   return (
     <AdminPage title="Offres">
-      <div className="grid gap-2">
-        {offers.map((o) => {
+      <MoreList title="Offres" labels={offers.map((o) => o.name)} limit={5} items={offers.map((o) => {
           const promo = activePromo(o);
           return (
             <Card key={o.id} href={`/admin/offres/${o.id}`} className="flex items-center justify-between gap-3 py-3">
@@ -31,8 +31,7 @@ export default async function OffresAdminPage() {
               </div>
             </Card>
           );
-        })}
-      </div>
+        })} />
       <SectionTitle emoji="➕">Nouvelle offre</SectionTitle>
       <OfferForm />
     </AdminPage>

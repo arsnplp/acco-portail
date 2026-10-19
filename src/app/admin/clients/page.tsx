@@ -1,6 +1,7 @@
 import { Plus } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { AdminPage } from "@/components/admin/page";
+import { MoreList } from "@/components/ui/more-list";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +17,7 @@ export default async function ClientsPage() {
   return (
     <AdminPage title="Clients" action={<Button href="/admin/clients/nouveau" size="sm"><Plus size={16} /> Nouveau client</Button>}>
       <div className="grid gap-2">
-        {clients.map((c) => {
+        <MoreList title="Clients" labels={clients.map((c) => c.name)} limit={5} className="contents" items={clients.map((c) => {
           const owner = c.memberships.find((m) => m.role === "OWNER")?.user;
           return (
             <Card key={c.id} href={`/admin/clients/${c.id}`} className="py-3">
@@ -31,7 +32,7 @@ export default async function ClientsPage() {
               </div>
             </Card>
           );
-        })}
+        })} />
         {clients.length === 0 && <p className="text-text">Aucun client.</p>}
       </div>
     </AdminPage>

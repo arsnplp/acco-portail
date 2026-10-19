@@ -2,6 +2,7 @@ import { Gift } from "lucide-react";
 import { requireClientContext } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Page } from "@/components/page";
+import { MoreList } from "@/components/ui/more-list";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { BackLink } from "@/components/ui/back-link";
 import { ShareLink } from "./share-link";
@@ -37,8 +38,7 @@ export default async function RecommandationsPage() {
 
       <SectionTitle emoji="📋">Vos recommandations</SectionTitle>
       {referrals.length === 0 ? <p className="text-sm text-text">Aucune pour le moment. Votre première recommandation apparaîtra ici avec son avancement.</p> : (
-        <div className="grid gap-2">
-          {referrals.map((r) => {
+        <MoreList title="Vos recommandations" limit={3} items={referrals.map((r) => {
             const idx = REFERRAL_STEPS.findIndex((s) => s.key === r.status);
             return (
               <Card key={r.id}>
@@ -57,8 +57,7 @@ export default async function RecommandationsPage() {
                 {r.status === "RECOMPENSE_VALIDEE" && <p className="mt-3 text-sm text-green">🎁 {r.rewardLabel ?? "Récompense validée"}</p>}
               </Card>
             );
-          })}
-        </div>
+          })} />
       )}
     </Page>
   );

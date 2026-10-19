@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { AdminPage } from "@/components/admin/page";
+import { MoreList } from "@/components/ui/more-list";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select } from "@/components/ui/field";
@@ -23,8 +24,7 @@ export default async function RecommandationsAdminPage() {
       <p className="-mt-3 mb-4 text-xs text-muted">Récompense actuelle : {reward?.value ?? "non définie"} (modifiable dans Paramètres).</p>
       <SectionTitle emoji="📞">À traiter ({open.length})</SectionTitle>
       {open.length === 0 ? <p className="text-sm text-text">Aucune recommandation en attente.</p> : (
-        <div className="grid gap-3">
-          {open.map((r) => (
+        <MoreList title="Recommandations à traiter" labels={open.map((r) => `${r.contactName ?? ""} ${r.referrer.name}`)} className="grid gap-3" items={open.map((r) => (
             <Card key={r.id}>
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -47,20 +47,17 @@ export default async function RecommandationsAdminPage() {
                 <form action={closeReferral.bind(null, r.id)} className="ml-auto"><SubmitButton size="sm" variant="ghost" pendingLabel="…">Sans suite</SubmitButton></form>
               </div>
             </Card>
-          ))}
-        </div>
+          ))} />
       )}
       {done.length > 0 && (
         <>
           <SectionTitle emoji="🎁">Signées</SectionTitle>
-          <div className="grid gap-2">
-            {done.map((r) => (
+          <MoreList title="Recommandations signées" labels={done.map((r) => `${r.contactName ?? ""} ${r.referrer.name}`)} items={done.map((r) => (
               <Card key={r.id} className="flex items-center justify-between gap-3 py-3">
                 <div><p className="font-medium text-title">{r.contactName}{r.referred ? ` → ${r.referred.name}` : ""}</p><p className="text-xs text-text">par {r.referrer.name} · {r.rewardLabel}</p></div>
                 <Badge tone="green">Récompense validée</Badge>
               </Card>
-            ))}
-          </div>
+            ))} />
         </>
       )}
     </AdminPage>

@@ -1,3 +1,4 @@
+import { MoreList } from "@/components/ui/more-list";
 import { Tag } from "lucide-react";
 import { requireClientContext } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -41,7 +42,7 @@ export default async function OffresPage() {
       {others.length > 0 && (
         <>
           <SectionTitle emoji="✨">Nos services</SectionTitle>
-          <div className="grid gap-3">{others.map((c) => <OfferCard key={c.offer.id} {...c} sites={siteOptions} />)}</div>
+          <MoreList title="Nos services" labels={others.map((c) => c.offer.name)} limit={4} className="grid gap-3" items={others.map((c) => <OfferCard key={c.offer.id} {...c} sites={siteOptions} />)} />
         </>
       )}
     </Page>

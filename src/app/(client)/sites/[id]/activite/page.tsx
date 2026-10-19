@@ -1,6 +1,7 @@
 import { Inbox, Phone, Mail, Check, Trophy, Undo2 } from "lucide-react";
 import { requireClientSite, monthRange } from "@/lib/sites";
 import { prisma } from "@/lib/prisma";
+import { MoreList } from "@/components/ui/more-list";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Empty } from "@/components/ui/empty";
@@ -33,13 +34,13 @@ export default async function ActivitePage({ params }: { params: Promise<{ id: s
       {todo.length === 0 ? (
         <Empty icon={Inbox} title="Tout est traité" text="Les prochaines demandes envoyées depuis votre site arriveront ici." />
       ) : (
-        <div className="grid gap-2">{todo.map((r) => <RequestCard key={r.id} r={r} siteId={site.id} />)}</div>
+        <MoreList title="Demandes à traiter" labels={todo.map((r) => r.name)} limit={5} items={todo.map((r) => <RequestCard key={r.id} r={r} siteId={site.id} />)} />
       )}
 
       {done.length > 0 && (
         <>
           <SectionTitle emoji="✅">Traitées</SectionTitle>
-          <div className="grid gap-2">{done.map((r) => <RequestCard key={r.id} r={r} siteId={site.id} />)}</div>
+          <MoreList title="Demandes traitées" labels={done.map((r) => r.name)} limit={5} items={done.map((r) => <RequestCard key={r.id} r={r} siteId={site.id} />)} />
         </>
       )}
     </div>
