@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
@@ -19,15 +20,23 @@ const ITEMS = [
 
 export function AdminNav() {
   const pathname = usePathname();
+  const activeRef = useRef<HTMLAnchorElement>(null);
+
+  // Téléphone : l'onglet actif se cale dans la zone visible.
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
+  }, [pathname]);
+
   return (
     <nav className="sticky top-14 z-20 border-b border-border bg-bg/95 backdrop-blur">
-      <ul className="mx-auto flex max-w-3xl gap-1 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <ul className="mx-auto flex max-w-3xl gap-1 overflow-x-auto px-4 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden">
         {ITEMS.map(([href, label]) => {
           const active = href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
           return (
             <li key={href} className="shrink-0">
               <Link
                 href={href}
+                ref={active ? activeRef : undefined}
                 className={cn(
                   "-mb-px block border-b-2 px-2.5 py-3 text-sm transition-colors",
                   active ? "border-title font-semibold text-title" : "border-transparent text-text hover:text-title",
