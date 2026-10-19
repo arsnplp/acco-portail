@@ -8,6 +8,10 @@ export async function GET(request: NextRequest) {
   const type = searchParams.get("type");
   const next = searchParams.get("next") ?? "/";
 
+  if (searchParams.get("error")) {
+    const desc = searchParams.get("error_description") ?? "";
+    return NextResponse.redirect(`${origin}/connexion?erreur=${/signup|not allowed/i.test(desc) ? "compte-inconnu" : "lien-invalide"}`);
+  }
   const supabase = await createSupabaseServer();
   let ok = false;
   if (code) {
