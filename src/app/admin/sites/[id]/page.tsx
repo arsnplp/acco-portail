@@ -7,9 +7,10 @@ import { Timeline } from "@/components/ui/timeline";
 import { Input, Select } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { CHANGE_STATUS, SITE_STATUS } from "@/lib/labels";
-import { fmtDateShort } from "@/lib/format";
+import { fmtDateShort, daysUntil } from "@/lib/format";
 import { SiteForms } from "./forms";
-import { addAssetRequest, syncSearchConsole, generateRecap, syncReviewsAction } from "../actions";
+import { addAssetRequest, syncSearchConsole, generateRecap, syncReviewsAction, checkSiteNow } from "../actions";
+import { Dot } from "@/components/ui/badge";
 import { businessApiEnabled, getReviewsProvider } from "@/lib/reviews-provider";
 import { searchConsoleConfigured, listProperties } from "@/lib/google-search";
 import { connectedGoogleEmail } from "@/lib/google-oauth";
@@ -27,6 +28,7 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
       changeRequests: { where: { status: { not: "TERMINEE" } }, orderBy: { createdAt: "desc" } },
       subscriptions: { where: { status: "ACTIF" } },
       searchStats: { orderBy: [{ year: "desc" }, { month: "desc" }], take: 1 },
+      healthChecks: { orderBy: { checkedAt: "desc" }, take: 12 },
       recaps: { orderBy: [{ year: "desc" }, { month: "desc" }], take: 1 },
     },
   });
@@ -38,6 +40,27 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
 
   return (
     <AdminPage title={site.name} back={{ href: `/admin/clients/${site.clientId}`, label: site.client.name }} action={<Badge tone={SITE_STATUS[site.status].tone}>{SITE_STATUS[site.status].label}</Badge>}>
+      {site.status === "EN_LIGNE" && site.url && (
+        <>
+          <SectionTitle emoji="🩺">État du site</SectionTitle>
+          <Card className="space-y-3">
+            {site.healthChecks[0] ? (() => {
+              const h = site.healthChecks[0];
+              const sslDays = h.sslExpiresAt ? daysUntil(h.sslExpiresAt) : null;
+              const upRate = Math.round((site.healthChecks.filter((c) => c.isUp).length / site.healthChecks.length) * 100);
+              return (
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-sm border border-border p-2"><p className="flex items-center justify-center gap-1.5 text-sm font-semibold text-title"><Dot tone={h.isUp ? "green" : "pink"} />{h.isUp ? "En ligne" : "Hors ligne"}</p><p className="text-[11px] text-text">code {h.statusCode ?? "—"} · {upRate} % sur les {site.healthChecks.length} derniers tests</p></div>
+                  <div className="rounded-sm border border-border p-2"><p className="flex items-center justify-center gap-1.5 text-sm font-semibold text-title"><Dot tone={sslDays === null ? "neutral" : sslDays > 14 ? "green" : "pink"} />SSL</p><p className="text-[11px] text-text">{sslDays === null ? "non lu" : `expire dans ${sslDays} j`}</p></div>
+                  <div className="rounded-sm border border-border p-2"><p className="flex items-center justify-center gap-1.5 text-sm font-semibold text-title"><Dot tone={(h.responseMs ?? 0) < 1500 ? "green" : "yellow"} />{h.responseMs} ms</p><p className="text-[11px] text-text">vérifié {fmtDateShort(h.checkedAt)}</p></div>
+                </div>
+              );
+            })() : <p className="text-sm text-text">Pas encore vérifié. La surveillance tourne toutes les 5 minutes une fois le cron en place.</p>}
+            <form action={checkSiteNow.bind(null, site.id)}><SubmitButton size="sm" variant="secondary" pendingLabel="Vérification…">Vérifier maintenant</SubmitButton></form>
+          </Card>
+        </>
+      )}
+
       <SectionTitle emoji="🔑">Clé formulaire</SectionTitle>
       <Card className="py-3">
         <code className="break-all text-sm text-text-strong">{site.siteKey}</code>

@@ -119,3 +119,14 @@ export async function syncReviewsAction(siteId: string) {
   revalidatePath(`/admin/sites/${siteId}`);
   revalidatePath(`/sites/${siteId}/avis`);
 }
+
+export async function checkSiteNow(siteId: string) {
+  await requireAdmin();
+  const site = await prisma.site.findUnique({ where: { id: siteId } });
+  if (!site?.url) return;
+  const { checkSite } = await import("@/lib/monitor");
+  await checkSite({ id: site.id, name: site.name, url: site.url });
+  revalidatePath(`/admin/sites/${siteId}`);
+  revalidatePath("/admin/sites");
+  revalidatePath(`/sites/${siteId}`, "layout");
+}
