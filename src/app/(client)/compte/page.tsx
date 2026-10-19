@@ -83,7 +83,8 @@ export default async function ComptePage() {
       <Card className="mb-3"><EnablePush /></Card>
       <NotificationPrefsForm prefs={prefs} />
 
-      <div className="mt-10">
+      <div className="mt-10 grid gap-2">
+        <Button variant="secondary" href="/nouveau-mot-de-passe" className="w-full">Changer mon mot de passe</Button>
         <form action="/auth/deconnexion" method="post">
           <Button variant="secondary" type="submit" className="w-full"><LogOut size={18} strokeWidth={1.75} /> Se déconnecter</Button>
         </form>

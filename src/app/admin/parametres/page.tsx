@@ -10,6 +10,8 @@ import { listProperties } from "@/lib/google-search";
 import { saveSettings, disconnectGoogleAction } from "./actions";
 import { ServicesForm } from "./services-form";
 import { secretsStatus, featureToggles } from "@/lib/settings";
+import { NewPasswordForm } from "@/app/nouveau-mot-de-passe/form";
+import { LogOut } from "lucide-react";
 
 export const metadata = { title: "Paramètres" };
 
@@ -59,6 +61,12 @@ export default async function ParametresPage({ searchParams }: { searchParams: P
 
       <SectionTitle emoji="🔑">Clés et services</SectionTitle>
       <ServicesForm secrets={secrets} toggles={toggles} googleConnected={Boolean(email)} />
+
+      <SectionTitle emoji="🔐">Mon accès</SectionTitle>
+      <div className="grid gap-3">
+        <details className="rounded-card border border-border bg-surface"><summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-title">Changer mon mot de passe</summary><div className="border-t border-border p-4"><NewPasswordForm compact next="/admin/parametres" /></div></details>
+        <form action="/auth/deconnexion" method="post"><Button variant="secondary" type="submit" className="w-full"><LogOut size={18} strokeWidth={1.75} /> Se déconnecter</Button></form>
+      </div>
 
       <SectionTitle emoji="⚙️">Agence</SectionTitle>
       <form action={saveSettings} className="space-y-3 rounded-card border border-border bg-surface p-4">

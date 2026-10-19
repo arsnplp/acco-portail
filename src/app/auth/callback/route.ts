@@ -21,5 +21,9 @@ export async function GET(request: NextRequest) {
   }
 
   if (!ok) return NextResponse.redirect(`${origin}/connexion?erreur=lien-invalide`);
-  return NextResponse.redirect(`${origin}${next.startsWith("/") ? next : "/"}`);
+  const { data: { user } } = await supabase.auth.getUser();
+  const hasPassword = user?.user_metadata?.password_set === true;
+  const target = next.startsWith("/") ? next : "/";
+  if (!hasPassword && target !== "/nouveau-mot-de-passe") return NextResponse.redirect(`${origin}/nouveau-mot-de-passe?premiere=1`);
+  return NextResponse.redirect(`${origin}${target}`);
 }

@@ -1,9 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { sendEmail, layout, appUrl } from "@/lib/email";
+import { checkRealEmail } from "@/lib/email-check";
 
 /** Crée (ou retrouve) le compte Auth sans envoyer d'email Supabase. */
 export async function ensureAuthUser(email: string, meta: Record<string, string | undefined>) {
+  const real = await checkRealEmail(email);
+  if (!real.ok) throw new Error(real.error);
   const sb = createSupabaseAdmin();
   const { data: created, error } = await sb.auth.admin.createUser({ email, email_confirm: true, user_metadata: meta });
   if (!error) return created.user.id;
@@ -33,8 +36,8 @@ export async function sendInvitationEmail(opts: { email: string; firstName?: str
     `Bienvenue${opts.firstName ? ` ${opts.firstName}` : ""} 👋`,
     `<p>${who} à l’espace client Acco de <strong>${opts.clientName}</strong>.</p>
      <p>Vous y verrez votre site, les demandes de vos clients, vos résultats Google et vous pourrez nous demander des modifications en deux taps.</p>
-     <p style="font-size:13px;color:#71717a">Le bouton ci-dessous vous connecte directement pendant 1 heure. Ensuite, allez sur <a href="${appUrl("/connexion")}">${appUrl("/connexion")}</a> et entrez votre email : vous recevrez un nouveau lien.</p>`,
-    { label: "Ouvrir mon espace", href: direct },
+     <p style="font-size:13px;color:#71717a">Le bouton ci-dessous est valable 1 heure : il vous connecte et vous demande de choisir votre mot de passe. Ensuite, vous restez connecté sur votre téléphone. Lien expiré ? Allez sur <a href="${appUrl("/mot-de-passe-oublie")}">${appUrl("/mot-de-passe-oublie")}</a>.</p>`,
+    { label: "Ouvrir mon espace et choisir mon mot de passe", href: direct },
   );
   return sendEmail({ to: opts.email, subject: `Votre espace client Acco — ${opts.clientName}`, html });
 }

@@ -16,7 +16,7 @@ npm run db:seed             # équipe + 2 clients de démo + 3 sites
 npm run dev                 # http://localhost:3000
 ```
 
-Se connecter sans email (dev) :
+Connexion : email + mot de passe. Première connexion ou mot de passe oublié : lien par email (via Resend) puis choix du mot de passe. En dev, générer un lien sans email :
 
 ```bash
 node --env-file=.env scripts/lien-connexion.mjs arsene@acco-lab.fr
