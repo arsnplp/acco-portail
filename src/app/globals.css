@@ -68,6 +68,14 @@ h1, h2, h3 {
   color: var(--bg);
 }
 
+/* Dans les encadrés : titres et lignes d'info sur une seule ligne, tronqués, pour que la hauteur des cartes reste stable */
+.rounded-card :is(p.font-semibold, p.font-medium, p.text-xs.text-text, p.text-xs.text-muted, p.text-sm.text-text:not(.whitespace-pre-wrap)) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rounded-card :is(div, a, span.min-w-0) { min-width: 0; }
+
 /* Zone sûre iPhone pour la barre du bas */
 .pb-nav {
   padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 16px);

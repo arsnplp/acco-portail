@@ -26,8 +26,10 @@ export default async function ClientsPage() {
                   <p className="font-semibold text-title">{c.name}</p>
                   <p className="text-xs text-text">{owner ? `${owner.firstName ?? ""} ${owner.lastName ?? ""} · ${owner.email}` : "Aucun gérant"}</p>
                 </div>
-                <div className="flex flex-wrap justify-end gap-1">
-                  {c.sites.map((s) => <Badge key={s.id} tone={SITE_STATUS[s.status].tone}>{s.name}</Badge>)}
+                <div className="flex shrink-0 items-center gap-1">
+                  {c.sites[0] && <Badge tone={SITE_STATUS[c.sites[0].status].tone} className="max-w-[40vw] sm:max-w-xs">{c.sites[0].name}</Badge>}
+                  {c.sites.length > 1 && <Badge tone="neutral">+{c.sites.length - 1}</Badge>}
+                  {c.sites.length === 0 && <Badge tone="neutral">Aucun site</Badge>}
                 </div>
               </div>
             </Card>

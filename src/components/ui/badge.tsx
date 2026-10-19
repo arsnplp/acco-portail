@@ -19,9 +19,9 @@ const dots: Record<Tone, string> = {
 
 export function Badge({ tone = "neutral", children, className }: { tone?: Tone; children: React.ReactNode; className?: string }) {
   return (
-    <span className={cn("inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-2 px-2.5 py-1 text-xs font-medium", tones[tone], className)}>
-      <span className={cn("size-1.5 rounded-full", dots[tone])} />
-      {children}
+    <span className={cn("inline-flex max-w-full shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-surface-2 px-2.5 py-1 text-xs font-medium", tones[tone], className)}>
+      <span className={cn("size-1.5 shrink-0 rounded-full", dots[tone])} />
+      <span className="truncate">{children}</span>
     </span>
   );
 }
