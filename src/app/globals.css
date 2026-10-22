@@ -78,7 +78,9 @@ h1, h2, h3 {
 
 /* Rien ne dépasse jamais sur les côtés : les éléments de grille et de flex peuvent rétrécir sous la taille de leur contenu,
    et la page ne défile jamais horizontalement. */
-.grid > *, .flex > * { min-width: 0; }
+.grid > *, .flex > *, .contents > * { min-width: 0; }
+/* Une grille sans colonnes explicites = une colonne qui ne peut pas dépasser son conteneur, même avec un texte insécable. */
+.grid:not([class*="grid-cols-"]) { grid-template-columns: minmax(0, 1fr); }
 html, body { overflow-x: clip; max-width: 100%; }
 
 /* Zone sûre iPhone pour la barre du bas */

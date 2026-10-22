@@ -17,7 +17,7 @@ export default async function ClientsPage() {
   return (
     <AdminPage title="Clients" action={<Button href="/admin/clients/nouveau" size="sm"><Plus size={16} /> Nouveau client</Button>}>
       <div className="grid gap-2">
-        <MoreList title="Clients" labels={clients.map((c) => c.name)} limit={5} className="contents" items={clients.map((c) => {
+        <MoreList title="Clients" labels={clients.map((c) => c.name)} limit={5} className="grid gap-2" items={clients.map((c) => {
           const owner = c.memberships.find((m) => m.role === "OWNER")?.user;
           return (
             <Card key={c.id} href={`/admin/clients/${c.id}`} className="py-3">

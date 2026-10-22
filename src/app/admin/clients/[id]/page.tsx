@@ -43,7 +43,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
 
       <SectionTitle emoji="💳">Abonnements et modules</SectionTitle>
       <div className="grid gap-2">
-        <MoreList title="Abonnements" labels={client.subscriptions.map((s) => s.label)} className="contents" items={client.subscriptions.map((s) => (
+        <MoreList title="Abonnements" labels={client.subscriptions.map((s) => s.label)} className="grid gap-2" items={client.subscriptions.map((s) => (
           <Card key={s.id} className="flex items-center justify-between gap-3 py-3">
             <div>
               <p className="font-semibold text-title">{s.label}</p>

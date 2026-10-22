@@ -1,0 +1,59 @@
+- generic [active] [ref=f1e1]:
+  - banner [ref=f1e2]:
+    - generic [ref=f1e3]:
+      - link "Accueil" [ref=f1e4] [cursor=pointer]:
+        - /url: /
+      - img "Acco" [ref=f1e5]
+      - generic [ref=f1e6]:
+        - generic [ref=f1e7]: Équipe
+        - link "Mon compte" [ref=f1e8] [cursor=pointer]:
+          - /url: /admin/parametres
+          - generic [ref=f1e9]: AL
+  - navigation [ref=f1e10]:
+    - list [ref=f1e11]:
+      - listitem [ref=f1e12]:
+        - link "Tableau de bord" [ref=f1e13] [cursor=pointer]:
+          - /url: /admin
+      - listitem [ref=f1e14]:
+        - link "Clients" [ref=f1e15] [cursor=pointer]:
+          - /url: /admin/clients
+      - listitem [ref=f1e16]:
+        - link "Sites" [ref=f1e17] [cursor=pointer]:
+          - /url: /admin/sites
+      - listitem [ref=f1e18]:
+        - link "Modifications" [ref=f1e19] [cursor=pointer]:
+          - /url: /admin/modifications
+      - listitem [ref=f1e20]:
+        - link "Offres" [ref=f1e21] [cursor=pointer]:
+          - /url: /admin/offres
+      - listitem [ref=f1e22]:
+        - link "Commandes" [ref=f1e23] [cursor=pointer]:
+          - /url: /admin/commandes
+      - listitem [ref=f1e24]:
+        - link "Messages" [ref=f1e25] [cursor=pointer]:
+          - /url: /admin/messages
+      - listitem [ref=f1e26]:
+        - link "Recommandations" [ref=f1e27] [cursor=pointer]:
+          - /url: /admin/recommandations
+      - listitem [ref=f1e28]:
+        - link "Documents" [ref=f1e29] [cursor=pointer]:
+          - /url: /admin/documents
+      - listitem [ref=f1e30]:
+        - link "Paramètres" [ref=f1e31] [cursor=pointer]:
+          - /url: /admin/parametres
+  - main [ref=f1e32]:
+    - generic [ref=f1e33]:
+      - heading "Clients" [level=1] [ref=f1e34]
+      - link "Nouveau client" [ref=f1e35] [cursor=pointer]:
+        - /url: /admin/clients/nouveau
+    - link "Commerce Test Camille Test · test.client@acco-lab.fr commerce-test.fr +1" [ref=f1e40] [cursor=pointer]:
+      - /url: /admin/clients/cmvf6z4k30000pgwzv4pe9582
+      - generic [ref=f1e41]:
+        - generic [ref=f1e42]:
+          - paragraph [ref=f1e43]: Commerce Test
+          - paragraph [ref=f1e44]: Camille Test · test.client@acco-lab.fr
+        - generic [ref=f1e45]:
+          - generic [ref=f1e46]: commerce-test.fr
+          - generic [ref=f1e49]: "+1"
+  - button "Open Next.js Dev Tools" [ref=f1e57] [cursor=pointer]
+  - alert [ref=f1e61]

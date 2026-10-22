@@ -7,8 +7,8 @@ export function AdminPage({ title, back, action, children }: { title: React.Reac
         <BackLink fallback={back.href} label={back.label} />
       )}
       <div className="mt-2 flex items-center justify-between gap-3">
-        <h1 className="text-2xl">{title}</h1>
-        {action}
+        <h1 className="min-w-0 truncate text-2xl">{title}</h1>
+        {action && <div className="shrink-0">{action}</div>}
       </div>
       <div className="mt-6">{children}</div>
     </main>

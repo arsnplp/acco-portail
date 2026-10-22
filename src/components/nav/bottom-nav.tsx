@@ -22,7 +22,7 @@ export function BottomNav({ items, badges = {} }: { items: NavItem[]; badges?: R
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       aria-label="Navigation principale"
     >
-      <ul className="mx-auto grid max-w-lg" style={{ gridTemplateColumns: `repeat(${items.length}, 1fr)`, height: "var(--nav-h)" }}>
+      <ul className="mx-auto grid max-w-lg" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))`, height: "var(--nav-h)" }}>
         {items.map(({ href, label, icon: Icon }) => {
           const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
           const badge = badges[href];

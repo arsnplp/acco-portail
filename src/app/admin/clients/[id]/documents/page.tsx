@@ -31,7 +31,7 @@ export default async function ClientDocumentsPage({ params }: { params: Promise<
     <AdminPage title="Documents" back={{ href: `/admin/clients/${client.id}`, label: client.name }} action={badge}>
       <SectionTitle emoji="📤">Vous attendez du client</SectionTitle>
       <div className="grid gap-2">
-        <MoreList title="Attendus du client" limit={3} className="contents" items={awaitingClient.map((r) => (
+        <MoreList title="Attendus du client" limit={3} className="grid gap-2" items={awaitingClient.map((r) => (
           <Card key={r.id} className="flex items-center justify-between gap-3 py-3">
             <div className="min-w-0"><p className="truncate font-medium text-title">{r.message}</p><p className="text-xs text-text">Demandé par {r.requester?.firstName ?? "Acco"} {timeAgo(r.createdAt)}{r.site ? ` · ${r.site.name}` : ""}</p></div>
             <div className="flex items-center gap-2"><Badge tone="yellow">En attente</Badge><form action={cancelRequest.bind(null, r.id)}><SubmitButton variant="ghost" size="sm" pendingLabel="…">Annuler</SubmitButton></form></div>

@@ -52,7 +52,7 @@ export default async function ComptePage() {
 
       <SectionTitle emoji="💳">Abonnements et modules</SectionTitle>
       <div className="grid gap-2">
-        <MoreList title="Abonnements" limit={3} className="contents" items={subs.map((s) => (
+        <MoreList title="Abonnements" limit={3} className="grid gap-2" items={subs.map((s) => (
           <Card key={s.id} className="flex items-center justify-between gap-3 py-3">
             <div>
               <p className="font-medium text-title">{s.label}</p>
