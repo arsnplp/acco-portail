@@ -11,6 +11,7 @@ import { cn } from "@/lib/cn";
 import { uploadAsset, validateMockup } from "./actions";
 import { AutoUploadInput } from "@/components/ui/auto-upload";
 import { fmtDateShort } from "@/lib/format";
+import { ClockIcon, ConstructionIcon, PaperclipIcon } from "lucide-react";
 
 export default async function SitePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -26,7 +27,7 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
 
   return (
     <div>
-      <SectionTitle emoji="🚧">Avancement</SectionTitle>
+      <SectionTitle icon={ConstructionIcon}>Avancement</SectionTitle>
       <Card>
         <ol className="grid grid-cols-4 gap-1">
           {PROJECT_STEPS.map((s, i) => {
@@ -69,7 +70,7 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
         </form>
       )}
 
-      <SectionTitle emoji="📎">Éléments à nous fournir</SectionTitle>
+      <SectionTitle icon={PaperclipIcon}>Éléments à nous fournir</SectionTitle>
       <p className="-mt-1 mb-3 text-sm text-text">{missing === 0 ? "Tout est là, merci !" : `${missing} élément${missing > 1 ? "s" : ""} manquant${missing > 1 ? "s" : ""}.`}</p>
       <div className="grid gap-2">
         {assets.map((a) => (
@@ -96,7 +97,7 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
 
       {history.length > 0 && (
         <>
-          <SectionTitle emoji="🕓">Historique</SectionTitle>
+          <SectionTitle icon={ClockIcon}>Historique</SectionTitle>
           <Timeline items={history.map((h) => ({ id: h.id, date: h.happenedAt, title: h.title, description: h.description, items: h.items, tone: "blue" }))} />
         </>
       )}

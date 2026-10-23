@@ -5,6 +5,7 @@ import { updateClient, createSite, createSubscription, type ActionState } from "
 import { Field, Input, Select, FormError } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { SectionTitle } from "@/components/ui/card";
+import { SettingsIcon } from "lucide-react";
 
 type ClientInfo = { id: string; name: string; address: string | null; phone: string | null; email: string | null; siren: string | null };
 
@@ -24,7 +25,7 @@ export function ClientForms({ client, sites }: { client: ClientInfo; sites: { id
 
   return (
     <>
-      <SectionTitle emoji="⚙️">Gérer</SectionTitle>
+      <SectionTitle icon={SettingsIcon}>Gérer</SectionTitle>
       <div className="grid gap-2">
         <Panel title="Ajouter un site">
           <form action={a2} className="space-y-3">

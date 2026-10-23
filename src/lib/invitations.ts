@@ -33,7 +33,7 @@ export async function sendInvitationEmail(opts: { email: string; firstName?: str
 
   const who = opts.invitedBy ? `${opts.invitedBy} vous donne accès` : "L’équipe Acco vous donne accès";
   const html = layout(
-    `Bienvenue${opts.firstName ? ` ${opts.firstName}` : ""} 👋`,
+    `Bienvenue${opts.firstName ? ` ${opts.firstName}` : ""}`,
     `<p>${who} à l’espace client Acco de <strong>${opts.clientName}</strong>.</p>
      <p>Vous y verrez votre site, les demandes de vos clients, vos résultats Google et vous pourrez nous demander des modifications en deux taps.</p>
      <p style="font-size:13px;color:#71717a">Le bouton ci-dessous est valable 1 heure : il vous connecte et vous demande de choisir votre mot de passe. Ensuite, vous restez connecté sur votre téléphone. Lien expiré ? Allez sur <a href="${appUrl("/mot-de-passe-oublie")}">${appUrl("/mot-de-passe-oublie")}</a>.</p>`,

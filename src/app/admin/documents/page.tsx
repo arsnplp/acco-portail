@@ -4,6 +4,7 @@ import { MoreList } from "@/components/ui/more-list";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { timeAgo, addDays } from "@/lib/format";
+import { FolderOpenIcon, InboxIcon, UploadIcon } from "lucide-react";
 
 export const metadata = { title: "Documents" };
 
@@ -19,7 +20,7 @@ export default async function DocumentsOverviewPage() {
 
   return (
     <AdminPage title="Documents">
-      <SectionTitle emoji="📤">Vous attendez des clients ({awaitingClients.length})</SectionTitle>
+      <SectionTitle icon={UploadIcon}>Vous attendez des clients ({awaitingClients.length})</SectionTitle>
       {awaitingClients.length === 0 ? <p className="text-sm text-text">Aucun document attendu.</p> : (
         <MoreList title="Documents attendus" labels={awaitingClients.map((r) => `${r.client.name} ${r.message ?? ""}`)} items={awaitingClients.map((r) => (
             <Card key={r.id} href={`/admin/clients/${r.client.id}/documents`} className="flex items-center justify-between gap-3 py-3">
@@ -29,7 +30,7 @@ export default async function DocumentsOverviewPage() {
           ))} />
       )}
 
-      <SectionTitle emoji="📬">Déposés par les clients (14 derniers jours)</SectionTitle>
+      <SectionTitle icon={InboxIcon}>Déposés par les clients (14 derniers jours)</SectionTitle>
       {recentDeposits.length === 0 ? <p className="text-sm text-text">Aucun dépôt récent.</p> : (
         <MoreList title="Déposés par les clients" labels={recentDeposits.map((d) => `${d.client.name} ${d.title}`)} items={recentDeposits.map((d) => (
             <Card key={d.id} href={`/admin/clients/${d.client.id}/documents`} className="flex items-center justify-between gap-3 py-3">
@@ -39,7 +40,7 @@ export default async function DocumentsOverviewPage() {
           ))} />
       )}
 
-      <SectionTitle emoji="🗂️">Espace documents par client</SectionTitle>
+      <SectionTitle icon={FolderOpenIcon}>Espace documents par client</SectionTitle>
       <MoreList title="Espaces documents" labels={clients.map((c) => c.name)} items={clients.map((c) => (
           <Card key={c.id} href={`/admin/clients/${c.id}/documents`} className="flex items-center justify-between gap-3 py-3">
             <div><p className="font-medium text-title">{c.name}</p><p className="text-xs text-text">{c._count.documents} document{c._count.documents > 1 ? "s" : ""}</p></div>

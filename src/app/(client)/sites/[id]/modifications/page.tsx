@@ -9,6 +9,7 @@ import { Empty } from "@/components/ui/empty";
 import { Timeline } from "@/components/ui/timeline";
 import { CHANGE_STATUS, clientChangeStatus } from "@/lib/labels";
 import { timeAgo } from "@/lib/format";
+import { CircleCheckIcon, ClockIcon, WrenchIcon } from "lucide-react";
 
 export const metadata = { title: "Modifications" };
 
@@ -34,7 +35,7 @@ export default async function ModificationsPage({ params }: { params: Promise<{ 
         </p>
       )}
 
-      <SectionTitle emoji="🛠️">En cours</SectionTitle>
+      <SectionTitle icon={WrenchIcon}>En cours</SectionTitle>
       {open.length === 0 ? (
         <Empty icon={Wrench} title="Aucune demande en cours" />
       ) : (
@@ -43,12 +44,12 @@ export default async function ModificationsPage({ params }: { params: Promise<{ 
 
       {closed.length > 0 && (
         <>
-          <SectionTitle emoji="✅">Terminées</SectionTitle>
+          <SectionTitle icon={CircleCheckIcon}>Terminées</SectionTitle>
           <MoreList title="Demandes terminées" labels={closed.map((r) => r.title)} limit={5} items={closed.map((r) => <RequestCard key={r.id} siteId={site.id} r={r} />)} />
         </>
       )}
 
-      <SectionTitle emoji="🕓">Historique du site</SectionTitle>
+      <SectionTitle icon={ClockIcon}>Historique du site</SectionTitle>
       {history.length === 0 ? (
         <p className="text-sm text-text">Rien pour le moment.</p>
       ) : (

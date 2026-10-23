@@ -2,6 +2,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { LeadForm } from "./lead-form";
+import { CheckIcon } from "lucide-react";
 
 export async function generateMetadata({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
@@ -26,9 +27,9 @@ export default async function ReferralPage({ params }: { params: Promise<{ code:
         {site?.url && <> Découvrez le site de {client.name} : <a href={site.url} target="_blank" rel="noreferrer" className="text-title underline">{site.url.replace(/^https?:\/\//, "")}</a>.</>}
       </p>
       <ul className="mt-5 space-y-2 text-sm text-text-strong">
-        <li className="flex gap-2"><span className="text-green">✓</span> Un site en ligne en quelques semaines, maquette validée par vous</li>
-        <li className="flex gap-2"><span className="text-green">✓</span> Les demandes de vos clients et vos visites Google dans une app</li>
-        <li className="flex gap-2"><span className="text-green">✓</span> Des modifications à la demande, une équipe à Paris qui répond</li>
+        <li className="flex gap-2"><CheckIcon size={16} strokeWidth={2} className="mt-0.5 shrink-0 text-green" aria-hidden /> Un site en ligne en quelques semaines, maquette validée par vous</li>
+        <li className="flex gap-2"><CheckIcon size={16} strokeWidth={2} className="mt-0.5 shrink-0 text-green" aria-hidden /> Les demandes de vos clients et vos visites Google dans une app</li>
+        <li className="flex gap-2"><CheckIcon size={16} strokeWidth={2} className="mt-0.5 shrink-0 text-green" aria-hidden /> Des modifications à la demande, une équipe à Paris qui répond</li>
       </ul>
       <div className="mt-8"><LeadForm code={code} /></div>
       <p className="mt-10 text-center text-xs text-muted"><a href="/confidentialite" className="underline">Confidentialité</a> · acco-lab.fr</p>

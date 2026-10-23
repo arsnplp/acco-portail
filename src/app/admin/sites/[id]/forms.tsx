@@ -7,6 +7,7 @@ import { Field, Input, Select, Textarea, FormError } from "@/components/ui/field
 import { SubmitButton } from "@/components/ui/submit-button";
 import { SectionTitle } from "@/components/ui/card";
 import { PROJECT_STEPS } from "@/lib/labels";
+import { PlusIcon, SettingsIcon } from "lucide-react";
 
 type SiteInfo = { id: string; name: string; url: string | null; previewUrl: string | null; screenshotUrl: string | null; status: SiteStatus; projectStep: ProjectStep; searchConsoleProp: string | null; googleLocationId: string | null; repoUrl: string | null; repoBranch: string | null; repoRoot: string | null };
 
@@ -15,7 +16,7 @@ export function SiteForms({ site, properties = [], locations = [] }: { site: Sit
   const [s2, a2] = useActionState<ActionState, FormData>(addHistoryEntry.bind(null, site.id), {});
   return (
     <>
-      <SectionTitle emoji="⚙️">Paramètres du site</SectionTitle>
+      <SectionTitle icon={SettingsIcon}>Paramètres du site</SectionTitle>
       <form action={a1} className="space-y-3 rounded-card border border-border bg-surface p-4">
         <Field label="Nom"><Input name="name" defaultValue={site.name} required /></Field>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -59,7 +60,7 @@ export function SiteForms({ site, properties = [], locations = [] }: { site: Sit
         </div>
       </form>
 
-      <SectionTitle emoji="➕">Ajouter à l’historique</SectionTitle>
+      <SectionTitle icon={PlusIcon}>Ajouter à l’historique</SectionTitle>
       <form action={a2} className="space-y-3 rounded-card border border-border bg-surface p-4">
         <div className="grid gap-3 sm:grid-cols-3">
           <Field label="Type">

@@ -10,6 +10,7 @@ import { UploadDocumentForm } from "@/app/admin/documents/upload-form";
 import { AskClientDocumentForm } from "@/app/admin/documents/ask-form";
 import { cancelRequest, deleteDocument } from "@/app/admin/documents/actions";
 import { fmtDate, timeAgo } from "@/lib/format";
+import { CircleCheckIcon, FileTextIcon, UploadIcon } from "lucide-react";
 
 export default async function ClientDocumentsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -29,7 +30,7 @@ export default async function ClientDocumentsPage({ params }: { params: Promise<
 
   return (
     <AdminPage title="Documents" back={{ href: `/admin/clients/${client.id}`, label: client.name }} action={badge}>
-      <SectionTitle emoji="📤">Vous attendez du client</SectionTitle>
+      <SectionTitle icon={UploadIcon}>Vous attendez du client</SectionTitle>
       <div className="grid gap-2">
         <MoreList title="Attendus du client" limit={3} className="grid gap-2" items={awaitingClient.map((r) => (
           <Card key={r.id} className="flex items-center justify-between gap-3 py-3">
@@ -40,10 +41,10 @@ export default async function ClientDocumentsPage({ params }: { params: Promise<
         <AskClientDocumentForm clientId={client.id} sites={sites} />
       </div>
 
-      <SectionTitle emoji="⬆️">Déposer un document pour le client</SectionTitle>
+      <SectionTitle icon={UploadIcon}>Déposer un document pour le client</SectionTitle>
       <UploadDocumentForm clientId={client.id} sites={sites} />
 
-      <SectionTitle emoji="📄">Documents du client</SectionTitle>
+      <SectionTitle icon={FileTextIcon}>Documents du client</SectionTitle>
       <DocumentSections
         documents={client.documents}
         emptyText="Aucun document pour ce client."
@@ -57,7 +58,7 @@ export default async function ClientDocumentsPage({ params }: { params: Promise<
 
       {done.length > 0 && (
         <>
-          <SectionTitle emoji="✅">Reçus du client</SectionTitle>
+          <SectionTitle icon={CircleCheckIcon}>Reçus du client</SectionTitle>
           <MoreList title="Reçus du client" labels={done.map((r) => r.message ?? "")} items={done.map((r) => (
               <Card key={r.id} className="flex items-center justify-between gap-3 py-3">
                 <div className="min-w-0">

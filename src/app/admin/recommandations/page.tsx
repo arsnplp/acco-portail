@@ -7,6 +7,7 @@ import { Select } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { timeAgo } from "@/lib/format";
 import { markContacted, markSigned, closeReferral } from "./actions";
+import { GiftIcon, PhoneIcon } from "lucide-react";
 
 export const metadata = { title: "Recommandations" };
 
@@ -22,7 +23,7 @@ export default async function RecommandationsAdminPage() {
   return (
     <AdminPage title="Recommandations">
       <p className="-mt-3 mb-4 text-xs text-muted">Récompense actuelle : {reward?.value ?? "non définie"} (modifiable dans Paramètres).</p>
-      <SectionTitle emoji="📞">À traiter ({open.length})</SectionTitle>
+      <SectionTitle icon={PhoneIcon}>À traiter ({open.length})</SectionTitle>
       {open.length === 0 ? <p className="text-sm text-text">Aucune recommandation en attente.</p> : (
         <MoreList title="Recommandations à traiter" labels={open.map((r) => `${r.contactName ?? ""} ${r.referrer.name}`)} className="grid gap-3" items={open.map((r) => (
             <Card key={r.id}>
@@ -42,7 +43,7 @@ export default async function RecommandationsAdminPage() {
                 {r.status === "ENVOYEE" && <form action={markContacted.bind(null, r.id)}><SubmitButton size="sm" variant="secondary" pendingLabel="…">Contactée</SubmitButton></form>}
                 <form action={markSigned.bind(null, r.id)} className="flex items-end gap-2">
                   <label className="text-xs text-text">Client créé<Select name="referredClientId" defaultValue="" className="mt-1 py-2 text-sm"><option value="">Pas encore</option>{clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select></label>
-                  <SubmitButton size="sm" pendingLabel="…">Signé 🎁</SubmitButton>
+                  <SubmitButton size="sm" pendingLabel="…"><GiftIcon size={14} strokeWidth={1.75} aria-hidden /> Signé</SubmitButton>
                 </form>
                 <form action={closeReferral.bind(null, r.id)} className="ml-auto"><SubmitButton size="sm" variant="ghost" pendingLabel="…">Sans suite</SubmitButton></form>
               </div>
@@ -51,7 +52,7 @@ export default async function RecommandationsAdminPage() {
       )}
       {done.length > 0 && (
         <>
-          <SectionTitle emoji="🎁">Signées</SectionTitle>
+          <SectionTitle icon={GiftIcon}>Signées</SectionTitle>
           <MoreList title="Recommandations signées" labels={done.map((r) => `${r.contactName ?? ""} ${r.referrer.name}`)} items={done.map((r) => (
               <Card key={r.id} className="flex items-center justify-between gap-3 py-3">
                 <div><p className="font-medium text-title">{r.contactName}{r.referred ? ` → ${r.referred.name}` : ""}</p><p className="text-xs text-text">par {r.referrer.name} · {r.rewardLabel}</p></div>

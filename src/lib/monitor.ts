@@ -51,15 +51,15 @@ export async function runMonitoring() {
     const wasDown = previous[0] && !previous[0].isUp;
     const link = { label: "Ouvrir la fiche du site", href: appUrl(`/admin/sites/${s.id}`) };
     if (!check.isUp && wasDown && previous[1]?.isUp) {
-      await alertTeam(`⚠️ ${s.name} ne répond plus`, layout(`${s.name} ne répond plus`, `<p>Deux vérifications consécutives ont échoué (${check.statusCode ?? "pas de réponse"}).</p><p>URL : <a href="${s.url}">${s.url}</a></p>`, link));
+      await alertTeam(`${s.name} ne répond plus`, layout(`${s.name} ne répond plus`, `<p>Deux vérifications consécutives ont échoué (${check.statusCode ?? "pas de réponse"}).</p><p>URL : <a href="${s.url}">${s.url}</a></p>`, link));
     } else if (check.isUp && wasDown && previous[1] && !previous[1].isUp) {
-      await alertTeam(`✅ ${s.name} est de retour`, layout(`${s.name} répond à nouveau`, `<p>Temps de réponse : ${check.responseMs} ms.</p>`, link));
+      await alertTeam(`${s.name} est de retour`, layout(`${s.name} répond à nouveau`, `<p>Temps de réponse : ${check.responseMs} ms.</p>`, link));
     }
     if (check.sslExpiresAt) {
       const days = Math.floor((check.sslExpiresAt.getTime() - Date.now()) / 86400_000);
       const alreadyToday = previous[0]?.sslExpiresAt && previous[0].checkedAt.toDateString() === new Date().toDateString() && (previous[0].sslExpiresAt.getTime() - previous[0].checkedAt.getTime()) / 86400_000 < 14;
       if (days < 14 && !alreadyToday) {
-        await alertTeam(`🔒 Certificat SSL de ${s.name} : ${days} jour${days > 1 ? "s" : ""}`, layout(`Le certificat de ${s.name} expire dans ${days} jour${days > 1 ? "s" : ""}`, `<p>Renouvelez-le (certbot) avant le ${check.sslExpiresAt.toLocaleDateString("fr-FR")}.</p>`, link));
+        await alertTeam(`Certificat SSL de ${s.name} : ${days} jour${days > 1 ? "s" : ""}`, layout(`Le certificat de ${s.name} expire dans ${days} jour${days > 1 ? "s" : ""}`, `<p>Renouvelez-le (certbot) avant le ${check.sslExpiresAt.toLocaleDateString("fr-FR")}.</p>`, link));
       }
     }
   }

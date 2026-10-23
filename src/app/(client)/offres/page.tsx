@@ -7,6 +7,7 @@ import { SectionTitle } from "@/components/ui/card";
 import { Empty } from "@/components/ui/empty";
 import { activePromo } from "@/lib/offers";
 import { OfferCard } from "./offer-card";
+import { FlameIcon, SparklesIcon } from "lucide-react";
 
 export const metadata = { title: "Offres" };
 
@@ -35,13 +36,13 @@ export default async function OffresPage() {
       {cards.length === 0 && <Empty icon={Tag} title="Aucune offre pour le moment" />}
       {promoCards.length > 0 && (
         <>
-          <SectionTitle emoji="🔥">En ce moment</SectionTitle>
+          <SectionTitle icon={FlameIcon}>En ce moment</SectionTitle>
           <div className="grid gap-3">{promoCards.map((c) => <OfferCard key={c.offer.id} {...c} sites={siteOptions} />)}</div>
         </>
       )}
       {others.length > 0 && (
         <>
-          <SectionTitle emoji="✨">Nos services</SectionTitle>
+          <SectionTitle icon={SparklesIcon}>Nos services</SectionTitle>
           <MoreList title="Nos services" labels={others.map((c) => c.offer.name)} limit={4} className="grid gap-3" items={others.map((c) => <OfferCard key={c.offer.id} {...c} sites={siteOptions} />)} />
         </>
       )}

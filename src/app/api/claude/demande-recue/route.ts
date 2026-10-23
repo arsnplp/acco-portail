@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   if (!cr) return NextResponse.json({ error: "demande introuvable" }, { status: 404 });
   await notifyAdmins({
     pref: "changes", tag: `modif-${cr.id}`, href: "/admin/modifications",
-    title: `${cr.urgency === "URGENTE" ? "🔴 Demande urgente" : "Nouvelle demande de modif"} · ${cr.site.name}`,
+    title: `${cr.urgency === "URGENTE" ? "Demande urgente" : "Nouvelle demande de modif"} · ${cr.site.name}`,
     body: `${cr.site.client.name} : ${excerpt(cr.title)}`,
   });
   return NextResponse.json({ ok: true });

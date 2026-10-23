@@ -36,7 +36,7 @@ export async function sendTestPush(): Promise<{ ok: boolean; devices: number }> 
   const admin = await requireAdmin();
   const devices = await prisma.pushSubscription.count({ where: { userId: admin.id } });
   const { sendPushToUser } = await import("@/lib/push");
-  await sendPushToUser(admin.id, { title: "Test Acco 🔔", body: "Les notifications fonctionnent sur cet appareil.", url: `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/admin/parametres`, tag: "test" });
+  await sendPushToUser(admin.id, { title: "Test Acco", body: "Les notifications fonctionnent sur cet appareil.", url: `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/admin/parametres`, tag: "test" });
   return { ok: devices > 0, devices };
 }
 

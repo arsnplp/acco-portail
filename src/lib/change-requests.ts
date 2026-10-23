@@ -16,7 +16,7 @@ export async function recordChangeHistory(
 export function changeDoneNotification(cr: Pick<ChangeRequest, "id" | "siteId" | "title">, site: Pick<Site, "clientId">) {
   return {
     clientId: site.clientId, siteId: cr.siteId, kind: "MODIFICATION_TERMINEE" as const, pref: "changes" as const,
-    title: "Votre modification est en ligne ✅", body: cr.title, href: `/sites/${cr.siteId}/modifications/${cr.id}`,
+    title: "Votre modification est en ligne", body: cr.title, href: `/sites/${cr.siteId}/modifications/${cr.id}`,
   };
 }
 

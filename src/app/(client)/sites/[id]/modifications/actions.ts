@@ -47,7 +47,7 @@ export async function createChangeRequest(siteId: string, _prev: ChangeFormState
   });
   after(() => notifyAdmins({
     pref: "changes", tag: `modif-${cr.id}`, href: "/admin/modifications",
-    title: `${cr.urgency === "URGENTE" ? "🔴 Demande urgente" : "Nouvelle demande de modif"} · ${site.name}`,
+    title: `${cr.urgency === "URGENTE" ? "Demande urgente" : "Nouvelle demande de modif"} · ${site.name}`,
     body: `${client.name} : ${excerpt(cr.title)}`,
   }));
   revalidatePath(`/sites/${site.id}/modifications`);

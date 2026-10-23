@@ -8,6 +8,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { fmtPrice, timeAgo } from "@/lib/format";
 import { MODULE_LABEL } from "@/lib/offers";
 import { validateOrder, refuseOrder } from "./actions";
+import { BellRingIcon, FolderOpenIcon } from "lucide-react";
 
 export const metadata = { title: "Commandes" };
 
@@ -22,7 +23,7 @@ export default async function CommandesPage() {
 
   return (
     <AdminPage title="Commandes">
-      <SectionTitle emoji="🛎️">À traiter ({todo.length})</SectionTitle>
+      <SectionTitle icon={BellRingIcon}>À traiter ({todo.length})</SectionTitle>
       {todo.length === 0 ? <p className="text-sm text-text">Rien à traiter.</p> : (
         <MoreList title="Commandes à traiter" labels={todo.map((o) => `${o.client.name} ${o.offer.name}`)} className="grid gap-3" items={todo.map((o) => (
             <Card key={o.id}>
@@ -52,7 +53,7 @@ export default async function CommandesPage() {
 
       {done.length > 0 && (
         <>
-          <SectionTitle emoji="🗂️">Historique</SectionTitle>
+          <SectionTitle icon={FolderOpenIcon}>Historique</SectionTitle>
           <MoreList title="Historique des commandes" labels={done.map((o) => `${o.client.name} ${o.offer.name}`)} items={done.map((o) => (
               <Card key={o.id} className="flex items-center justify-between gap-3 py-3">
                 <div className="min-w-0"><p className="truncate font-medium text-title">{o.offer.name}</p><p className="text-xs text-text">{o.client.name}{o.site ? ` · ${o.site.name}` : ""} · {o.validatedBy?.firstName ?? ""} · {timeAgo(o.validatedAt ?? o.createdAt)}</p></div>

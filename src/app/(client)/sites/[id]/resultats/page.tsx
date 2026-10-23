@@ -7,6 +7,7 @@ import { Empty } from "@/components/ui/empty";
 import { LineChart } from "@/components/charts/line-chart";
 import { MONTHS, monthLabel, previousMonth } from "@/lib/recaps";
 import { fmtDate } from "@/lib/format";
+import { CalendarDaysIcon, SearchIcon, TrendingUpIcon } from "lucide-react";
 
 export const metadata = { title: "Résultats" };
 
@@ -39,12 +40,12 @@ export default async function ResultatsPage({ params }: { params: Promise<{ id: 
         <Stat value={cur.position} prev={prev?.position} label="position moyenne" lowerIsBetter decimals={1} />
       </div>
 
-      <SectionTitle emoji="📈">Visites sur 12 mois</SectionTitle>
+      <SectionTitle icon={TrendingUpIcon}>Visites sur 12 mois</SectionTitle>
       <Card>
         <LineChart points={serie.map((s) => s.clicks)} labels={serie.map((s) => MONTHS[s.month - 1].slice(0, 3))} />
       </Card>
 
-      <SectionTitle emoji="🔎">Ce que les gens tapent pour vous trouver</SectionTitle>
+      <SectionTitle icon={SearchIcon}>Ce que les gens tapent pour vous trouver</SectionTitle>
       {top.length === 0 ? <Empty icon={Search} title="Pas encore assez de données" /> : (
         <Card className="divide-y divide-border p-0">
           {top.map((q, i) => (
@@ -59,7 +60,7 @@ export default async function ResultatsPage({ params }: { params: Promise<{ id: 
 
       {recaps.length > 0 && (
         <>
-          <SectionTitle emoji="🗓️">Vos récaps mensuels</SectionTitle>
+          <SectionTitle icon={CalendarDaysIcon}>Vos récaps mensuels</SectionTitle>
           <MoreList title="Récaps mensuels" limit={3} items={recaps.map((r) => (
               <details key={r.id} className="rounded-card border border-border bg-surface" open={r.id === recaps[0].id}>
                 <summary className="flex cursor-pointer items-center justify-between px-4 py-3">

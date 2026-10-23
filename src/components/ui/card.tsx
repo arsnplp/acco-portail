@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 
@@ -7,11 +8,11 @@ export function Card({ className, children, href, id }: { className?: string; ch
   return <div id={id} className={cls}>{children}</div>;
 }
 
-export function SectionTitle({ emoji, children, action }: { emoji?: string; children: React.ReactNode; action?: React.ReactNode }) {
+export function SectionTitle({ icon: Icon, children, action }: { icon?: LucideIcon; children: React.ReactNode; action?: React.ReactNode }) {
   return (
     <div className="flex items-end justify-between mb-3 mt-8 first:mt-0">
       <h2 className="text-lg flex items-center gap-2">
-        {emoji && <span aria-hidden>{emoji}</span>}
+        {Icon && <Icon size={18} strokeWidth={1.75} className="shrink-0 text-text" aria-hidden />}
         {children}
       </h2>
       {action}

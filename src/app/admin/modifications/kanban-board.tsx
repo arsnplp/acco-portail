@@ -2,7 +2,7 @@
 
 import { createContext, use, useActionState, useMemo, useOptimistic, useState, useTransition } from "react";
 import Link from "next/link";
-import { Paperclip, MessageSquare, ArrowRight, ArrowLeft, GripVertical, Sparkles, LoaderCircle, ExternalLink, GitCompare, RotateCcw, Rocket, Undo2 } from "lucide-react";
+import { Paperclip, MessageSquare, ArrowRight, ArrowLeft, GripVertical, Sparkles, LoaderCircle, ExternalLink, GitCompare, RotateCcw, Rocket, Undo2, TriangleAlert } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 import { Select } from "@/components/ui/field";
 import type { ChangeRequestStatus, ClaudeJobState, Urgency } from "@prisma/client";
@@ -241,7 +241,7 @@ function ClaudePanel({ r, onMove }: { r: KanbanItem; onMove: (id: string, s: Cha
     return (
       <div className={box}>
         <p className="mb-1.5 inline-flex items-center gap-1 font-semibold text-claude"><Sparkles size={13} /> Fait par Claude</p>
-        {r.claudeError && <p className="mb-1.5 text-pink">⚠ {r.claudeError}</p>}
+        {r.claudeError && <p className="mb-1.5 flex items-start gap-1.5 text-pink"><TriangleAlert size={13} className="mt-0.5 shrink-0" aria-hidden /> {r.claudeError}</p>}
         {r.claudeSummary && <p className="line-clamp-3 text-text-strong">{plain(r.claudeSummary)}</p>}
         <div className="mt-2.5 grid grid-cols-2 gap-2">
           <a href={r.claudePreviewUrl!} target="_blank" rel="noreferrer" className={claudeBtn}><ExternalLink size={12} /> Aperçu</a>
@@ -255,7 +255,7 @@ function ClaudePanel({ r, onMove }: { r: KanbanItem; onMove: (id: string, s: Cha
   if (!showDelegate && !(r.status === "A_VALIDER" && r.claudeError)) return null;
   return (
     <div className={box}>
-      {r.claudeError && <p className="mb-2 text-pink">⚠ {r.claudeError}</p>}
+      {r.claudeError && <p className="mb-2 flex items-start gap-1.5 text-pink"><TriangleAlert size={13} className="mt-0.5 shrink-0" aria-hidden /> {r.claudeError}</p>}
       {showDelegate && (
         <form action={action}>
           {!enabled ? (
@@ -283,7 +283,7 @@ function ClaudeDialog({ r, onClose, onMove }: { r: KanbanItem; onClose: () => vo
   return (
     <Dialog size="lg" onClose={onClose} title={<span className="inline-flex items-center gap-2"><Sparkles size={16} className="text-claude" /> {r.title}</span>}>
       <p className="mb-4 text-xs text-text">{r.clientName} · {r.siteName}</p>
-      {r.claudeError && <p className="mb-4 rounded-card border border-pink/40 p-3 text-sm text-pink">⚠ {r.claudeError}</p>}
+      {r.claudeError && <p className="mb-4 flex items-start gap-2 rounded-card border border-pink/40 p-3 text-sm text-pink"><TriangleAlert size={15} className="mt-0.5 shrink-0" aria-hidden /> {r.claudeError}</p>}
 
       <div className="rounded-card border border-claude/30 bg-claude/[0.06] p-4">
         <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-claude">Compte rendu de Claude</p>

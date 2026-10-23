@@ -26,7 +26,7 @@ export async function syncReviews(siteId: string, opts: { notify?: boolean } = {
     if (opts.notify && !r.reply && Date.now() - r.publishedAt.getTime() < 30 * 86400_000) {
       await notifyClient({
         clientId: site.clientId, siteId, kind: "NOUVEL_AVIS", pref: "reviews",
-        title: `Nouvel avis ${"★".repeat(r.rating)} de ${r.authorName}`,
+        title: `Nouvel avis ${r.rating}/5 de ${r.authorName}`,
         body: r.text ? r.text.slice(0, 120) : "Sans commentaire. Une réponse est prête à publier.",
         href: `/sites/${siteId}/avis`,
       });

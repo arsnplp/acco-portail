@@ -17,6 +17,7 @@ import { connectedGoogleEmail } from "@/lib/google-oauth";
 import { aiConfigured } from "@/lib/ai";
 import { getSecret } from "@/lib/settings";
 import { monthLabel } from "@/lib/recaps";
+import { ActivityIcon, ChartColumnIcon, ClockIcon, KeyRoundIcon, PaperclipIcon, PuzzleIcon, StarIcon, WrenchIcon } from "lucide-react";
 
 export default async function SiteAdminPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -44,7 +45,7 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
     <AdminPage title={site.name} back={{ href: `/admin/clients/${site.clientId}`, label: site.client.name }} action={<Badge tone={SITE_STATUS[site.status].tone}>{SITE_STATUS[site.status].label}</Badge>}>
       {site.status === "EN_LIGNE" && site.url && (
         <>
-          <SectionTitle emoji="🩺">État du site</SectionTitle>
+          <SectionTitle icon={ActivityIcon}>État du site</SectionTitle>
           <Card className="space-y-3">
             {site.healthChecks[0] ? (() => {
               const h = site.healthChecks[0];
@@ -63,7 +64,7 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
         </>
       )}
 
-      <SectionTitle emoji="🔑">Clé formulaire</SectionTitle>
+      <SectionTitle icon={KeyRoundIcon}>Clé formulaire</SectionTitle>
       <Card className="py-3">
         <code className="break-all text-sm text-text-strong">{site.siteKey}</code>
         <p className="mt-1 text-xs text-muted">Point d’entrée : <code>POST {process.env.NEXT_PUBLIC_APP_URL}/api/forms/{site.siteKey}</code></p>
@@ -74,7 +75,7 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
         </details>
       </Card>
 
-      <SectionTitle emoji="🧩">Modules actifs</SectionTitle>
+      <SectionTitle icon={PuzzleIcon}>Modules actifs</SectionTitle>
       <div className="flex flex-wrap gap-2">
         {site.subscriptions.length === 0 && <p className="text-sm text-text">Aucun abonnement actif sur ce site.</p>}
         {site.subscriptions.map((s) => <Badge key={s.id} tone={s.module === "NONE" ? "neutral" : "green"}>{s.label}</Badge>)}
@@ -82,7 +83,7 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
 
       {site.changeRequests.length > 0 && (
         <>
-          <SectionTitle emoji="🛠️">Modifications ouvertes</SectionTitle>
+          <SectionTitle icon={WrenchIcon}>Modifications ouvertes</SectionTitle>
           <div className="grid gap-2">
             {site.changeRequests.map((r) => (
               <Card key={r.id} href="/admin/modifications" className="flex items-center justify-between py-3">
@@ -96,7 +97,7 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
 
       {site.status === "EN_LIGNE" && (
         <>
-          <SectionTitle emoji="📊">Search Console et récap mensuel</SectionTitle>
+          <SectionTitle icon={ChartColumnIcon}>Search Console et récap mensuel</SectionTitle>
           <Card className="space-y-3">
             <p className="text-xs text-text">
               {googleOn ? <>Google connecté{googleEmail ? ` (${googleEmail})` : ""}. {site.searchConsoleProp ? `Propriété : ${site.searchConsoleProp}` : <span className="text-yellow">Choisissez la propriété Search Console dans les paramètres ci-dessous.</span>}</> : <>Mode démo : Google n’est pas connecté (Paramètres → Connecter Google), les chiffres sont simulés.</>}
@@ -121,7 +122,7 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
 
       {avisActive && (
         <>
-          <SectionTitle emoji="⭐">Avis Google</SectionTitle>
+          <SectionTitle icon={StarIcon}>Avis Google</SectionTitle>
           <Card className="space-y-2">
             <p className="text-xs text-text">
               {bizApi ? (site.googleLocationId ? `Fiche liée : ${site.googleLocationId}` : <span className="text-yellow">Choisissez la fiche Google dans les paramètres ci-dessous.</span>) : "Mode démo : avis d’exemple tant que Google n’a pas validé l’accès à l’API Business Profile (à activer dans Paramètres → Clés et services)."}
@@ -136,7 +137,7 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
 
       {site.status === "EN_CREATION" && (
         <>
-          <SectionTitle emoji="📎">Éléments demandés au client</SectionTitle>
+          <SectionTitle icon={PaperclipIcon}>Éléments demandés au client</SectionTitle>
           <div className="grid gap-2">
             {site.assets.map((a) => (
               <Card key={a.id} className="flex items-center justify-between py-3">
@@ -153,7 +154,7 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
         </>
       )}
 
-      <SectionTitle emoji="🕓">Historique</SectionTitle>
+      <SectionTitle icon={ClockIcon}>Historique</SectionTitle>
       {site.history.length === 0 ? <p className="text-sm text-text">Vide.</p> : (
         <Timeline items={site.history.map((h) => ({ id: h.id, date: h.happenedAt, title: h.title, description: h.description, items: h.items, tone: h.kind === "CREATION" ? "blue" : h.kind === "MISE_EN_LIGNE" ? "green" : "neutral" }))} />
       )}

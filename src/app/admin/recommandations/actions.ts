@@ -27,7 +27,7 @@ export async function markSigned(referralId: string, formData: FormData) {
   await prisma.referral.update({ where: { id: ref.id }, data: { status: "RECOMPENSE_VALIDEE", rewardLabel: reward, rewardedAt: new Date(), referredClientId } });
   await notifyClient({
     clientId: ref.referrerClientId, kind: "RECOMPENSE_PARRAINAGE", pref: "offers",
-    title: "Merci pour votre recommandation 🎁",
+    title: "Merci pour votre recommandation",
     body: `${ref.contactName ?? "Votre contact"} a signé avec Acco : ${reward}.`,
     href: "/compte/recommandations",
   });

@@ -9,6 +9,8 @@ import { ShareLink } from "./share-link";
 import { RecommendForm } from "./recommend-form";
 import { fmtDateShort } from "@/lib/format";
 import { REFERRAL_STEPS } from "@/lib/referrals";
+import { ClipboardListIcon, ContactIcon, Link2Icon } from "lucide-react";
+import { GiftIcon } from "lucide-react";
 
 export const metadata = { title: "Recommandations" };
 
@@ -30,13 +32,13 @@ export default async function RecommandationsPage() {
         <p className="text-sm text-text-strong">Pour chaque recommandation qui signe avec Acco : <strong className="text-title">{reward?.value ?? "une récompense"}</strong>.</p>
       </Card>
 
-      <SectionTitle emoji="🔗">Votre lien à partager</SectionTitle>
+      <SectionTitle icon={Link2Icon}>Votre lien à partager</SectionTitle>
       <Card><ShareLink url={url} firstName={firstName} /></Card>
 
-      <SectionTitle emoji="📇">Ou donnez-nous un contact</SectionTitle>
+      <SectionTitle icon={ContactIcon}>Ou donnez-nous un contact</SectionTitle>
       <RecommendForm />
 
-      <SectionTitle emoji="📋">Vos recommandations</SectionTitle>
+      <SectionTitle icon={ClipboardListIcon}>Vos recommandations</SectionTitle>
       {referrals.length === 0 ? <p className="text-sm text-text">Aucune pour le moment. Votre première recommandation apparaîtra ici avec son avancement.</p> : (
         <MoreList title="Vos recommandations" limit={3} items={referrals.map((r) => {
             const idx = REFERRAL_STEPS.findIndex((s) => s.key === r.status);
@@ -54,7 +56,7 @@ export default async function RecommandationsPage() {
                     </li>
                   ))}
                 </ol>
-                {r.status === "RECOMPENSE_VALIDEE" && <p className="mt-3 text-sm text-green">🎁 {r.rewardLabel ?? "Récompense validée"}</p>}
+                {r.status === "RECOMPENSE_VALIDEE" && <p className="mt-3 flex items-center gap-1.5 text-sm text-green"><GiftIcon size={15} strokeWidth={1.75} aria-hidden /> {r.rewardLabel ?? "Récompense validée"}</p>}
               </Card>
             );
           })} />

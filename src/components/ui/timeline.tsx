@@ -1,6 +1,7 @@
 import { fmtDate } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import type { Tone } from "@/components/ui/badge";
+import { CheckIcon } from "lucide-react";
 
 export type TimelineItem = { id: string; date: Date; title: string; description?: string | null; items?: string[]; tone?: Tone };
 
@@ -19,7 +20,7 @@ export function Timeline({ items }: { items: TimelineItem[] }) {
             <ul className="mt-2 space-y-1">
               {it.items.map((s, i) => (
                 <li key={i} className="flex gap-2 text-sm text-text-strong">
-                  <span className="text-green">✓</span>
+                  <CheckIcon size={15} strokeWidth={2} className="mt-0.5 shrink-0 text-green" aria-hidden />
                   <span>{s}</span>
                 </li>
               ))}

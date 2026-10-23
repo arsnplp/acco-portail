@@ -14,10 +14,12 @@ import { pendingReviewPrompt } from "@/lib/review-prompt";
 import { activePromo } from "@/lib/offers";
 import { answerReviewPrompt } from "./actions";
 import type { NotificationKind } from "@prisma/client";
+import { BellIcon, GlobeIcon } from "lucide-react";
+import { InboxIcon, CircleCheckIcon, TrendingUpIcon, MessageSquareIcon, PartyPopperIcon, PuzzleIcon, GiftIcon, TriangleAlertIcon, FileTextIcon, UploadIcon, StarIcon, type LucideIcon } from "lucide-react";
 
-const KIND_EMOJI: Record<NotificationKind, string> = {
-  DEMANDE_CONTACT: "📬", NOUVEL_AVIS: "⭐", MODIFICATION_TERMINEE: "✅", RECAP_MENSUEL: "📈", MESSAGE_EQUIPE: "💬",
-  SITE_EN_LIGNE: "🎉", COMMANDE_VALIDEE: "🧩", RECOMPENSE_PARRAINAGE: "🎁", ALERTE_SITE: "⚠️", DOCUMENT_DISPONIBLE: "📄", DOCUMENT_DEMANDE: "📤",
+const KIND_ICON: Record<NotificationKind, LucideIcon> = {
+  DEMANDE_CONTACT: InboxIcon, NOUVEL_AVIS: StarIcon, MODIFICATION_TERMINEE: CircleCheckIcon, RECAP_MENSUEL: TrendingUpIcon, MESSAGE_EQUIPE: MessageSquareIcon,
+  SITE_EN_LIGNE: PartyPopperIcon, COMMANDE_VALIDEE: PuzzleIcon, RECOMPENSE_PARRAINAGE: GiftIcon, ALERTE_SITE: TriangleAlertIcon, DOCUMENT_DISPONIBLE: FileTextIcon, DOCUMENT_DEMANDE: UploadIcon,
 };
 
 export default async function AccueilPage() {
@@ -73,7 +75,7 @@ export default async function AccueilPage() {
         </Card>
       ) : null}
 
-      <SectionTitle emoji="🌐">Vos sites</SectionTitle>
+      <SectionTitle icon={GlobeIcon}>Vos sites</SectionTitle>
       <div className="grid gap-3">
         {sites.map((s) => (
           <Card key={s.id} href={`/sites/${s.id}`} className="flex items-center justify-between">
@@ -84,14 +86,14 @@ export default async function AccueilPage() {
         {sites.length === 0 && <Empty icon={Globe} title="Aucun site pour le moment" />}
       </div>
 
-      <SectionTitle emoji="🔔">Quoi de neuf</SectionTitle>
+      <SectionTitle icon={BellIcon}>Quoi de neuf</SectionTitle>
       {notifications.length === 0 ? (
         <Empty icon={Inbox} title="Rien de nouveau" text="Les demandes de clients, avis, modifications terminées et récaps apparaîtront ici." />
       ) : (
         <MoreList title="Quoi de neuf" limit={5} items={notifications.map((n) => (
             <Card key={n.id} href={n.href ?? undefined} className="py-3">
               <div className="flex items-start gap-3">
-                <span className="mt-0.5 text-lg leading-none" aria-hidden>{KIND_EMOJI[n.kind]}</span>
+                {(() => { const KindIcon = KIND_ICON[n.kind]; return <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full border border-border bg-surface-2"><KindIcon size={15} strokeWidth={1.75} className={n.kind === "ALERTE_SITE" ? "text-pink" : "text-text-strong"} aria-hidden /></span>; })()}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-3">
                     <p className="font-medium text-title">{n.title}</p>

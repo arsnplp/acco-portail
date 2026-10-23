@@ -9,6 +9,7 @@ import { promoPrice } from "@/lib/offers";
 import { OfferForm } from "../offer-form";
 import { PromoForm } from "./promo-form";
 import { toggleArchive, deletePromotion } from "../actions";
+import { TagIcon } from "lucide-react";
 
 export default async function OfferAdminPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -21,7 +22,7 @@ export default async function OfferAdminPage({ params }: { params: Promise<{ id:
     }>
       <OfferForm offer={offer} />
 
-      <SectionTitle emoji="🏷️">Promotions</SectionTitle>
+      <SectionTitle icon={TagIcon}>Promotions</SectionTitle>
       <div className="grid gap-2">
         {offer.promotions.map((p) => {
           const live = p.startsAt <= now && p.endsAt > now;

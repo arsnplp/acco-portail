@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { fmtPrice } from "@/lib/format";
 import { activePromo, MODULE_LABEL } from "@/lib/offers";
 import { OfferForm } from "./offer-form";
+import { PlusIcon } from "lucide-react";
 
 export const metadata = { title: "Offres" };
 
@@ -32,7 +33,7 @@ export default async function OffresAdminPage() {
             </Card>
           );
         })} />
-      <SectionTitle emoji="➕">Nouvelle offre</SectionTitle>
+      <SectionTitle icon={PlusIcon}>Nouvelle offre</SectionTitle>
       <OfferForm />
     </AdminPage>
   );

@@ -4,6 +4,7 @@ import { Card, SectionTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { addDays, fmtDate, daysUntil } from "@/lib/format";
 import { cn } from "@/lib/cn";
+import { CircleCheckIcon, HourglassIcon } from "lucide-react";
 
 export const metadata = { title: "Tableau de bord" };
 
@@ -40,7 +41,7 @@ export default async function AdminHome() {
       <h1 className="text-2xl">Tableau de bord</h1>
       <p className="mt-1 text-sm text-text">{clients} client{clients > 1 ? "s" : ""} · {sites} site{sites > 1 ? "s" : ""} · {total === 0 ? "rien à traiter, tout est à jour" : `${total} chose${total > 1 ? "s" : ""} à traiter`}</p>
 
-      <SectionTitle emoji="✅">À traiter</SectionTitle>
+      <SectionTitle icon={CircleCheckIcon}>À traiter</SectionTitle>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {todo.map((t) => (
           <Card key={t.href} href={t.href} className={cn(t.n > 0 && "border-pink/40")}>
@@ -50,7 +51,7 @@ export default async function AdminHome() {
         ))}
       </div>
 
-      <SectionTitle emoji="⏳">Engagements qui se terminent sous 60 jours</SectionTitle>
+      <SectionTitle icon={HourglassIcon}>Engagements qui se terminent sous 60 jours</SectionTitle>
       {ending.length === 0 ? (
         <p className="text-sm text-text">Aucun engagement n’arrive à échéance dans les deux prochains mois.</p>
       ) : (

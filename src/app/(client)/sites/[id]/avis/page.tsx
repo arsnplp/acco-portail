@@ -13,6 +13,7 @@ import { fmtDateShort } from "@/lib/format";
 import { ReplyForm } from "./reply-form";
 import { refreshReviews } from "./actions";
 import { isStale } from "@/lib/reviews";
+import { CircleCheckIcon, MessageSquareIcon } from "lucide-react";
 
 export const metadata = { title: "Avis" };
 
@@ -49,7 +50,7 @@ export default async function AvisPage({ params }: { params: Promise<{ id: strin
       </Card>
       {isDemo && <p className="mt-2 text-xs text-muted">Aperçu avec des avis d’exemple : vos vrais avis Google apparaîtront dès que Google aura validé l’accès de votre fiche.</p>}
 
-      <SectionTitle emoji="💬">À répondre {unanswered.length > 0 && <span className="text-sm font-normal text-text">({unanswered.length})</span>}</SectionTitle>
+      <SectionTitle icon={MessageSquareIcon}>À répondre {unanswered.length > 0 && <span className="text-sm font-normal text-text">({unanswered.length})</span>}</SectionTitle>
       {unanswered.length === 0 ? (
         <Empty icon={MessageSquareText} title="Vous avez répondu à tout le monde" text="Bravo, c’est ce que Google aime voir." />
       ) : (
@@ -62,7 +63,7 @@ export default async function AvisPage({ params }: { params: Promise<{ id: strin
 
       {answered.length > 0 && (
         <>
-          <SectionTitle emoji="✅">Déjà répondus</SectionTitle>
+          <SectionTitle icon={CircleCheckIcon}>Déjà répondus</SectionTitle>
           <MoreList title="Avis déjà répondus" labels={answered.map((r) => r.authorName)} limit={5} items={answered.map((r) => (
               <ReviewCard key={r.id} r={r}>
                 <div className="mt-3 rounded-sm border-l-2 border-green pl-3">

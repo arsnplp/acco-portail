@@ -10,6 +10,7 @@ import { fmtPrice, fmtDate } from "@/lib/format";
 import { CompanyForm, ProfileForm, NotificationPrefsForm } from "./forms";
 import { switchClient } from "./actions";
 import { EnablePush } from "@/components/push/enable-push";
+import { ArrowLeftRightIcon, BellIcon, CreditCardIcon, FileTextIcon, HandshakeIcon, StarIcon, StoreIcon, UserIcon } from "lucide-react";
 
 export const metadata = { title: "Mon compte" };
 
@@ -27,7 +28,7 @@ export default async function ComptePage() {
     <Page title="Mon compte" subtitle={displayName(user)}>
       {user.memberships.length > 1 && (
         <>
-          <SectionTitle emoji="🔀">Entreprise affichée</SectionTitle>
+          <SectionTitle icon={ArrowLeftRightIcon}>Entreprise affichée</SectionTitle>
           <div className="grid gap-2">
             {user.memberships.map((m) => (
               <form key={m.clientId} action={switchClient.bind(null, m.clientId)}>
@@ -41,16 +42,16 @@ export default async function ComptePage() {
         </>
       )}
 
-      <SectionTitle emoji="🏪">Entreprise</SectionTitle>
+      <SectionTitle icon={StoreIcon}>Entreprise</SectionTitle>
       <CompanyForm client={{ name: client.name, address: client.address, phone: client.phone, email: client.email }} editable={isOwner} />
 
-      <SectionTitle emoji="📄">Documents</SectionTitle>
+      <SectionTitle icon={FileTextIcon}>Documents</SectionTitle>
       <Card href="/compte/documents" className="flex items-center justify-between py-3">
         <div className="flex items-center gap-3"><FileText size={20} strokeWidth={1.5} className="text-text" /><div><p className="font-medium text-title">Contrats, factures, devis</p><p className="text-xs text-text">{docCount} document{docCount > 1 ? "s" : ""}</p></div></div>
         <ChevronRight size={18} className="text-text" />
       </Card>
 
-      <SectionTitle emoji="💳">Abonnements et modules</SectionTitle>
+      <SectionTitle icon={CreditCardIcon}>Abonnements et modules</SectionTitle>
       <div className="grid gap-2">
         <MoreList title="Abonnements" limit={3} className="grid gap-2" items={subs.map((s) => (
           <Card key={s.id} className="flex items-center justify-between gap-3 py-3">
@@ -64,22 +65,22 @@ export default async function ComptePage() {
         {subs.length === 0 && <p className="text-sm text-text">Aucun abonnement actif.</p>}
       </div>
 
-      <SectionTitle emoji="🤝">Recommandations</SectionTitle>
+      <SectionTitle icon={HandshakeIcon}>Recommandations</SectionTitle>
       <Card href="/compte/recommandations" className="flex items-center justify-between py-3">
         <div><p className="font-medium text-title">Recommander Acco</p><p className="text-xs text-text">Votre lien à partager, vos recommandations et leur avancement.</p></div>
         <ChevronRight size={18} className="text-text" />
       </Card>
 
-      <SectionTitle emoji="⭐">Noter Acco</SectionTitle>
+      <SectionTitle icon={StarIcon}>Noter Acco</SectionTitle>
       <Card className="flex items-center justify-between gap-3 py-3">
         <p className="text-sm text-text">Un avis sur Google nous aide énormément. Merci !</p>
         <Button variant="secondary" size="sm" href={reviewUrl?.value ?? "#"}><Star size={14} /> Laisser un avis</Button>
       </Card>
 
-      <SectionTitle emoji="👤">Vous</SectionTitle>
+      <SectionTitle icon={UserIcon}>Vous</SectionTitle>
       <ProfileForm user={{ firstName: user.firstName, lastName: user.lastName, email: user.email }} />
 
-      <SectionTitle emoji="🔔">Notifications</SectionTitle>
+      <SectionTitle icon={BellIcon}>Notifications</SectionTitle>
       <Card className="mb-3"><EnablePush /></Card>
       <NotificationPrefsForm prefs={prefs} />
 

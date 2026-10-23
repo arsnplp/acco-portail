@@ -14,6 +14,7 @@ import { requireAdmin } from "@/lib/auth";
 import { secretsStatus, featureToggles } from "@/lib/settings";
 import { NewPasswordForm } from "@/app/nouveau-mot-de-passe/form";
 import { LogOut } from "lucide-react";
+import { BellIcon, KeyRoundIcon, Link2Icon, LockIcon, SettingsIcon } from "lucide-react";
 
 export const metadata = { title: "Paramètres" };
 
@@ -35,7 +36,7 @@ export default async function ParametresPage({ searchParams }: { searchParams: P
 
   return (
     <AdminPage title="Paramètres">
-      <SectionTitle emoji="🔗">Google (Search Console et fiche Google)</SectionTitle>
+      <SectionTitle icon={Link2Icon}>Google (Search Console et fiche Google)</SectionTitle>
       <Card className="space-y-3">
         {google && <p className={`text-sm ${google === "ok" ? "text-green" : "text-pink"}`}>{GOOGLE_MSG[google] ?? ""}</p>}
         {email ? (
@@ -62,19 +63,19 @@ export default async function ParametresPage({ searchParams }: { searchParams: P
         )}
       </Card>
 
-      <SectionTitle emoji="🔑">Clés et services</SectionTitle>
+      <SectionTitle icon={KeyRoundIcon}>Clés et services</SectionTitle>
       <ServicesForm secrets={secrets} toggles={toggles} googleConnected={Boolean(email)} />
 
-      <SectionTitle emoji="🔔">Mes notifications</SectionTitle>
+      <SectionTitle icon={BellIcon}>Mes notifications</SectionTitle>
       <AdminNotifForm prefs={notifPrefs} />
 
-      <SectionTitle emoji="🔐">Mon accès</SectionTitle>
+      <SectionTitle icon={LockIcon}>Mon accès</SectionTitle>
       <div className="grid gap-3">
         <details className="rounded-card border border-border bg-surface"><summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-title">Changer mon mot de passe</summary><div className="border-t border-border p-4"><NewPasswordForm compact next="/admin/parametres" /></div></details>
         <form action="/auth/deconnexion" method="post"><Button variant="secondary" type="submit" className="w-full"><LogOut size={18} strokeWidth={1.75} /> Se déconnecter</Button></form>
       </div>
 
-      <SectionTitle emoji="⚙️">Agence</SectionTitle>
+      <SectionTitle icon={SettingsIcon}>Agence</SectionTitle>
       <form action={saveSettings} className="space-y-3 rounded-card border border-border bg-surface p-4">
         <Field label="Lien « Laisser un avis » sur la fiche Google d’Acco"><Input name="google_review_url" defaultValue={get("google_review_url")} placeholder="https://g.page/r/…/review" /></Field>
         <Field label="Récompense de parrainage"><Input name="referral_reward_label" defaultValue={get("referral_reward_label")} placeholder="1 mois d’abonnement offert" /></Field>

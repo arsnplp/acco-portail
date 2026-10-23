@@ -9,6 +9,7 @@ import { DocumentSections } from "@/components/documents/list";
 import { AutoUploadInput } from "@/components/ui/auto-upload";
 import { timeAgo } from "@/lib/format";
 import { uploadRequestedDocument } from "./actions";
+import { FileTextIcon, UploadIcon } from "lucide-react";
 
 export const metadata = { title: "Documents" };
 
@@ -25,7 +26,7 @@ export default async function DocumentsPage() {
 
       {toProvide.length > 0 && (
         <>
-          <SectionTitle emoji="📤">L’équipe Acco vous demande</SectionTitle>
+          <SectionTitle icon={UploadIcon}>L’équipe Acco vous demande</SectionTitle>
           <MoreList title="Documents demandés" limit={3} items={toProvide.map((r) => (
               <Card key={r.id} className="flex items-center justify-between gap-3 border-yellow/50 py-3">
                 <div className="min-w-0"><p className="truncate font-medium text-title">{r.message}</p><p className="text-xs text-text">Demandé {timeAgo(r.createdAt)}</p></div>
@@ -40,7 +41,7 @@ export default async function DocumentsPage() {
         </>
       )}
 
-      <SectionTitle emoji="📄">Mes documents</SectionTitle>
+      <SectionTitle icon={FileTextIcon}>Mes documents</SectionTitle>
       <DocumentSections documents={documents} emptyText="Vos contrats, factures et devis apparaîtront ici dès que l’équipe les dépose." />
       <p className="mt-6 text-center text-xs text-muted">Il vous manque un document ? Demandez-le dans Messages.</p>
     </Page>

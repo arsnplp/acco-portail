@@ -8,6 +8,7 @@ import { Empty } from "@/components/ui/empty";
 import { CONTACT_STATUS } from "@/lib/labels";
 import { timeAgo } from "@/lib/format";
 import { setContactStatus } from "./actions";
+import { CircleCheckIcon, InboxIcon } from "lucide-react";
 
 export const metadata = { title: "Activité" };
 
@@ -30,7 +31,7 @@ export default async function ActivitePage({ params }: { params: Promise<{ id: s
         <span className="text-text">demande{count > 1 ? "s" : ""} de clients ce mois-ci{wonCount > 0 ? <span className="text-green"> · {wonCount} devenu{wonCount > 1 ? "s" : ""} client{wonCount > 1 ? "s" : ""}</span> : null}</span>
       </Card>
 
-      <SectionTitle emoji="📬">À traiter {todo.length > 0 && <span className="text-sm font-normal text-text">({todo.length})</span>}</SectionTitle>
+      <SectionTitle icon={InboxIcon}>À traiter {todo.length > 0 && <span className="text-sm font-normal text-text">({todo.length})</span>}</SectionTitle>
       {todo.length === 0 ? (
         <Empty icon={Inbox} title="Tout est traité" text="Les prochaines demandes envoyées depuis votre site arriveront ici." />
       ) : (
@@ -39,7 +40,7 @@ export default async function ActivitePage({ params }: { params: Promise<{ id: s
 
       {done.length > 0 && (
         <>
-          <SectionTitle emoji="✅">Traitées</SectionTitle>
+          <SectionTitle icon={CircleCheckIcon}>Traitées</SectionTitle>
           <MoreList title="Demandes traitées" labels={done.map((r) => r.name)} limit={5} items={done.map((r) => <RequestCard key={r.id} r={r} siteId={site.id} />)} />
         </>
       )}

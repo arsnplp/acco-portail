@@ -39,7 +39,7 @@ export async function validateOrder(orderId: string, formData: FormData) {
   ]);
   await notifyClient({
     clientId: order.clientId, siteId, kind: "COMMANDE_VALIDEE", pref: "offers",
-    title: `${order.offer.name} : c’est activé 🎉`,
+    title: `${order.offer.name} : c’est activé`,
     body: `${fmtPrice(price)}${order.offer.billing === "MENSUEL" ? " / mois" : ""}${order.offer.module !== "NONE" && siteId ? " · le module est débloqué sur votre site" : ""}`,
     href: order.offer.module !== "NONE" && siteId ? `/sites/${siteId}/avis` : "/compte",
   });

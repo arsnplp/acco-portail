@@ -10,6 +10,8 @@ import { ClientForms } from "./forms";
 import { cancelSubscription, sendInvitation } from "../actions";
 import { FolderOpen, ChevronRight } from "lucide-react";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { CreditCardIcon, FileTextIcon, GlobeIcon, UserIcon } from "lucide-react";
+import { MessageSquareIcon } from "lucide-react";
 
 export default async function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -28,7 +30,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
 
   return (
     <AdminPage title={client.name} back={{ href: "/admin/clients", label: "Clients" }}>
-      <SectionTitle emoji="🌐">Sites</SectionTitle>
+      <SectionTitle icon={GlobeIcon}>Sites</SectionTitle>
       <div className="grid gap-2">
         {client.sites.map((s) => (
           <Card key={s.id} href={`/admin/sites/${s.id}`} className="flex items-center justify-between py-3">
@@ -41,7 +43,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         ))}
       </div>
 
-      <SectionTitle emoji="💳">Abonnements et modules</SectionTitle>
+      <SectionTitle icon={CreditCardIcon}>Abonnements et modules</SectionTitle>
       <div className="grid gap-2">
         <MoreList title="Abonnements" labels={client.subscriptions.map((s) => s.label)} className="grid gap-2" items={client.subscriptions.map((s) => (
           <Card key={s.id} className="flex items-center justify-between gap-3 py-3">
@@ -65,7 +67,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         {client.subscriptions.length === 0 && <p className="text-sm text-text">Aucun abonnement.</p>}
       </div>
 
-      <SectionTitle emoji="👤">Accès du client</SectionTitle>
+      <SectionTitle icon={UserIcon}>Accès du client</SectionTitle>
       <div className="grid gap-2">
         {client.memberships.map((m) => (
           <Card key={m.id} className="flex items-center justify-between py-3">
@@ -81,12 +83,12 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         ))}
       </div>
 
-      <SectionTitle emoji="📄">Documents</SectionTitle>
+      <SectionTitle icon={FileTextIcon}>Documents</SectionTitle>
       <Card href={`/admin/clients/${client.id}/documents`} className="flex items-center justify-between gap-3 py-3">
         <div className="flex items-center gap-3"><FolderOpen size={20} strokeWidth={1.5} className="text-text" /><div><p className="font-medium text-title">Espace documents</p><p className="text-xs text-text">{client.documents.length} document{client.documents.length > 1 ? "s" : ""}{pendingDocs > 0 ? ` · ${pendingDocs} attendu${pendingDocs > 1 ? "s" : ""} du client` : ""}</p></div></div>
         <div className="flex items-center gap-2">{pendingDocs > 0 && <Badge tone="yellow">{pendingDocs}</Badge>}<ChevronRight size={18} className="text-text" /></div>
       </Card>
-      <div className="mt-3"><Card href={`/admin/messages/${client.id}`} className="py-3 text-sm font-medium text-title">💬 Voir les échanges avec ce client</Card></div>
+      <div className="mt-3"><Card href={`/admin/messages/${client.id}`} className="flex items-center gap-2 py-3 text-sm font-medium text-title"><MessageSquareIcon size={16} strokeWidth={1.75} className="text-text" aria-hidden /> Voir les échanges avec ce client</Card></div>
 
       <ClientForms client={{ id: client.id, name: client.name, address: client.address, phone: client.phone, email: client.email, siren: client.siren }} sites={client.sites.map((s) => ({ id: s.id, name: s.name }))} />
     </AdminPage>

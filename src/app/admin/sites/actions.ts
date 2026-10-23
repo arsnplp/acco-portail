@@ -49,7 +49,7 @@ export async function updateSite(siteId: string, _prev: ActionState, formData: F
     if (goesLive) {
       await tx.siteHistoryEntry.create({ data: { siteId, kind: "MISE_EN_LIGNE", title: "Mise en ligne", authorId: admin.id, items: [] } });
       await tx.notification.create({
-        data: { clientId: before.clientId, siteId, kind: "SITE_EN_LIGNE", title: "Votre site est en ligne 🎉", body: before.name, href: `/sites/${siteId}` },
+        data: { clientId: before.clientId, siteId, kind: "SITE_EN_LIGNE", title: "Votre site est en ligne", body: before.name, href: `/sites/${siteId}` },
       });
     }
   });
