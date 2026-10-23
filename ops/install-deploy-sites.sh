@@ -26,7 +26,7 @@ nuisiblesecure|/var/www/nuisible2|main|https://github.com/arsnplp/nuisible2.git
 emmabella|/var/www/emmabella|main|https://github.com/arsnplp/Emmabella.git
 acco-lab|/var/www/acco-lab.fr|main|https://github.com/arsnplp/Acco.git
 poke-dore|/var/www/poke-dore.fr|main|https://github.com/arsnplp/pok-dor-.git
-loratma|/var/www/loratma/loratma|master|https://github.com/arsnplp/loratma.git
+loratma|/var/www/loratma/loratma|version-deux|https://github.com/arsnplp/loratma.git
 fpnaturenuisible|/var/www/fpnuisible|main|https://github.com/arsnplp/fpnuisible.git
 bycarlybeauty|/var/www/carla|master|https://github.com/arsnplp/site-rdv2.git
 "
