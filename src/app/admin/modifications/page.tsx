@@ -2,13 +2,13 @@ import { prisma } from "@/lib/prisma";
 import { AdminPage } from "@/components/admin/page";
 import { KanbanBoard, type KanbanItem } from "./kanban-board";
 import { AutoRefresh } from "@/components/messages/auto-refresh";
-import { CLAUDE_BUSY } from "@/lib/change-requests";
+import { CLAUDE_BUSY, WORKER_HEARTBEAT_KEY, workerOnline } from "@/lib/change-requests";
 import { featureEnabled } from "@/lib/settings";
 
 export const metadata = { title: "Modifications" };
 
 export default async function ModificationsAdminPage() {
-  const [requests, admins, claudeEnabled] = await Promise.all([
+  const [requests, admins, claudeEnabled, heartbeat] = await Promise.all([
     prisma.changeRequest.findMany({
       orderBy: [{ urgency: "desc" }, { completedAt: "desc" }, { createdAt: "asc" }],
       take: 300,
@@ -16,7 +16,9 @@ export default async function ModificationsAdminPage() {
     }),
     prisma.user.findMany({ where: { role: "ADMIN" }, orderBy: { firstName: "asc" } }),
     featureEnabled("feature_claude_code"),
+    prisma.setting.findUnique({ where: { key: WORKER_HEARTBEAT_KEY } }),
   ]);
+  const macOnline = workerOnline(heartbeat?.value);
 
   const items: KanbanItem[] = requests.map((r) => ({
     id: r.id, title: r.title, description: r.description, page: r.page, urgency: r.urgency, status: r.status,
@@ -29,8 +31,17 @@ export default async function ModificationsAdminPage() {
 
   return (
     <AdminPage title="Modifications" wide>
-      <p className="-mt-3 mb-4 text-xs text-muted">Glissez une carte d’une colonne à l’autre, ou utilisez les boutons.</p>
-      {claudeBusy && <AutoRefresh seconds={5} />}
+      <div className="-mt-3 mb-4 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-muted">Glissez une carte d’une colonne à l’autre, ou utilisez les boutons.</p>
+        {claudeEnabled && (
+          <span title={macOnline ? "Le worker tourne sur le Mac : Claude traite les demandes." : "Le Mac est éteint, en veille ou le worker est arrêté : les demandes confiées à Claude attendront."}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${macOnline ? "border-claude/40 text-claude" : "border-border text-muted"}`}>
+            <span className={`size-1.5 rounded-full ${macOnline ? "bg-claude" : "bg-muted"}`} />
+            {macOnline ? "Claude prêt sur le Mac" : "Mac hors ligne"}
+          </span>
+        )}
+      </div>
+      {claudeBusy ? <AutoRefresh seconds={5} /> : claudeEnabled && <AutoRefresh seconds={60} />}
       <KanbanBoard claudeEnabled={claudeEnabled} items={items} admins={admins.map((a) => ({ id: a.id, name: a.firstName ?? a.email }))} />
     </AdminPage>
   );

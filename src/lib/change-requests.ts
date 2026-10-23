@@ -20,6 +20,10 @@ export function changeDoneNotification(cr: Pick<ChangeRequest, "id" | "siteId" |
   };
 }
 
+/** Le worker Claude (Mac) écrit l'heure de son dernier signe de vie dans Setting toutes les 30 s. */
+export const WORKER_HEARTBEAT_KEY = "claude_worker_seen_at";
+export const workerOnline = (seenAt: string | null | undefined) => !!seenAt && Date.now() - new Date(seenAt).getTime() < 90_000;
+
 /** Claude est en train de faire quelque chose : la carte ne doit pas bouger. */
 export const CLAUDE_BUSY: ClaudeJobState[] = ["EN_FILE", "EN_TRAVAIL", "MISE_EN_LIGNE_DEMANDEE", "ANNULATION_DEMANDEE"];
 

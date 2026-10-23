@@ -38,6 +38,8 @@ export const CONFIG = {
   pollMs: 5000,
 };
 
+export const HEARTBEAT_KEY = "claude_worker_seen_at";
+
 const log = (...a: unknown[]) => console.log(new Date().toLocaleTimeString("fr-FR"), ...a);
 
 // ─────────────────────────────────────────────────────────────
@@ -469,13 +471,23 @@ async function main() {
   await mkdir(path.join(CONFIG.workdir, "jobs"), { recursive: true });
   await recover(prisma);
   log(`Worker Claude prêt — dossier ${CONFIG.workdir}, aperçus à partir du port ${CONFIG.previewPort}. Ctrl+C pour arrêter.`);
+  // Voyant « Mac connecté » dans le portail : signe de vie toutes les 30 s, même pendant un long travail.
+  const beat = () => prisma.setting.upsert({
+    where: { key: HEARTBEAT_KEY }, create: { key: HEARTBEAT_KEY, value: new Date().toISOString() }, update: { value: new Date().toISOString() },
+  }).catch((e) => log("Signe de vie impossible :", (e as Error).message));
+  await beat();
+  const heartbeat = setInterval(beat, 30_000);
   let stopping = false;
-  process.on("SIGINT", () => { stopping = true; log("Arrêt après la tâche en cours…"); });
+  const stop = () => { stopping = true; log("Arrêt après la tâche en cours…"); };
+  process.on("SIGINT", stop);
+  process.on("SIGTERM", stop);
   while (!stopping) {
     try { await tick(prisma); }
     catch (e) { log("Erreur de boucle :", (e as Error).message); }
     await new Promise((r) => setTimeout(r, CONFIG.pollMs));
   }
+  clearInterval(heartbeat);
+  await prisma.setting.deleteMany({ where: { key: HEARTBEAT_KEY } }).catch(() => {});
   await prisma.$disconnect();
   process.exit(0);
 }

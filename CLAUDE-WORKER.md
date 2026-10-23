@@ -32,6 +32,19 @@ Côté client, « À valider » s'affiche comme « En cours ».
 
 ## Lancer le worker (sur le Mac)
 
+**Recommandé : en arrière-plan, automatiquement** (démarre avec le Mac, redémarre s'il s'arrête, se met à
+jour à chaque démarrage). Une seule fois, dans le dossier du portail :
+
+```bash
+bash scripts/mac-worker.sh installer
+```
+
+Ensuite : `bash scripts/mac-worker.sh relancer` (forcer une mise à jour), `… journal` (voir ce qu'il fait),
+`… statut`, `… desinstaller`. Le voyant « Claude prêt sur le Mac / Mac hors ligne » en haut de
+Modifications indique s'il tourne (signe de vie toutes les 30 s). Ne pas le lancer en plus dans un Terminal.
+
+**À la main** (ancienne méthode) :
+
 ```bash
 cd acco-portail && npm install
 npm run claude:worker
