@@ -21,5 +21,11 @@ const cr = await prisma.changeRequest.create({
   data: { siteId: site.id, title: a.titre, description: a.description, page: a.page || null, urgency: a.urgent ? "URGENTE" : "NORMALE" },
 });
 console.log(`✓ Demande créée sur ${site.name} (${site.client.name}) : « ${cr.title} »`);
+// Notification push à l'équipe, comme pour une vraie demande client.
+const portail = (process.env.PORTAIL_URL || "https://app.acco-lab.fr").replace(/\/$/, "");
+if (process.env.CRON_SECRET) {
+  const res = await fetch(`${portail}/api/claude/demande-recue`, { method: "POST", headers: { authorization: `Bearer ${process.env.CRON_SECRET}`, "content-type": "application/json" }, body: JSON.stringify({ id: cr.id }) }).catch(() => null);
+  console.log(res?.ok ? "🔔 Notification envoyée à l'équipe" : `⚠ Notification non envoyée (${res ? res.status : "portail injoignable"}) — portail à jour ?`);
+} else console.log("⚠ CRON_SECRET absent du .env : pas de notification");
 console.log("→ app.acco-lab.fr/admin/modifications");
 await prisma.$disconnect();

@@ -31,6 +31,15 @@ export async function saveAdminNotifPrefs(formData: FormData) {
   revalidatePath("/admin/parametres");
 }
 
+/** Envoie un push de test sur tous les appareils où l'admin a activé les notifications. */
+export async function sendTestPush(): Promise<{ ok: boolean; devices: number }> {
+  const admin = await requireAdmin();
+  const devices = await prisma.pushSubscription.count({ where: { userId: admin.id } });
+  const { sendPushToUser } = await import("@/lib/push");
+  await sendPushToUser(admin.id, { title: "Test Acco 🔔", body: "Les notifications fonctionnent sur cet appareil.", url: `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/admin/parametres`, tag: "test" });
+  return { ok: devices > 0, devices };
+}
+
 export type ServicesState = { errors?: Record<string, string>; infos?: Record<string, string>; ok?: boolean };
 
 /** Enregistre les clés après vérification auprès de chaque service ; n'active une fonction que si ses clés sont valides. */
