@@ -10,7 +10,11 @@ export async function verifySecret(key: SecretKey, value: string, extra?: Partia
       case "claude_code_api_key": {
         const res = await fetch("https://api.anthropic.com/v1/models?limit=1", { headers: { "x-api-key": value, "anthropic-version": "2023-06-01" }, signal: AbortSignal.timeout(10_000) });
         if (res.status === 401 || res.status === 403) return { ok: false, error: "Clé Anthropic refusée." };
-        if (!res.ok) return { ok: false, error: `Anthropic répond ${res.status}.` };
+        if (!res.ok) {
+          const msg = ((await res.json().catch(() => null)) as { error?: { message?: string } } | null)?.error?.message ?? "";
+          if (/credit balance/i.test(msg)) return { ok: false, error: "Clé valide mais plus de crédit : console.anthropic.com → Billing → ajouter du crédit." };
+          return { ok: false, error: `Anthropic répond ${res.status}${msg ? ` : ${msg}` : "."}` };
+        }
         return { ok: true, detail: "Clé Anthropic valide." };
       }
       case "resend_api_key": {
