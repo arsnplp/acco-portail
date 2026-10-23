@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
  */
 export const SECRETS = {
   anthropic_api_key: "ANTHROPIC_API_KEY",
+  claude_code_api_key: "CLAUDE_CODE_API_KEY",
   turnstile_site_key: "TURNSTILE_SITE_KEY",
   turnstile_secret_key: "TURNSTILE_SECRET_KEY",
   resend_api_key: "RESEND_API_KEY",
@@ -15,6 +16,7 @@ export type SecretKey = keyof typeof SECRETS;
 
 export const FEATURES = {
   feature_ai: { label: "Résumés et réponses rédigés par Claude", needs: ["anthropic_api_key"] as SecretKey[] },
+  feature_claude_code: { label: "Claude Code sur les demandes de modification", needs: ["claude_code_api_key"] as SecretKey[] },
   feature_turnstile: { label: "Anti-spam Cloudflare Turnstile sur les formulaires", needs: ["turnstile_site_key", "turnstile_secret_key"] as SecretKey[] },
   feature_business_api: { label: "Vrais avis Google (API Business Profile validée)", needs: [] as SecretKey[] },
 } as const;

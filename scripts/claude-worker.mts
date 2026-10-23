@@ -9,9 +9,9 @@
  *  2. Carte glissée dans « Terminée » (claudeState = MISE_EN_LIGNE_DEMANDEE) → fusionne la branche dans la
  *     branche publiée et pousse. Le VPS publie tout seul dans la minute (deploy-sites).
  *
- * Variables (.env) : DATABASE_URL, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (pièces jointes),
- * ANTHROPIC_API_KEY (sinon la connexion Claude Code du Mac), et en option CLAUDE_WORKDIR (~/.acco-claude),
- * CLAUDE_PREVIEW_PORT (4321), CLAUDE_MAX_BUDGET_USD (5), CLAUDE_MODEL.
+ * Clé API : Paramètres du portail → « Claude Code (modifications des sites) » (repli : CLAUDE_CODE_API_KEY du .env).
+ * Variables (.env) : DATABASE_URL, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (pièces jointes), et en option
+ * CLAUDE_WORKDIR (~/.acco-claude), CLAUDE_PREVIEW_PORT (4321), CLAUDE_MAX_BUDGET_USD (5), CLAUDE_MODEL.
  */
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -277,7 +277,17 @@ async function failJob(prisma: PrismaClient, id: string, message: string, extra:
   });
 }
 
-async function runClaude(dir: string, prompt: string) {
+/** Clé lue dans Paramètres (table Setting), comme le reste du portail. */
+async function claudeApiKey(prisma: PrismaClient) {
+  const rows = await prisma.setting.findMany({ where: { key: { in: ["feature_claude_code", "claude_code_api_key"] } } });
+  const get = (k: string) => rows.find((r) => r.key === k)?.value?.trim();
+  if (get("feature_claude_code") === "false") throw new Error("Claude Code est désactivé dans Paramètres.");
+  const key = get("claude_code_api_key") || process.env.CLAUDE_CODE_API_KEY?.trim();
+  if (!key) throw new Error("Clé API Claude Code manquante : Paramètres → Claude Code (modifications des sites).");
+  return key;
+}
+
+async function runClaude(dir: string, prompt: string, apiKey: string) {
   let result = "", cost = 0, error: string | null = null;
   for await (const msg of query({
     prompt,
@@ -290,6 +300,7 @@ async function runClaude(dir: string, prompt: string) {
       systemPrompt: { type: "preset", preset: "claude_code", append: SYSTEM },
       maxTurns: 80,
       maxBudgetUsd: CONFIG.maxBudgetUsd,
+      env: { ...process.env, ANTHROPIC_API_KEY: apiKey } as Record<string, string>,
       ...(CONFIG.model ? { model: CONFIG.model } : {}),
     },
   })) {
@@ -313,13 +324,14 @@ export async function processJob(prisma: PrismaClient, id: string) {
   const base = cr.site.repoBranch || "main";
   const branch = cr.claudeBranch || branchFor(id);
   const dir = jobDir(id);
+  const apiKey = await claudeApiKey(prisma);
 
   log(`▶ ${cr.site.name} — « ${cr.title} »`);
   await stopPreview(id);
   await prepareRepo(dir, repoUrl, base, branch);
   const attachments = await downloadAttachments(dir, cr.attachments);
   const previousDiff = cr.claudeFeedback ? await git(dir, "diff", "--stat", `origin/${base}...HEAD`).catch(() => "") : "";
-  const { result, cost, error } = await runClaude(dir, buildPrompt(cr, attachments, previousDiff));
+  const { result, cost, error } = await runClaude(dir, buildPrompt(cr, attachments, previousDiff), apiKey);
   log(`  Claude terminé (${cost.toFixed(2)} $)${error ? ` — ${error}` : ""}`);
 
   const pushed = await commitAndPush(dir, branch, `Modif : ${cr.title}\n\nDemande ${cr.id} (portail Acco)${cr.claudeFeedback ? `\nRetour : ${cr.claudeFeedback}` : ""}`);
@@ -358,11 +370,45 @@ export async function publishJob(prisma: PrismaClient, id: string) {
   log("  ✓ poussé — le serveur publie dans la minute");
 }
 
+/** « Annuler la modif » : supprime la branche de Claude sur GitHub, l'aperçu et le dossier de travail. */
+export async function discardJob(prisma: PrismaClient, id: string) {
+  const cr = await prisma.changeRequest.findUnique({ where: { id }, include: { site: true } });
+  if (!cr) return;
+  log(`✗ Annulation ${cr.site.name} — « ${cr.title} »`);
+  await stopPreview(id);
+  if (cr.claudeBranch && cr.site.repoUrl) await deleteRemoteBranch(cr.site.repoUrl, cr.claudeBranch);
+  await rm(jobDir(id), { recursive: true, force: true });
+  await prisma.changeRequest.update({
+    where: { id },
+    data: {
+      claudeState: null, claudeBranch: null, claudeSummary: null, claudeFeedback: null, claudeError: null,
+      claudePreviewUrl: null, claudeCompareUrl: null, claudeStartedAt: null, claudeFinishedAt: null,
+    },
+  });
+  log("  ✓ travail de Claude supprimé");
+}
+
+export async function deleteRemoteBranch(repoUrl: string, branch: string) {
+  const scratch = path.join(CONFIG.workdir, ".git-scratch");
+  if (!existsSync(path.join(scratch, ".git"))) { await mkdir(scratch, { recursive: true }); await git(scratch, "init", "--quiet"); }
+  const exists = await git(scratch, "ls-remote", "--heads", repoUrl, branch).then((o) => o.length > 0).catch(() => false);
+  if (exists) await git(scratch, "push", "--quiet", repoUrl, "--delete", branch);
+}
+
 // ─────────────────────────────────────────────────────────────
 // Boucle
 // ─────────────────────────────────────────────────────────────
 
 async function tick(prisma: PrismaClient) {
+  const toDiscard = await prisma.changeRequest.findFirst({ where: { claudeState: "ANNULATION_DEMANDEE" }, select: { id: true } });
+  if (toDiscard) {
+    try { await discardJob(prisma, toDiscard.id); }
+    catch (e) {
+      log("  ✗", (e as Error).message);
+      await prisma.changeRequest.update({ where: { id: toDiscard.id }, data: { claudeState: "ERREUR", status: "A_VALIDER", claudeError: `Annulation incomplète : ${(e as Error).message}`.slice(0, 500) } });
+    }
+    return;
+  }
   const toPublish = await prisma.changeRequest.findFirst({ where: { claudeState: "MISE_EN_LIGNE_DEMANDEE" }, orderBy: { updatedAt: "asc" }, select: { id: true } });
   if (toPublish) {
     try { await publishJob(prisma, toPublish.id); }
@@ -400,7 +446,6 @@ async function recover(prisma: PrismaClient) {
 }
 
 async function main() {
-  if (process.env.ANTHROPIC_API_KEY === "") delete process.env.ANTHROPIC_API_KEY; // vide = connexion Claude Code du Mac
   const { PrismaClient } = await import("@prisma/client");
   const prisma = new PrismaClient();
   await mkdir(path.join(CONFIG.workdir, "jobs"), { recursive: true });

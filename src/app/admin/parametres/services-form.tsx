@@ -12,6 +12,8 @@ type Status = Record<SecretKey, { masked: string | null; source: "base" | "env" 
 const SERVICES: Array<{ title: string; emoji: string; feature?: FeatureKey; featureLabel?: string; keys: Array<{ key: SecretKey; label: string; help: string }>; note?: string }> = [
   { title: "Claude (IA)", emoji: "🤖", feature: "feature_ai", featureLabel: "Rédiger les récaps mensuels et les réponses aux avis avec Claude",
     keys: [{ key: "anthropic_api_key", label: "Clé API Anthropic", help: "console.anthropic.com → API keys. Sans clé : gabarits en français." }] },
+  { title: "Claude Code (modifications des sites)", emoji: "🛠️", feature: "feature_claude_code", featureLabel: "Bouton « Confier à Claude » sur les demandes de modification (worker lancé sur le Mac)",
+    keys: [{ key: "claude_code_api_key", label: "Clé API Anthropic pour Claude Code", help: "console.anthropic.com → API keys. Peut être la même que celle du dessus ; une clé dédiée permet de suivre son coût à part." }] },
   { title: "Cloudflare Turnstile", emoji: "🛡️", feature: "feature_turnstile", featureLabel: "Vérifier le captcha sur les formulaires des sites clients",
     keys: [{ key: "turnstile_site_key", label: "Site key (publique)", help: "À coller aussi dans le snippet des sites." }, { key: "turnstile_secret_key", label: "Secret key", help: "dash.cloudflare.com → Turnstile." }] },
   { title: "Resend (emails)", emoji: "✉️", keys: [{ key: "resend_api_key", label: "Clé API Resend", help: "resend.com → API Keys. Domaine acco-lab.fr déjà vérifié." }] },

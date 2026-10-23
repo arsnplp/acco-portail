@@ -20,7 +20,7 @@ export async function recordChangeDone(
 }
 
 /** Claude est en train de faire quelque chose : la carte ne doit pas bouger. */
-export const CLAUDE_BUSY: ClaudeJobState[] = ["EN_FILE", "EN_TRAVAIL", "MISE_EN_LIGNE_DEMANDEE"];
+export const CLAUDE_BUSY: ClaudeJobState[] = ["EN_FILE", "EN_TRAVAIL", "MISE_EN_LIGNE_DEMANDEE", "ANNULATION_DEMANDEE"];
 
 /** Le travail de Claude est prêt (aperçu disponible) mais pas encore fusionné dans la branche publiée. */
 export function claudeNeedsMerge(cr: Pick<ChangeRequest, "claudeState" | "claudePreviewUrl" | "claudeMergedAt" | "claudeBranch">) {

@@ -1,8 +1,8 @@
 "use client";
 
-import { useActionState, useMemo, useOptimistic, useState, useTransition } from "react";
+import { createContext, use, useActionState, useMemo, useOptimistic, useState, useTransition } from "react";
 import Link from "next/link";
-import { Paperclip, MessageSquare, ArrowRight, ArrowLeft, GripVertical, Sparkles, LoaderCircle, ExternalLink, GitCompare, RotateCcw, Rocket, CircleCheck } from "lucide-react";
+import { Paperclip, MessageSquare, ArrowRight, ArrowLeft, GripVertical, Sparkles, LoaderCircle, ExternalLink, GitCompare, RotateCcw, Rocket, CircleCheck, Undo2 } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 import { Select } from "@/components/ui/field";
 import type { ChangeRequestStatus, ClaudeJobState, Urgency } from "@prisma/client";
@@ -11,7 +11,9 @@ import { Dot } from "@/components/ui/badge";
 import { Input, Textarea } from "@/components/ui/field";
 import { CHANGE_STATUS } from "@/lib/labels";
 import { timeAgo } from "@/lib/format";
-import { moveChange, assignChange, commentChange, delegateToClaude, cancelClaude, type ClaudeActionState } from "./actions";
+import { moveChange, assignChange, commentChange, delegateToClaude, cancelClaude, discardClaudeWork, type ClaudeActionState } from "./actions";
+
+const ClaudeEnabled = createContext(false);
 import { cn } from "@/lib/cn";
 
 export type KanbanItem = {
@@ -26,10 +28,10 @@ type Admin = { id: string; name: string };
 const COLS: ChangeRequestStatus[] = ["RECUE", "EN_COURS", "A_VALIDER", "TERMINEE"];
 const NEXT: Record<ChangeRequestStatus, ChangeRequestStatus | null> = { RECUE: "EN_COURS", EN_COURS: "TERMINEE", A_VALIDER: "TERMINEE", TERMINEE: null };
 const PREV: Record<ChangeRequestStatus, ChangeRequestStatus | null> = { RECUE: null, EN_COURS: "RECUE", A_VALIDER: "EN_COURS", TERMINEE: "EN_COURS" };
-const BUSY: ClaudeJobState[] = ["EN_FILE", "EN_TRAVAIL", "MISE_EN_LIGNE_DEMANDEE"];
+const BUSY: ClaudeJobState[] = ["EN_FILE", "EN_TRAVAIL", "MISE_EN_LIGNE_DEMANDEE", "ANNULATION_DEMANDEE"];
 const isBusy = (r: KanbanItem) => !!r.claudeState && BUSY.includes(r.claudeState);
 
-export function KanbanBoard({ items, admins }: { items: KanbanItem[]; admins: Admin[] }) {
+export function KanbanBoard({ items, admins, claudeEnabled = false }: { items: KanbanItem[]; admins: Admin[]; claudeEnabled?: boolean }) {
   const [optimistic, setOptimistic] = useOptimistic(items, (state, { id, status }: { id: string; status: ChangeRequestStatus }) => state.map((it) => (it.id === id ? { ...it, status } : it)));
   const [, startTransition] = useTransition();
   const [dragId, setDragId] = useState<string | null>(null);
@@ -47,6 +49,7 @@ export function KanbanBoard({ items, admins }: { items: KanbanItem[]; admins: Ad
   }
 
   return (
+    <ClaudeEnabled value={claudeEnabled}>
     <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-4 md:mx-0 md:grid md:grid-cols-4 md:overflow-visible md:px-0">
       {COLS.map((col) => {
         const all = optimistic.filter((r) => r.status === col);
@@ -76,6 +79,7 @@ export function KanbanBoard({ items, admins }: { items: KanbanItem[]; admins: Ad
       })}
       {showAllDone && <DoneDialog items={optimistic.filter((r) => r.status === "TERMINEE")} onClose={() => setShowAllDone(false)} onMove={move} />}
     </div>
+    </ClaudeEnabled>
   );
 }
 
@@ -189,7 +193,9 @@ function KanbanCard({ r, admins, dragging, onDragStart, onDragEnd, onMove }: { r
 
 /** Bloc Claude Code sur une carte : confier, suivre, aperçu, refaire, mise en ligne. */
 function ClaudePanel({ r }: { r: KanbanItem }) {
+  const enabled = use(ClaudeEnabled);
   const [redo, setRedo] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [state, action, pending] = useActionState<ClaudeActionState, FormData>(delegateToClaude.bind(null, r.id), {});
   const [, startTransition] = useTransition();
   const st = r.claudeState;
@@ -206,6 +212,9 @@ function ClaudePanel({ r }: { r: KanbanItem }) {
       </div>
     );
   }
+  if (st === "ANNULATION_DEMANDEE") {
+    return <div className={cn(box, "inline-flex w-full items-center gap-2 text-title")}><LoaderCircle size={14} className="animate-spin" /> Annulation de la modif…</div>;
+  }
   if (st === "MISE_EN_LIGNE_DEMANDEE") {
     return <div className={cn(box, "inline-flex w-full items-center gap-2 text-title")}><LoaderCircle size={14} className="animate-spin" /> Mise en ligne en cours…</div>;
   }
@@ -215,14 +224,14 @@ function ClaudePanel({ r }: { r: KanbanItem }) {
 
   const ready = !!r.claudePreviewUrl && !r.claudeMergedAt;
   const showDelegate = r.status === "EN_COURS" && !ready;
-  if (!showDelegate && r.status !== "A_VALIDER") return null;
+  if (!showDelegate && !ready && r.status !== "A_VALIDER") return null;
   if (r.status === "A_VALIDER" && !ready && !r.claudeError) return null;
 
   return (
     <div className={box}>
       {r.claudeError && <p className="mb-2 text-pink">⚠ {r.claudeError}</p>}
 
-      {r.status === "A_VALIDER" && ready && (
+      {ready && (
         <>
           <p className="mb-1 inline-flex items-center gap-1 font-semibold text-title"><Sparkles size={13} /> Fait par Claude</p>
           {r.claudeSummary && <p className="whitespace-pre-wrap text-text-strong">{r.claudeSummary}</p>}
@@ -230,7 +239,17 @@ function ClaudePanel({ r }: { r: KanbanItem }) {
             <a href={r.claudePreviewUrl!} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-card bg-title px-2.5 py-1.5 font-semibold text-bg"><ExternalLink size={12} /> Aperçu</a>
             {r.claudeCompareUrl && <a href={r.claudeCompareUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-card border border-border px-2.5 py-1.5 text-title"><GitCompare size={12} /> Changements</a>}
             <button type="button" onClick={() => setRedo((v) => !v)} className="inline-flex items-center gap-1 rounded-card border border-border px-2.5 py-1.5 text-title"><RotateCcw size={12} /> Refaire</button>
+            <button type="button" onClick={() => setConfirmDiscard(true)} className="inline-flex items-center gap-1 rounded-card border border-pink/50 px-2.5 py-1.5 text-pink"><Undo2 size={12} /> Annuler la modif</button>
           </div>
+          {confirmDiscard && (
+            <div className="mt-2 rounded-card border border-pink/40 p-2">
+              <p className="text-text-strong">Jeter le travail de Claude ? Le site en ligne n’est pas touché, la demande revient en « En cours ».</p>
+              <div className="mt-2 flex gap-2">
+                <button type="button" onClick={() => startTransition(() => discardClaudeWork(r.id))} className="rounded-card bg-pink px-2.5 py-1.5 font-semibold text-bg">Oui, annuler</button>
+                <button type="button" onClick={() => setConfirmDiscard(false)} className="rounded-card border border-border px-2.5 py-1.5 text-title">Non</button>
+              </div>
+            </div>
+          )}
           <p className="mt-2 text-muted">L’aperçu s’ouvre sur le Mac où tourne Claude. Glissez dans « Terminée » pour mettre en ligne.</p>
         </>
       )}
@@ -238,7 +257,9 @@ function ClaudePanel({ r }: { r: KanbanItem }) {
       {(showDelegate || redo) && (
         <form action={action} className={cn(redo && "mt-3")}>
           {redo && <Textarea name="feedback" rows={3} placeholder="Ce qu’il faut changer…" className="mb-2 text-sm" required />}
-          {r.hasRepo ? (
+          {!enabled ? (
+            <Link href="/admin/parametres" className="text-muted underline-offset-2 hover:underline">Activez Claude Code et sa clé API dans Paramètres</Link>
+          ) : r.hasRepo ? (
             <button disabled={pending} className="inline-flex items-center gap-1.5 rounded-card bg-title px-3 py-1.5 font-semibold text-bg disabled:opacity-60">
               {pending ? <LoaderCircle size={13} className="animate-spin" /> : <Sparkles size={13} />} {redo ? "Renvoyer à Claude" : "Confier à Claude"}
             </button>

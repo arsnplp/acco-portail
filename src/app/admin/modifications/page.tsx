@@ -3,17 +3,19 @@ import { AdminPage } from "@/components/admin/page";
 import { KanbanBoard, type KanbanItem } from "./kanban-board";
 import { AutoRefresh } from "@/components/messages/auto-refresh";
 import { CLAUDE_BUSY } from "@/lib/change-requests";
+import { featureEnabled } from "@/lib/settings";
 
 export const metadata = { title: "Modifications" };
 
 export default async function ModificationsAdminPage() {
-  const [requests, admins] = await Promise.all([
+  const [requests, admins, claudeEnabled] = await Promise.all([
     prisma.changeRequest.findMany({
       orderBy: [{ urgency: "desc" }, { completedAt: "desc" }, { createdAt: "asc" }],
       take: 300,
       include: { site: { include: { client: { select: { name: true } } } }, _count: { select: { attachments: true, comments: true } } },
     }),
     prisma.user.findMany({ where: { role: "ADMIN" }, orderBy: { firstName: "asc" } }),
+    featureEnabled("feature_claude_code"),
   ]);
 
   const items: KanbanItem[] = requests.map((r) => ({
@@ -29,7 +31,7 @@ export default async function ModificationsAdminPage() {
     <AdminPage title="Modifications">
       <p className="-mt-3 mb-4 text-xs text-muted">Glissez une carte d’une colonne à l’autre, ou utilisez les boutons.</p>
       {claudeBusy && <AutoRefresh seconds={5} />}
-      <KanbanBoard items={items} admins={admins.map((a) => ({ id: a.id, name: a.firstName ?? a.email }))} />
+      <KanbanBoard claudeEnabled={claudeEnabled} items={items} admins={admins.map((a) => ({ id: a.id, name: a.firstName ?? a.email }))} />
     </AdminPage>
   );
 }

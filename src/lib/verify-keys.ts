@@ -6,7 +6,8 @@ export type Verification = { ok: true; detail?: string } | { ok: false; error: s
 export async function verifySecret(key: SecretKey, value: string, extra?: Partial<Record<SecretKey, string>>): Promise<Verification> {
   try {
     switch (key) {
-      case "anthropic_api_key": {
+      case "anthropic_api_key":
+      case "claude_code_api_key": {
         const res = await fetch("https://api.anthropic.com/v1/models?limit=1", { headers: { "x-api-key": value, "anthropic-version": "2023-06-01" }, signal: AbortSignal.timeout(10_000) });
         if (res.status === 401 || res.status === 403) return { ok: false, error: "Clé Anthropic refusée." };
         if (!res.ok) return { ok: false, error: `Anthropic répond ${res.status}.` };

@@ -72,6 +72,7 @@ enum ClaudeJobState {
   MISE_EN_LIGNE_DEMANDEE // validée : à fusionner dans la branche principale
   EN_LIGNE // fusionnée et poussée, le serveur publie
   ERREUR
+  ANNULATION_DEMANDEE // l'équipe refuse le travail de Claude : le worker supprime la branche et l'aperçu
 }
 
 enum Urgency {

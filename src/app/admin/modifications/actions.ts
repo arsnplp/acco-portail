@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import type { ChangeRequestStatus } from "@prisma/client";
 import { CLAUDE_BUSY, claudeNeedsMerge, recordChangeDone } from "@/lib/change-requests";
+import { featureEnabled } from "@/lib/settings";
 
 function revalidate(siteId: string) {
   revalidatePath("/admin/modifications");
@@ -52,6 +53,7 @@ export async function delegateToClaude(reqId: string, _prev: ClaudeActionState, 
   const admin = await requireAdmin();
   const cr = await prisma.changeRequest.findUnique({ where: { id: reqId }, include: { site: true } });
   if (!cr) return { error: "Demande introuvable" };
+  if (!(await featureEnabled("feature_claude_code"))) return { error: "Activez Claude Code et sa clé API dans Paramètres." };
   if (!cr.site.repoUrl) return { error: "Renseignez le dépôt GitHub dans la fiche du site." };
   if (cr.claudeState && CLAUDE_BUSY.includes(cr.claudeState)) return { error: "Claude est déjà dessus." };
   if (cr.claudeMergedAt) return { error: "Déjà mise en ligne." };
@@ -77,6 +79,24 @@ export async function cancelClaude(reqId: string) {
   const res = await prisma.changeRequest.updateMany({ where: { id: reqId, claudeState: "EN_FILE" }, data: { claudeState: null } });
   const cr = await prisma.changeRequest.findUnique({ where: { id: reqId }, select: { siteId: true } });
   if (res.count && cr) revalidate(cr.siteId);
+}
+
+const CLEARED = {
+  claudeState: null, claudeBranch: null, claudeSummary: null, claudeFeedback: null, claudeError: null,
+  claudePreviewUrl: null, claudeCompareUrl: null, claudeStartedAt: null, claudeFinishedAt: null,
+} as const;
+
+/** « Annuler la modif » : on jette le travail de Claude, la carte revient en « En cours » (le site en ligne n'a pas bougé). */
+export async function discardClaudeWork(reqId: string) {
+  await requireAdmin();
+  const cr = await prisma.changeRequest.findUnique({ where: { id: reqId } });
+  if (!cr || cr.claudeMergedAt || (cr.claudeState && CLAUDE_BUSY.includes(cr.claudeState))) return;
+  await prisma.changeRequest.update({
+    where: { id: reqId },
+    // Une branche a été poussée : le worker la supprime avec l'aperçu, puis remet les champs à zéro.
+    data: cr.claudeBranch ? { status: "EN_COURS", completedAt: null, claudeState: "ANNULATION_DEMANDEE" } : { status: "EN_COURS", completedAt: null, ...CLEARED },
+  });
+  revalidate(cr.siteId);
 }
 
 export async function assignChange(reqId: string, formData: FormData) {
