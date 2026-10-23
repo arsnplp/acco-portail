@@ -28,7 +28,7 @@ export default async function ModificationsAdminPage() {
   const claudeBusy = items.some((i) => i.claudeState && CLAUDE_BUSY.includes(i.claudeState));
 
   return (
-    <AdminPage title="Modifications">
+    <AdminPage title="Modifications" wide>
       <p className="-mt-3 mb-4 text-xs text-muted">Glissez une carte d’une colonne à l’autre, ou utilisez les boutons.</p>
       {claudeBusy && <AutoRefresh seconds={5} />}
       <KanbanBoard claudeEnabled={claudeEnabled} items={items} admins={admins.map((a) => ({ id: a.id, name: a.firstName ?? a.email }))} />

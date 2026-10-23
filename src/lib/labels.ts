@@ -17,7 +17,7 @@ export const PROJECT_STEPS: Array<{ key: ProjectStep; label: string }> = [
 export const CHANGE_STATUS: Record<ChangeRequestStatus, { label: string; tone: Tone }> = {
   RECUE: { label: "Reçue", tone: "pink" },
   EN_COURS: { label: "En cours", tone: "yellow" },
-  A_VALIDER: { label: "À valider", tone: "blue" },
+  A_VALIDER: { label: "À valider", tone: "claude" },
   TERMINEE: { label: "Terminée", tone: "green" },
 };
 

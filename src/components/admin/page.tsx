@@ -1,8 +1,8 @@
 import { BackLink } from "@/components/ui/back-link";
 
-export function AdminPage({ title, back, action, children }: { title: React.ReactNode; back?: { href: string; label: string }; action?: React.ReactNode; children: React.ReactNode }) {
+export function AdminPage({ title, back, action, wide, children }: { title: React.ReactNode; back?: { href: string; label: string }; action?: React.ReactNode; wide?: boolean; children: React.ReactNode }) {
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6">
+    <main className={`mx-auto w-full flex-1 px-4 py-6 ${wide ? "max-w-6xl" : "max-w-3xl"}`}>
       {back && (
         <BackLink fallback={back.href} label={back.label} />
       )}

@@ -2,7 +2,7 @@
 
 import { createContext, use, useActionState, useMemo, useOptimistic, useState, useTransition } from "react";
 import Link from "next/link";
-import { Paperclip, MessageSquare, ArrowRight, ArrowLeft, GripVertical, Sparkles, LoaderCircle, ExternalLink, GitCompare, RotateCcw, Rocket, CircleCheck, Undo2 } from "lucide-react";
+import { Paperclip, MessageSquare, ArrowRight, ArrowLeft, GripVertical, Sparkles, LoaderCircle, ExternalLink, GitCompare, RotateCcw, Rocket, Undo2 } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 import { Select } from "@/components/ui/field";
 import type { ChangeRequestStatus, ClaudeJobState, Urgency } from "@prisma/client";
@@ -169,9 +169,9 @@ function KanbanCard({ r, admins, dragging, onDragStart, onDragEnd, onMove }: { r
           {r.reopenedAt && <span className="text-pink">Rouverte</span>}
           {r.status === "TERMINEE" && (r.confirmedAt ? <span className="text-green">Confirmée</span> : <span className="text-yellow">Attente client</span>)}
         </div>
-        <ClaudePanel r={r} />
-        <div className="mt-3 flex items-center gap-2">
-          <form action={assignChange.bind(null, r.id)} className="min-w-0 flex-1">
+        <ClaudePanel r={r} onMove={onMove} />
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <form action={assignChange.bind(null, r.id)} className="min-w-[8.5rem] flex-1">
             <Select name="assigneeId" defaultValue={r.assigneeId ?? ""} className="py-1.5 text-xs" onChange={(e) => e.currentTarget.form?.requestSubmit()}>
               <option value="">Non attribuée</option>
               {admins.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
@@ -181,7 +181,7 @@ function KanbanCard({ r, admins, dragging, onDragStart, onDragEnd, onMove }: { r
             <button type="button" onClick={() => onMove(r.id, PREV[r.status]!)} aria-label="Étape précédente" className="flex size-9 shrink-0 items-center justify-center rounded-card border border-border text-text hover:text-title"><ArrowLeft size={16} /></button>
           )}
           {NEXT[r.status] && !isBusy(r) && (
-            <button type="button" onClick={() => onMove(r.id, NEXT[r.status]!)} className="flex h-9 shrink-0 items-center gap-1 rounded-card bg-title px-3 text-xs font-semibold text-bg">
+            <button type="button" onClick={() => onMove(r.id, NEXT[r.status]!)} className={cn("flex h-9 shrink-0 items-center gap-1 rounded-card px-3 text-xs font-semibold", r.status === "A_VALIDER" ? "bg-claude text-white" : "bg-title text-bg")}>
               {NEXT[r.status] === "EN_COURS" ? <>Commencer <ArrowRight size={14} /></> : r.status === "A_VALIDER" ? <>Mettre en ligne <Rocket size={14} /></> : <>Terminer <ArrowRight size={14} /></>}
             </button>
           )}
@@ -191,84 +191,135 @@ function KanbanCard({ r, admins, dragging, onDragStart, onDragEnd, onMove }: { r
   );
 }
 
-/** Bloc Claude Code sur une carte : confier, suivre, aperçu, refaire, mise en ligne. */
-function ClaudePanel({ r }: { r: KanbanItem }) {
+/** Mise en forme légère du compte rendu de Claude (paragraphes, listes, **gras**, `code`), sans HTML brut. */
+function Inline({ text }: { text: string }) {
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).filter(Boolean);
+  return <>{parts.map((p, i) => p.startsWith("**") ? <strong key={i} className="font-semibold text-title">{p.slice(2, -2).replace(/`/g, "")}</strong> : p.startsWith("`") ? <code key={i} className="rounded bg-surface-2 px-1 py-0.5 text-[0.9em] text-title">{p.slice(1, -1)}</code> : <span key={i}>{p}</span>)}</>;
+}
+function Summary({ text }: { text: string }) {
+  const blocks = text.trim().split(/\n{2,}/);
+  return (
+    <div className="space-y-3 text-sm leading-relaxed text-text-strong">
+      {blocks.map((b, i) => {
+        const lines = b.split("\n");
+        if (lines.every((l) => /^\s*[-*•]\s+/.test(l))) return <ul key={i} className="list-disc space-y-1 pl-5">{lines.map((l, j) => <li key={j}><Inline text={l.replace(/^\s*[-*•]\s+/, "")} /></li>)}</ul>;
+        return <p key={i} className="whitespace-pre-wrap"><Inline text={b} /></p>;
+      })}
+    </div>
+  );
+}
+const plain = (t: string) => t.replace(/\*\*|`/g, "").replace(/^\s*[-*•]\s+/gm, "• ").replace(/\n+/g, " ").trim();
+
+const claudeBtn = "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-card bg-claude px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-60";
+const claudeGhost = "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-card border border-claude/50 px-3 py-1.5 text-xs font-medium text-claude hover:bg-claude/10";
+
+/** Bloc Claude Code sur une carte : confier, suivre, aperçu ; le détail s'ouvre dans une grande fenêtre. */
+function ClaudePanel({ r, onMove }: { r: KanbanItem; onMove: (id: string, s: ChangeRequestStatus) => void }) {
   const enabled = use(ClaudeEnabled);
-  const [redo, setRedo] = useState(false);
-  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState<ClaudeActionState, FormData>(delegateToClaude.bind(null, r.id), {});
   const [, startTransition] = useTransition();
   const st = r.claudeState;
-  const box = "mt-3 rounded-card border border-border bg-surface-2 p-3 text-xs";
+  const box = "mt-3 rounded-card border border-claude/30 bg-claude/[0.06] p-3 text-xs";
+  const busy = (label: string, cancel?: boolean) => (
+    <div className={cn(box, "flex items-center justify-between gap-2")}>
+      <span className="inline-flex items-center gap-2 font-medium text-claude"><LoaderCircle size={14} className="animate-spin" /> {label}</span>
+      {cancel && <button type="button" onClick={() => startTransition(() => cancelClaude(r.id))} className="text-muted underline-offset-2 hover:underline">Annuler</button>}
+    </div>
+  );
 
-  if (st === "EN_FILE" || st === "EN_TRAVAIL") {
-    return (
-      <div className={cn(box, "flex items-center justify-between gap-2")}>
-        <span className="inline-flex items-center gap-2 text-title">
-          <LoaderCircle size={14} className="animate-spin" />
-          {st === "EN_FILE" ? "En attente du Mac…" : "Claude modifie le site…"}
-        </span>
-        {st === "EN_FILE" && <button type="button" onClick={() => startTransition(() => cancelClaude(r.id))} className="text-muted underline-offset-2 hover:underline">Annuler</button>}
-      </div>
-    );
-  }
-  if (st === "ANNULATION_DEMANDEE") {
-    return <div className={cn(box, "inline-flex w-full items-center gap-2 text-title")}><LoaderCircle size={14} className="animate-spin" /> Annulation de la modif…</div>;
-  }
-  if (st === "MISE_EN_LIGNE_DEMANDEE") {
-    return <div className={cn(box, "inline-flex w-full items-center gap-2 text-title")}><LoaderCircle size={14} className="animate-spin" /> Mise en ligne en cours…</div>;
-  }
-  if (st === "EN_LIGNE" && r.status === "TERMINEE") {
-    return <p className="mt-2 inline-flex items-center gap-1 text-xs text-green"><CircleCheck size={13} /> Publiée par Claude</p>;
-  }
+  if (st === "EN_FILE") return busy("En attente du Mac…", true);
+  if (st === "EN_TRAVAIL") return busy("Claude modifie le site…");
+  if (st === "ANNULATION_DEMANDEE") return busy("Annulation de la modif…");
+  if (st === "MISE_EN_LIGNE_DEMANDEE") return busy("Mise en ligne en cours…");
+  if (st === "EN_LIGNE" && r.status === "TERMINEE") return <p className="mt-2 inline-flex items-center gap-1 text-xs text-claude"><Sparkles size={12} /> Publiée par Claude</p>;
 
   const ready = !!r.claudePreviewUrl && !r.claudeMergedAt;
   const showDelegate = r.status === "EN_COURS" && !ready;
-  if (!showDelegate && !ready && r.status !== "A_VALIDER") return null;
-  if (r.status === "A_VALIDER" && !ready && !r.claudeError) return null;
 
+  if (ready) {
+    return (
+      <div className={box}>
+        <p className="mb-1.5 inline-flex items-center gap-1 font-semibold text-claude"><Sparkles size={13} /> Fait par Claude</p>
+        {r.claudeError && <p className="mb-1.5 text-pink">⚠ {r.claudeError}</p>}
+        {r.claudeSummary && <p className="line-clamp-3 text-text-strong">{plain(r.claudeSummary)}</p>}
+        <div className="mt-2.5 grid grid-cols-2 gap-2">
+          <a href={r.claudePreviewUrl!} target="_blank" rel="noreferrer" className={claudeBtn}><ExternalLink size={12} /> Aperçu</a>
+          <button type="button" onClick={() => setOpen(true)} className={claudeGhost}>Lire plus</button>
+        </div>
+        {open && <ClaudeDialog r={r} onClose={() => setOpen(false)} onMove={onMove} />}
+      </div>
+    );
+  }
+
+  if (!showDelegate && !(r.status === "A_VALIDER" && r.claudeError)) return null;
   return (
     <div className={box}>
       {r.claudeError && <p className="mb-2 text-pink">⚠ {r.claudeError}</p>}
-
-      {ready && (
-        <>
-          <p className="mb-1 inline-flex items-center gap-1 font-semibold text-title"><Sparkles size={13} /> Fait par Claude</p>
-          {r.claudeSummary && <p className="whitespace-pre-wrap text-text-strong">{r.claudeSummary}</p>}
-          <div className="mt-2 flex flex-wrap gap-2">
-            <a href={r.claudePreviewUrl!} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-card bg-title px-2.5 py-1.5 font-semibold text-bg"><ExternalLink size={12} /> Aperçu</a>
-            {r.claudeCompareUrl && <a href={r.claudeCompareUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-card border border-border px-2.5 py-1.5 text-title"><GitCompare size={12} /> Changements</a>}
-            <button type="button" onClick={() => setRedo((v) => !v)} className="inline-flex items-center gap-1 rounded-card border border-border px-2.5 py-1.5 text-title"><RotateCcw size={12} /> Refaire</button>
-            <button type="button" onClick={() => setConfirmDiscard(true)} className="inline-flex items-center gap-1 rounded-card border border-pink/50 px-2.5 py-1.5 text-pink"><Undo2 size={12} /> Annuler la modif</button>
-          </div>
-          {confirmDiscard && (
-            <div className="mt-2 rounded-card border border-pink/40 p-2">
-              <p className="text-text-strong">Jeter le travail de Claude ? Le site en ligne n’est pas touché, la demande revient en « En cours ».</p>
-              <div className="mt-2 flex gap-2">
-                <button type="button" onClick={() => startTransition(() => discardClaudeWork(r.id))} className="rounded-card bg-pink px-2.5 py-1.5 font-semibold text-bg">Oui, annuler</button>
-                <button type="button" onClick={() => setConfirmDiscard(false)} className="rounded-card border border-border px-2.5 py-1.5 text-title">Non</button>
-              </div>
-            </div>
-          )}
-          <p className="mt-2 text-muted">L’aperçu s’ouvre sur le Mac où tourne Claude. Glissez dans « Terminée » pour mettre en ligne.</p>
-        </>
-      )}
-
-      {(showDelegate || redo) && (
-        <form action={action} className={cn(redo && "mt-3")}>
-          {redo && <Textarea name="feedback" rows={3} placeholder="Ce qu’il faut changer…" className="mb-2 text-sm" required />}
+      {showDelegate && (
+        <form action={action}>
           {!enabled ? (
-            <Link href="/admin/parametres" className="text-muted underline-offset-2 hover:underline">Activez Claude Code et sa clé API dans Paramètres</Link>
+            <Link href="/admin/parametres" className="text-claude underline-offset-2 hover:underline">Activez Claude Code dans Paramètres</Link>
           ) : r.hasRepo ? (
-            <button disabled={pending} className="inline-flex items-center gap-1.5 rounded-card bg-title px-3 py-1.5 font-semibold text-bg disabled:opacity-60">
-              {pending ? <LoaderCircle size={13} className="animate-spin" /> : <Sparkles size={13} />} {redo ? "Renvoyer à Claude" : "Confier à Claude"}
+            <button disabled={pending} className={cn(claudeBtn, "w-full py-2")}>
+              {pending ? <LoaderCircle size={13} className="animate-spin" /> : <Sparkles size={13} />} Confier à Claude
             </button>
           ) : (
-            <Link href={`/admin/sites/${r.siteId}`} className="text-muted underline-offset-2 hover:underline">Renseignez le dépôt GitHub du site pour confier à Claude</Link>
+            <Link href={`/admin/sites/${r.siteId}`} className="text-claude underline-offset-2 hover:underline">Renseignez le dépôt GitHub du site</Link>
           )}
           {state.error && <p className="mt-2 text-pink">{state.error}</p>}
         </form>
       )}
     </div>
+  );
+}
+
+/** Grande fenêtre : compte rendu complet de Claude et toutes les actions. */
+function ClaudeDialog({ r, onClose, onMove }: { r: KanbanItem; onClose: () => void; onMove: (id: string, s: ChangeRequestStatus) => void }) {
+  const [redo, setRedo] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [state, action, pending] = useActionState<ClaudeActionState, FormData>(delegateToClaude.bind(null, r.id), {});
+  const [, startTransition] = useTransition();
+  return (
+    <Dialog size="lg" onClose={onClose} title={<span className="inline-flex items-center gap-2"><Sparkles size={16} className="text-claude" /> {r.title}</span>}>
+      <p className="mb-4 text-xs text-text">{r.clientName} · {r.siteName}</p>
+      {r.claudeError && <p className="mb-4 rounded-card border border-pink/40 p-3 text-sm text-pink">⚠ {r.claudeError}</p>}
+
+      <div className="rounded-card border border-claude/30 bg-claude/[0.06] p-4">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-claude">Compte rendu de Claude</p>
+        {r.claudeSummary ? <Summary text={r.claudeSummary} /> : <p className="text-sm text-text">Pas de compte rendu.</p>}
+      </div>
+
+      {r.claudeFeedback && <p className="mt-3 text-xs text-text">Dernière consigne envoyée : « {r.claudeFeedback} »</p>}
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <a href={r.claudePreviewUrl!} target="_blank" rel="noreferrer" className={claudeBtn}><ExternalLink size={13} /> Aperçu</a>
+        {r.claudeCompareUrl && <a href={r.claudeCompareUrl} target="_blank" rel="noreferrer" className={claudeGhost}><GitCompare size={13} /> Changements</a>}
+        <button type="button" onClick={() => { setRedo((v) => !v); setConfirmDiscard(false); }} className={claudeGhost}><RotateCcw size={13} /> Refaire</button>
+        <button type="button" onClick={() => { setConfirmDiscard(true); setRedo(false); }} className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-card border border-pink/50 px-3 py-1.5 text-xs font-medium text-pink hover:bg-pink/10"><Undo2 size={13} /> Annuler la modif</button>
+        {r.status === "A_VALIDER" && (
+          <button type="button" onClick={() => { onMove(r.id, "TERMINEE"); onClose(); }} className={cn(claudeBtn, "ml-auto")}><Rocket size={13} /> Mettre en ligne</button>
+        )}
+      </div>
+      <p className="mt-2 text-xs text-muted">L’aperçu s’ouvre sur le Mac où tourne le worker. « Mettre en ligne » publie sur le site dans la minute.</p>
+
+      {redo && (
+        <form action={action} className="mt-4 rounded-card border border-claude/30 p-3">
+          <Textarea name="feedback" rows={4} placeholder="Ce que Claude doit changer…" className="mb-2 text-sm" required autoFocus />
+          <button disabled={pending} className={claudeBtn}>{pending ? <LoaderCircle size={13} className="animate-spin" /> : <Sparkles size={13} />} Renvoyer à Claude</button>
+          {state.error && <p className="mt-2 text-xs text-pink">{state.error}</p>}
+          {state.ok && <p className="mt-2 text-xs text-claude">Renvoyé à Claude.</p>}
+        </form>
+      )}
+      {confirmDiscard && (
+        <div className="mt-4 rounded-card border border-pink/40 p-3">
+          <p className="text-sm text-text-strong">Jeter le travail de Claude ? Le site en ligne n’est pas touché, la demande revient en « En cours ».</p>
+          <div className="mt-3 flex gap-2">
+            <button type="button" onClick={() => { startTransition(() => discardClaudeWork(r.id)); onClose(); }} className="rounded-card bg-pink px-3 py-1.5 text-xs font-semibold text-bg">Oui, annuler la modif</button>
+            <button type="button" onClick={() => setConfirmDiscard(false)} className="rounded-card border border-border px-3 py-1.5 text-xs text-title">Non</button>
+          </div>
+        </div>
+      )}
+    </Dialog>
   );
 }

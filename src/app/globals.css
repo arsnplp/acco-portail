@@ -16,6 +16,7 @@
   --pink: #d46a6a;
   --yellow: #e3d59b;
   --green: #9fb6a3;
+  --claude: #d97757; /* tout ce qui concerne Claude (IA) */
 
   --radius: 12px;
   --radius-sm: 8px;
@@ -35,6 +36,7 @@
   --color-pink: var(--pink);
   --color-yellow: var(--yellow);
   --color-green: var(--green);
+  --color-claude: var(--claude);
 
   --font-sans: var(--font-inter), system-ui, sans-serif;
   --font-title: var(--font-poppins), var(--font-inter), system-ui, sans-serif;
