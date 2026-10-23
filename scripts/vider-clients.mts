@@ -9,7 +9,7 @@
  */
 import { PrismaClient } from "@prisma/client";
 import { createClient } from "@supabase/supabase-js";
-import { deleteRemoteBranch } from "./claude-worker.mts";
+import { deleteRemoteBranch } from "./claude-worker.mjs";
 
 const confirm = process.argv.includes("--confirmer");
 const prisma = new PrismaClient();
