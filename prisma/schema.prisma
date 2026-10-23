@@ -762,6 +762,8 @@ model NotificationPreference {
   recaps          Boolean @default(true)
   messages        Boolean @default(true)
   offers          Boolean @default(true)
+  documents       Boolean @default(true) // client : document mis à disposition / admin : document envoyé par un client
+  referrals       Boolean @default(true) // admin : nouvelle recommandation
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

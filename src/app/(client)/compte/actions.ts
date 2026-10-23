@@ -33,7 +33,7 @@ export async function updateNotificationPrefs(formData: FormData) {
   const on = (k: string) => formData.get(k) === "on";
   const data = {
     pushEnabled: on("pushEnabled"), emailEnabled: on("emailEnabled"),
-    contactRequests: on("contactRequests"), reviews: on("reviews"), changes: on("changes"), recaps: on("recaps"), messages: on("messages"), offers: on("offers"),
+    contactRequests: on("contactRequests"), reviews: on("reviews"), changes: on("changes"), recaps: on("recaps"), messages: on("messages"), offers: on("offers"), documents: on("documents"),
   };
   await prisma.notificationPreference.upsert({ where: { userId: user.id }, create: { userId: user.id, ...data }, update: data });
   revalidatePath("/compte");

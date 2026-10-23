@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import type { ChangeRequestStatus } from "@prisma/client";
-import { CLAUDE_BUSY, claudeNeedsMerge, recordChangeDone } from "@/lib/change-requests";
+import { CLAUDE_BUSY, changeDoneNotification, claudeNeedsMerge, recordChangeHistory } from "@/lib/change-requests";
+import { notifyClient } from "@/lib/notify";
 import { featureEnabled } from "@/lib/settings";
 
 function revalidate(siteId: string) {
@@ -41,8 +42,9 @@ export async function moveChange(reqId: string, status: ChangeRequestStatus) {
         confirmedAt: status === "TERMINEE" ? null : cr.confirmedAt,
       },
     });
-    if (status === "TERMINEE") await recordChangeDone(tx, cr, cr.site, admin.id, now);
+    if (status === "TERMINEE") await recordChangeHistory(tx, cr, admin.id, now);
   });
+  if (status === "TERMINEE") await notifyClient(changeDoneNotification(cr, cr.site)).catch((e) => console.warn("[notify]", (e as Error).message));
   revalidate(cr.siteId);
 }
 

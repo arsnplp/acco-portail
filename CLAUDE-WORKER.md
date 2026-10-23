@@ -43,6 +43,7 @@ Ctrl+C pour arrêter (il finit la tâche en cours).
 Il utilise :
 - `.env` du portail : `DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (pièces jointes) ;
 - la clé de Paramètres (repli : `CLAUDE_CODE_API_KEY` du `.env`) ;
+- `CRON_SECRET` (même valeur que sur le VPS) pour que le portail envoie au client le push/email « modification en ligne » ;
 - les identifiants git du Mac pour pousser sur GitHub.
 
 Options (`.env`) : `CLAUDE_WORKDIR` (défaut `~/.acco-claude`), `CLAUDE_PREVIEW_PORT` (défaut `4321`),

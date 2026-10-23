@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireClientContext } from "@/lib/auth";
 import { uploadFile } from "@/lib/storage";
+import { after } from "next/server";
+import { notifyAdmins, excerpt } from "@/lib/notify";
 
 export async function sendClientMessage(formData: FormData) {
   const { user, client } = await requireClientContext();
@@ -25,6 +27,10 @@ export async function sendClientMessage(formData: FormData) {
     prisma.message.create({ data: { conversationId: conv.id, authorId: user.id, siteId, body, attachments: attachments.length ? attachments : undefined } }),
     prisma.conversation.update({ where: { id: conv.id }, data: { lastMessageAt: now, clientReadAt: now } }),
   ]);
+  after(() => notifyAdmins({
+    pref: "messages", tag: `msg-${client.id}`, href: `/admin/messages/${client.id}`,
+    title: `Message de ${client.name}`, body: body ? excerpt(body) : `${files.length} pièce${files.length > 1 ? "s" : ""} jointe${files.length > 1 ? "s" : ""}`,
+  }));
   revalidatePath("/messages");
   revalidatePath("/admin/messages");
 }

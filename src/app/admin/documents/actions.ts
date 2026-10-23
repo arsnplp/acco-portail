@@ -38,7 +38,7 @@ export async function uploadDocument(_prev: ActionState, formData: FormData): Pr
   await prisma.document.create({ data: { clientId, siteId, kind, title, storagePath, fileName: file.name, sizeBytes: file.size } });
 
   await notifyClient({
-    clientId, siteId, kind: "DOCUMENT_DISPONIBLE", pref: "messages",
+    clientId, siteId, kind: "DOCUMENT_DISPONIBLE", pref: "documents",
     title: `Nouveau document : ${DOC_KIND[kind].label.toLowerCase()}`,
     body: title, href: "/compte/documents",
   });
@@ -62,7 +62,7 @@ export async function askClientDocument(clientId: string, _prev: ActionState, fo
   if (!message) return { error: "Dites quel document vous attendez (ex. « Kbis de moins de 3 mois »)." };
   await prisma.documentRequest.create({ data: { clientId, siteId, kind, message, direction: "VERS_CLIENT", requestedBy: admin.id } });
   await notifyClient({
-    clientId, siteId, kind: "DOCUMENT_DEMANDE", pref: "messages",
+    clientId, siteId, kind: "DOCUMENT_DEMANDE", pref: "documents",
     title: "Acco a besoin d’un document",
     body: message, href: "/compte/documents",
     emailSubject: `Un document à nous envoyer : ${message}`,

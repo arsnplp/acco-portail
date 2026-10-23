@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireClientSite } from "@/lib/sites";
 import { uploadFile } from "@/lib/storage";
+import { after } from "next/server";
+import { notifyAdmins, excerpt } from "@/lib/notify";
 
 export async function uploadAsset(siteId: string, assetId: string, formData: FormData) {
   const { site } = await requireClientSite(siteId);
@@ -13,6 +15,7 @@ export async function uploadAsset(siteId: string, assetId: string, formData: For
   if (!asset) return;
   const storagePath = await uploadFile("site-assets", site.id, file);
   await prisma.siteAsset.update({ where: { id: asset.id }, data: { storagePath, fileName: file.name, uploadedAt: new Date() } });
+  after(() => notifyAdmins({ pref: "documents", tag: `asset-${asset.id}`, href: `/admin/sites/${site.id}`, title: `Fichier reçu · ${site.name}`, body: excerpt(file.name) }));
   revalidatePath(`/sites/${site.id}`);
 }
 

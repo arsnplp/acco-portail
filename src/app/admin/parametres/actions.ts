@@ -22,6 +22,15 @@ export async function disconnectGoogleAction() {
   revalidatePath("/admin/sites", "layout");
 }
 
+/** Mes notifications (équipe) : push sur cet appareil et choix des événements. */
+export async function saveAdminNotifPrefs(formData: FormData) {
+  const admin = await requireAdmin();
+  const on = (k: string) => formData.get(k) === "on";
+  const data = { pushEnabled: on("pushEnabled"), changes: on("changes"), messages: on("messages"), referrals: on("referrals"), documents: on("documents") };
+  await prisma.notificationPreference.upsert({ where: { userId: admin.id }, create: { userId: admin.id, ...data }, update: data });
+  revalidatePath("/admin/parametres");
+}
+
 export type ServicesState = { errors?: Record<string, string>; infos?: Record<string, string>; ok?: boolean };
 
 /** Enregistre les clés après vérification auprès de chaque service ; n'active une fonction que si ses clés sont valides. */

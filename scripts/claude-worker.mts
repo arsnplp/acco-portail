@@ -10,6 +10,8 @@
  *     branche publiée et pousse. Le VPS publie tout seul dans la minute (deploy-sites).
  *
  * Clé API : Paramètres du portail → « Claude Code (modifications des sites) » (repli : CLAUDE_CODE_API_KEY du .env).
+ * Notification « modif en ligne » au client : envoyée par le portail (PORTAIL_URL, défaut https://app.acco-lab.fr)
+ * avec CRON_SECRET du .env ; sans ça, la notification apparaît dans l'app du client mais sans push ni email.
  * Variables (.env) : DATABASE_URL, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (pièces jointes), et en option
  * CLAUDE_WORKDIR (~/.acco-claude), CLAUDE_PREVIEW_PORT (4321), CLAUDE_MAX_BUDGET_USD (5), CLAUDE_MODEL.
  */
@@ -23,7 +25,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { query, type CanUseTool } from "@anthropic-ai/claude-agent-sdk";
 import type { PrismaClient } from "@prisma/client";
-import { recordChangeDone } from "../src/lib/change-requests";
+import { changeDoneNotification, recordChangeHistory } from "../src/lib/change-requests";
 
 const run = promisify(execFile);
 
@@ -354,6 +356,21 @@ export async function processJob(prisma: PrismaClient, id: string) {
   log(`  ✓ À valider — aperçu ${previewUrl}`);
 }
 
+/** Le portail envoie la notification (fil + push + email). Sans accès au portail : notification dans le fil seulement. */
+async function notifyClientChangeDone(prisma: PrismaClient, cr: { id: string; siteId: string; title: string; site: { clientId: string } }) {
+  const url = `${(process.env.PORTAIL_URL || "https://app.acco-lab.fr").replace(/\/$/, "")}/api/claude/en-ligne`;
+  const secret = process.env.CRON_SECRET;
+  if (secret) {
+    try {
+      const res = await fetch(url, { method: "POST", headers: { authorization: `Bearer ${secret}`, "content-type": "application/json" }, body: JSON.stringify({ id: cr.id }), signal: AbortSignal.timeout(20_000) });
+      if (res.ok) return log("  🔔 client prévenu (push / email)");
+      log(`  ⚠ portail : ${res.status}, notification sans push`);
+    } catch (e) { log("  ⚠ portail injoignable :", (e as Error).message); }
+  } else log("  ⚠ CRON_SECRET absent du .env : notification sans push");
+  const n = changeDoneNotification(cr, cr.site);
+  await prisma.notification.create({ data: { clientId: n.clientId, siteId: n.siteId, kind: n.kind, title: n.title, body: n.body, href: n.href } });
+}
+
 export async function publishJob(prisma: PrismaClient, id: string) {
   const cr = await prisma.changeRequest.findUnique({ where: { id }, include: { site: true } });
   if (!cr || !cr.claudeBranch || !cr.site.repoUrl) throw new Error("Rien à mettre en ligne.");
@@ -363,8 +380,9 @@ export async function publishJob(prisma: PrismaClient, id: string) {
   const now = new Date();
   await prisma.$transaction(async (tx) => {
     await tx.changeRequest.update({ where: { id }, data: { claudeState: "EN_LIGNE", claudeMergedAt: now, claudeError: null } });
-    await recordChangeDone(tx, cr, cr.site, cr.assigneeId, now);
+    await recordChangeHistory(tx, cr, cr.assigneeId, now);
   });
+  await notifyClientChangeDone(prisma, cr);
   await stopPreview(id);
   await rm(jobDir(id), { recursive: true, force: true });
   log("  ✓ poussé — le serveur publie dans la minute");

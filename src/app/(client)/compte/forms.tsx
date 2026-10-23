@@ -6,6 +6,7 @@ import { updateCompany, updateProfile, updateNotificationPrefs, type ActionState
 import { Field, Input, FormError } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Card } from "@/components/ui/card";
+import { Toggle } from "@/components/ui/toggle";
 
 export function CompanyForm({ client, editable }: { client: { name: string; address: string | null; phone: string | null; email: string | null }; editable: boolean }) {
   const [state, action] = useActionState<ActionState, FormData>(updateCompany, {});
@@ -47,9 +48,10 @@ export function ProfileForm({ user }: { user: { firstName: string | null; lastNa
 const PREFS: Array<[keyof NotificationPreference, string]> = [
   ["contactRequests", "Nouvelle demande de client"],
   ["reviews", "Nouvel avis"],
-  ["changes", "Modification terminée"],
+  ["changes", "Modification mise en ligne"],
   ["recaps", "Récap du mois"],
   ["messages", "Message de l’équipe"],
+  ["documents", "Nouveau document"],
   ["offers", "Offres et promos"],
 ];
 
@@ -69,15 +71,3 @@ export function NotificationPrefsForm({ prefs }: { prefs: NotificationPreference
   );
 }
 
-function Toggle({ name, label, defaultChecked }: { name: string; label: string; defaultChecked: boolean }) {
-  return (
-    <label className="flex cursor-pointer items-center justify-between gap-3 px-4 py-3">
-      <span className="text-sm text-text-strong">{label}</span>
-      <span className="relative inline-flex h-6 w-11 shrink-0 items-center">
-        <input type="checkbox" name={name} defaultChecked={defaultChecked} className="peer sr-only" />
-        <span className="absolute inset-0 rounded-full border border-border bg-surface-2 transition-colors peer-checked:bg-green peer-checked:border-green" />
-        <span className="absolute left-0.5 size-5 rounded-full bg-text transition-transform peer-checked:translate-x-5 peer-checked:bg-bg" />
-      </span>
-    </label>
-  );
-}

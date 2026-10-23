@@ -1,22 +1,23 @@
 import type { ChangeRequest, ClaudeJobState, Prisma, Site } from "@prisma/client";
 
-/**
- * Effets d'une modification terminée : entrée dans l'historique du site + notification au client.
- * Partagé entre le portail (passage manuel en « Terminée ») et le worker Claude (après la mise en ligne).
- */
-export async function recordChangeDone(
+/** Modification terminée : entrée dans l'historique du site (la notification au client est envoyée à part, avec notifyClient). */
+export async function recordChangeHistory(
   tx: Prisma.TransactionClient,
   cr: Pick<ChangeRequest, "id" | "siteId" | "title" | "page">,
-  site: Pick<Site, "clientId">,
   authorId: string | null,
   when = new Date(),
 ) {
   await tx.siteHistoryEntry.create({
     data: { siteId: cr.siteId, kind: "INTERVENTION", title: cr.title, description: cr.page ? `Page : ${cr.page}` : null, items: [], authorId, happenedAt: when },
   });
-  await tx.notification.create({
-    data: { clientId: site.clientId, siteId: cr.siteId, kind: "MODIFICATION_TERMINEE", title: "Modification terminée", body: cr.title, href: `/sites/${cr.siteId}/modifications/${cr.id}` },
-  });
+}
+
+/** Contenu de la notification « modification en ligne » envoyée au client. */
+export function changeDoneNotification(cr: Pick<ChangeRequest, "id" | "siteId" | "title">, site: Pick<Site, "clientId">) {
+  return {
+    clientId: site.clientId, siteId: cr.siteId, kind: "MODIFICATION_TERMINEE" as const, pref: "changes" as const,
+    title: "Votre modification est en ligne ✅", body: cr.title, href: `/sites/${cr.siteId}/modifications/${cr.id}`,
+  };
 }
 
 /** Claude est en train de faire quelque chose : la carte ne doit pas bouger. */

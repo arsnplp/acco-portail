@@ -3,7 +3,7 @@ import type { NotificationKind } from "@prisma/client";
 import { sendEmail, layout, appUrl } from "@/lib/email";
 import { sendPushToUser } from "@/lib/push";
 
-type Pref = "contactRequests" | "reviews" | "changes" | "recaps" | "messages" | "offers";
+type Pref = "contactRequests" | "reviews" | "changes" | "recaps" | "messages" | "offers" | "documents";
 
 /**
  * Crée une notification dans le fil du client, puis envoie le push et l'email
@@ -38,3 +38,27 @@ export async function notifyClient(opts: {
     }),
   );
 }
+
+type AdminPref = "changes" | "messages" | "referrals" | "documents";
+
+/**
+ * Push aux membres de l'équipe (rôle ADMIN) selon leurs réglages (Paramètres → Mes notifications).
+ * Ne lève jamais d'erreur : une notification ratée ne doit pas casser l'action du client.
+ */
+export async function notifyAdmins(opts: { title: string; body?: string; href: string; pref: AdminPref; tag?: string }) {
+  try {
+    const admins = await prisma.user.findMany({ where: { role: "ADMIN" }, include: { notificationPref: true } });
+    await Promise.all(
+      admins.map(async (u) => {
+        const p = u.notificationPref;
+        if (p && (!p.pushEnabled || !p[opts.pref])) return;
+        await sendPushToUser(u.id, { title: opts.title, body: opts.body, url: appUrl(opts.href), tag: opts.tag ?? opts.pref });
+      }),
+    );
+  } catch (e) {
+    console.warn("[notifyAdmins]", (e as Error).message);
+  }
+}
+
+/** Texte court pour le corps d'une notification. */
+export const excerpt = (t: string, n = 120) => (t.length > n ? `${t.slice(0, n - 1).trimEnd()}…` : t);

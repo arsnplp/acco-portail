@@ -7,6 +7,8 @@ import { prisma } from "@/lib/prisma";
 import { requireClientSite, changeQuota } from "@/lib/sites";
 import { uploadFile } from "@/lib/storage";
 import { maybeCreateReviewPrompt } from "@/lib/review-prompt";
+import { after } from "next/server";
+import { notifyAdmins, excerpt } from "@/lib/notify";
 
 export type ChangeFormState = { error?: string };
 
@@ -43,6 +45,11 @@ export async function createChangeRequest(siteId: string, _prev: ChangeFormState
   const cr = await prisma.changeRequest.create({
     data: { siteId: site.id, ...parsed.data, attachments: { create: uploaded } },
   });
+  after(() => notifyAdmins({
+    pref: "changes", tag: `modif-${cr.id}`, href: "/admin/modifications",
+    title: `${cr.urgency === "URGENTE" ? "🔴 Demande urgente" : "Nouvelle demande de modif"} · ${site.name}`,
+    body: `${client.name} : ${excerpt(cr.title)}`,
+  }));
   revalidatePath(`/sites/${site.id}/modifications`);
   redirect(`/sites/${site.id}/modifications/${cr.id}?creee=1`);
 }
@@ -64,5 +71,6 @@ export async function reopenChange(siteId: string, reqId: string, formData: Form
     prisma.changeRequest.update({ where: { id: cr.id }, data: { status: "EN_COURS", reopenedAt: new Date(), completedAt: null } }),
     prisma.changeRequestComment.create({ data: { changeRequestId: cr.id, authorId: user.id, body: reason ? `Rouverte : ${reason}` : "Rouverte par le client." } }),
   ]);
+  after(() => notifyAdmins({ pref: "changes", tag: `modif-${cr.id}`, href: "/admin/modifications", title: `Demande rouverte · ${site.name}`, body: reason ? excerpt(reason) : cr.title }));
   revalidatePath(`/sites/${site.id}/modifications`);
 }

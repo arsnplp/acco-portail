@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireClientContext } from "@/lib/auth";
+import { after } from "next/server";
+import { notifyAdmins, excerpt } from "@/lib/notify";
 
 export type RefState = { error?: string; ok?: boolean };
 
@@ -17,6 +19,7 @@ export async function recommendContact(_prev: RefState, formData: FormData): Pro
   if (!phone && !email) return { error: "Indiquez au moins un téléphone ou un email." };
   if (email && !z.string().email().safeParse(email).success) return { error: "Email invalide." };
   await prisma.referral.create({ data: { referrerClientId: client.id, kind: "CONTACT", contactName: name, contactPhone: phone, contactEmail: email, note: d.note?.trim().slice(0, 500) || null } });
+  after(() => notifyAdmins({ pref: "referrals", tag: "referral", href: "/admin/recommandations", title: `Nouvelle recommandation de ${client.name}`, body: excerpt(name) }));
   revalidatePath("/compte/recommandations");
   revalidatePath("/admin", "layout");
   return { ok: true };

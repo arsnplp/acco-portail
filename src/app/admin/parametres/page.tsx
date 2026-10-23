@@ -9,6 +9,8 @@ import { oauthConfigured, connectedGoogleEmail } from "@/lib/google-oauth";
 import { listProperties } from "@/lib/google-search";
 import { saveSettings, disconnectGoogleAction } from "./actions";
 import { ServicesForm } from "./services-form";
+import { AdminNotifForm } from "./notif-form";
+import { requireAdmin } from "@/lib/auth";
 import { secretsStatus, featureToggles } from "@/lib/settings";
 import { NewPasswordForm } from "@/app/nouveau-mot-de-passe/form";
 import { LogOut } from "lucide-react";
@@ -25,7 +27,8 @@ const GOOGLE_MSG: Record<string, string> = {
 
 export default async function ParametresPage({ searchParams }: { searchParams: Promise<{ google?: string }> }) {
   const { google } = await searchParams;
-  const [settings, email, secrets, toggles] = await Promise.all([prisma.setting.findMany(), connectedGoogleEmail(), secretsStatus(), featureToggles()]);
+  const admin = await requireAdmin();
+  const [settings, email, secrets, toggles, notifPrefs] = await Promise.all([prisma.setting.findMany(), connectedGoogleEmail(), secretsStatus(), featureToggles(), prisma.notificationPreference.findUnique({ where: { userId: admin.id } })]);
   const get = (k: string) => settings.find((s) => s.key === k)?.value ?? "";
   const properties = email ? await listProperties() : [];
   const sites = email ? await prisma.site.findMany({ where: { status: "EN_LIGNE" }, select: { name: true, searchConsoleProp: true } }) : [];
@@ -61,6 +64,9 @@ export default async function ParametresPage({ searchParams }: { searchParams: P
 
       <SectionTitle emoji="🔑">Clés et services</SectionTitle>
       <ServicesForm secrets={secrets} toggles={toggles} googleConnected={Boolean(email)} />
+
+      <SectionTitle emoji="🔔">Mes notifications</SectionTitle>
+      <AdminNotifForm prefs={notifPrefs} />
 
       <SectionTitle emoji="🔐">Mon accès</SectionTitle>
       <div className="grid gap-3">
