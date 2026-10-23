@@ -60,7 +60,18 @@ enum ContactRequestStatus {
 enum ChangeRequestStatus {
   RECUE
   EN_COURS
+  A_VALIDER // Claude a terminé, en attente de validation par l'équipe
   TERMINEE
+}
+
+/// Suivi du travail de Claude Code sur une demande de modification (worker local, scripts/claude-worker.ts).
+enum ClaudeJobState {
+  EN_FILE // confiée à Claude, en attente du worker
+  EN_TRAVAIL // Claude modifie le site
+  PRET // modifs poussées sur la branche, aperçu disponible
+  MISE_EN_LIGNE_DEMANDEE // validée : à fusionner dans la branche principale
+  EN_LIGNE // fusionnée et poussée, le serveur publie
+  ERREUR
 }
 
 enum Urgency {
@@ -246,6 +257,9 @@ model Site {
   reviewsSyncedAt   DateTime?
   reviewAverage     Float?
   reviewTotal       Int?
+  repoUrl           String? // dépôt GitHub du site, ex. https://github.com/arsnplp/swella.git
+  repoBranch        String? // branche publiée (défaut : main)
+  repoRoot          String? // sous-dossier servi en ligne (ex. « site »), vide = racine
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
 
@@ -417,6 +431,19 @@ model ChangeRequest {
   completedAt DateTime?
   confirmedAt DateTime? // le client confirme
   reopenedAt  DateTime?
+
+  // Claude Code
+  claudeState      ClaudeJobState?
+  claudeBranch     String? // ex. claude/<id>
+  claudeSummary    String? // compte rendu de Claude
+  claudeFeedback   String? // consignes de l'équipe pour refaire
+  claudeError      String?
+  claudePreviewUrl String? // lien d'aperçu (localhost sur la machine du worker)
+  claudeCompareUrl String? // diff GitHub
+  claudeStartedAt  DateTime?
+  claudeFinishedAt DateTime?
+  claudeMergedAt   DateTime?
+
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
 
@@ -427,6 +454,7 @@ model ChangeRequest {
 
   @@index([siteId, status])
   @@index([status])
+  @@index([claudeState])
 }
 
 model ChangeRequestAttachment {

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Empty } from "@/components/ui/empty";
 import { Timeline } from "@/components/ui/timeline";
-import { CHANGE_STATUS } from "@/lib/labels";
+import { CHANGE_STATUS, clientChangeStatus } from "@/lib/labels";
 import { timeAgo } from "@/lib/format";
 
 export const metadata = { title: "Modifications" };
@@ -68,7 +68,7 @@ export default async function ModificationsPage({ params }: { params: Promise<{ 
 }
 
 function RequestCard({ siteId, r }: { siteId: string; r: { id: string; title: string; status: keyof typeof CHANGE_STATUS; createdAt: Date; confirmedAt: Date | null; page: string | null } }) {
-  const st = CHANGE_STATUS[r.status];
+  const st = CHANGE_STATUS[clientChangeStatus(r.status)];
   const needsConfirm = r.status === "TERMINEE" && !r.confirmedAt;
   return (
     <Card href={`/sites/${siteId}/modifications/${r.id}`} className="py-3">

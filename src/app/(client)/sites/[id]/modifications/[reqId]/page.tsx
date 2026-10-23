@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Textarea } from "@/components/ui/field";
-import { CHANGE_STATUS, URGENCY } from "@/lib/labels";
+import { CHANGE_STATUS, URGENCY, clientChangeStatus } from "@/lib/labels";
 import { fmtDate } from "@/lib/format";
 import { confirmChange, reopenChange } from "../actions";
 
@@ -21,10 +21,11 @@ export default async function ChangeDetailPage({ params, searchParams }: { param
     include: { attachments: true, comments: { include: { author: true }, orderBy: { createdAt: "asc" } }, assignee: true },
   });
   if (!cr) notFound();
-  const st = CHANGE_STATUS[cr.status];
+  const status = clientChangeStatus(cr.status);
+  const st = CHANGE_STATUS[status];
   const files = await Promise.all(cr.attachments.map(async (a) => ({ ...a, url: await signedUrl("change-requests", a.storagePath) })));
   const steps = ["RECUE", "EN_COURS", "TERMINEE"] as const;
-  const idx = steps.indexOf(cr.status);
+  const idx = steps.indexOf(status);
 
   return (
     <div>

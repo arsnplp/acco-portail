@@ -17,8 +17,13 @@ export const PROJECT_STEPS: Array<{ key: ProjectStep; label: string }> = [
 export const CHANGE_STATUS: Record<ChangeRequestStatus, { label: string; tone: Tone }> = {
   RECUE: { label: "Reçue", tone: "pink" },
   EN_COURS: { label: "En cours", tone: "yellow" },
+  A_VALIDER: { label: "À valider", tone: "blue" },
   TERMINEE: { label: "Terminée", tone: "green" },
 };
+
+/** Côté client, « À valider » (relecture interne) s'affiche comme « En cours ». */
+export type ClientChangeStatus = "RECUE" | "EN_COURS" | "TERMINEE";
+export const clientChangeStatus = (s: ChangeRequestStatus): ClientChangeStatus => (s === "A_VALIDER" ? "EN_COURS" : s);
 
 export const URGENCY: Record<Urgency, string> = { NORMALE: "Quand vous pouvez", URGENTE: "Urgent" };
 

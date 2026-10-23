@@ -40,6 +40,9 @@ export async function updateSite(siteId: string, _prev: ActionState, formData: F
         projectStep: goesLive ? "MISE_EN_LIGNE" : projectStep,
         searchConsoleProp,
         googleLocationId: d.googleLocationId?.trim() || null,
+        repoUrl: d.repoUrl?.trim() || null,
+        repoBranch: d.repoBranch?.trim() || null,
+        repoRoot: d.repoRoot?.trim().replace(/^\/+|\/+$/g, "") || null,
         launchedAt: goesLive ? new Date() : before.launchedAt,
       },
     });

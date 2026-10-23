@@ -8,7 +8,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { SectionTitle } from "@/components/ui/card";
 import { PROJECT_STEPS } from "@/lib/labels";
 
-type SiteInfo = { id: string; name: string; url: string | null; previewUrl: string | null; screenshotUrl: string | null; status: SiteStatus; projectStep: ProjectStep; searchConsoleProp: string | null; googleLocationId: string | null };
+type SiteInfo = { id: string; name: string; url: string | null; previewUrl: string | null; screenshotUrl: string | null; status: SiteStatus; projectStep: ProjectStep; searchConsoleProp: string | null; googleLocationId: string | null; repoUrl: string | null; repoBranch: string | null; repoRoot: string | null };
 
 export function SiteForms({ site, properties = [], locations = [] }: { site: SiteInfo; properties?: string[]; locations?: { id: string; title: string; address?: string }[] }) {
   const [s1, a1] = useActionState<ActionState, FormData>(updateSite.bind(null, site.id), {});
@@ -46,6 +46,11 @@ export function SiteForms({ site, properties = [], locations = [] }: { site: Sit
           </Field>
         </div>
         <Field label="URL de la capture"><Input name="screenshotUrl" defaultValue={site.screenshotUrl ?? ""} placeholder="https://" /></Field>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Field label="Dépôt GitHub (pour Claude)"><Input name="repoUrl" defaultValue={site.repoUrl ?? ""} placeholder="https://github.com/arsnplp/monsite.git" /></Field>
+          <Field label="Branche publiée"><Input name="repoBranch" defaultValue={site.repoBranch ?? ""} placeholder="main" /></Field>
+          <Field label="Dossier servi en ligne"><Input name="repoRoot" defaultValue={site.repoRoot ?? ""} placeholder="vide = racine du dépôt" /></Field>
+        </div>
         <p className="text-xs text-muted">Passer en « En ligne » enregistre la mise en ligne dans l’historique et prévient le client. Si la propriété Search Console est vide, elle est retrouvée depuis le domaine de l’URL, puis 12 mois de chiffres sont récupérés automatiquement.</p>
         <FormError message={s1.error} />
         <div className="flex items-center gap-3">
