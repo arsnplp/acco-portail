@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { requireTeam } from "@/lib/auth";
 import { generateLeadList } from "@/lib/leads/generate";
 import type { LeadRow } from "@/lib/leads/colonnes";
-import { hostOf, normName, normPhone, parisDay, parisMidnight } from "@/lib/crm";
+import { formatTel, hostOf, nettoyerNom, normName, normPhone, parisDay, parisMidnight } from "@/lib/crm";
 
 export type LeadState = { error?: string; ok?: string };
 
@@ -73,7 +73,7 @@ function splitDirigeant(s: string | null) {
   const words = clean.split(" ");
   const nom = words.filter((w) => w.length > 1 && w === w.toUpperCase()).join(" ");
   const prenom = words.filter((w) => w !== w.toUpperCase())[0] ?? null;
-  return nom || prenom ? { nom: nom || null, prenom } : null;
+  return nom || prenom ? { nom: nettoyerNom(nom || null), prenom: nettoyerNom(prenom) } : null;
 }
 
 /** Envoie les leads de la liste dans « À contacter » (en sautant ceux déjà présents dans le CRM). */
@@ -107,10 +107,10 @@ export async function sendListToProspects(id: string): Promise<LeadState> {
     ].filter(Boolean).join(" · ");
     const p = await prisma.prospect.create({
       data: {
-        societe: lead.entreprise, telephone: lead.telephone, siteWeb: lead.siteWeb, siren: lead.siren, siret: (d.SIRET as string) ?? null,
+        societe: lead.entreprise, telephone: formatTel(lead.telephone), siteWeb: lead.siteWeb, siren: lead.siren, siret: (d.SIRET as string) ?? null,
         dirigeant: (d.Dirigeant as string) ?? null, adresse: (d.Adresse as string) ?? lead.ville, cibleId: cibleRow.id, source: "COLD_CALL",
         statut: "A_CONTACTER", commercialId: liste.commercialId, relanceAt,
-        contacts: dir ? { create: { prenom: dir.prenom, nom: dir.nom, fonction: (d["Rôle"] as string) ?? null, telephone: lead.telephone, email: (d.Email as string) ?? null, principal: true } } : undefined,
+        contacts: dir ? { create: { prenom: dir.prenom, nom: dir.nom, fonction: (d["Rôle"] as string) ?? null, telephone: formatTel(lead.telephone), email: (d.Email as string) ?? null, principal: true } } : undefined,
         echanges: { create: { type: "NOTE", notes: resume, auteurId: me.id, origine: "lead" } },
       },
     });

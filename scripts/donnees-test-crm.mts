@@ -79,13 +79,16 @@ async function creer() {
       // Numéros réservés à la fiction par l'ARCEP (06 39 98 xx xx) : aucun risque d'appeler quelqu'un.
       const tel = `06 39 98 ${String(10 + (i % 90)).padStart(2, "0")} ${String(10 + ((i * 7) % 90)).padStart(2, "0")}`;
       const parcours = pick(cfg.echanges);
+      // Un tiers des fiches en suivi ont un rappel à heure fixe aujourd'hui (pour « Ma journée » et le calendrier).
+      const rappel = ["A_RELANCER", "POSER_RDV", "A_SIGNER"].includes(statut) && k % 3 === 0 ? day(0, 9 + ((i * 2) % 9), pick([0, 15, 30, 45])) : null;
       const start = -(parcours.length * 4 + 1 + Math.floor(rnd() * (statut === "A_CONTACTER" ? 6 : 70)));
       const p = await prisma.prospect.create({
         data: {
           legacyId: `${TAG}${i}`, societe, telephone: tel, adresse: `${1 + Math.floor(rnd() * 80)} ${pick(RUES)}, ${pick(VILLES)}`,
           cibleId: cibleIds.get(cible.nom), source: pick<ProspectSource>(["COLD_CALL", "COLD_CALL", "COLD_CALL", "PROSPECTION_PHYSIQUE", "RECOMMANDATION"]),
           statut, commercialId: commercial?.id ?? null, potentielEuros: pick([50, 80, 99, 100, 150]),
-          relanceAt: statut === "GAGNE" || statut === "PERDU" ? null : day(cfg.relance(), 0),
+          relanceAt: rappel ?? (statut === "GAGNE" || statut === "PERDU" ? null : day(cfg.relance(), 0)),
+          rappelAt: rappel,
           motifPerte: statut === "PERDU" ? pick(["Trop cher", "A déjà un site", "Pas intéressé"]) : null,
           perduAt: statut === "PERDU" ? day(start + parcours.length * 4) : null, gagneAt: statut === "GAGNE" ? day(start + parcours.length * 4) : null,
           fraisCreationEuros: statut === "GAGNE" ? pick([490, 790, 990]) : null, mensuelEuros: statut === "GAGNE" ? pick([50, 99, 150]) : null,

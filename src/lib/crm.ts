@@ -124,9 +124,22 @@ export function relanceInfo(d: Date | string | null) {
 }
 
 // ─── Affichage ───────────────────────────────────────────────
+/** Capitalise un nom propre : « jean-pierre DE LA fontaine » → « Jean-Pierre de La Fontaine ». */
+export function nomPropre(s: string | null | undefined) {
+  const t = (s ?? "").replace(/\s+/g, " ").trim();
+  if (!t) return null;
+  const petits = new Set(["de", "du", "des", "d", "la", "le", "van", "von", "da", "di"]);
+  return t.toLowerCase().split(" ").map((w, i) =>
+    w.split(/([-'’])/).map((part) => (/^[-'’]$/.test(part) || (i > 0 && petits.has(part)) ? part : part.charAt(0).toUpperCase() + part.slice(1))).join(""),
+  ).join(" ");
+}
+/** Nettoie un prénom ou un nom saisi (espaces, majuscules, parenthèses du nom de naissance). */
+export const nettoyerNom = (s: string | null | undefined) => nomPropre((s ?? "").replace(/\([^)]*\)/g, " "));
+
+/** Nom standardisé d'un contact : « Prénom Nom ». */
 export function contactName(c?: { prenom: string | null; nom: string | null } | null) {
   if (!c) return null;
-  const s = [c.prenom, c.nom ? c.nom.charAt(0) + c.nom.slice(1).toLowerCase() : null].filter(Boolean).join(" ").trim();
+  const s = [nettoyerNom(c.prenom), nettoyerNom(c.nom)].filter(Boolean).join(" ").trim();
   return s || null;
 }
 export const initialsOf = (s: string) => s.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join("");
@@ -147,6 +160,12 @@ export const normPhone = (s: string | null | undefined) => {
   const d = (s ?? "").replace(/[^\d+]/g, "").replace(/^\+33/, "0").replace(/^0033/, "0");
   return d.length >= 9 ? d : null;
 };
+/** Téléphone au format français lisible : « 06 12 34 56 78 » (international laissé tel quel). */
+export function formatTel(s: string | null | undefined) {
+  const d = normPhone(s);
+  if (!d) return s?.trim() || null;
+  return d.length === 10 && d.startsWith("0") ? d.replace(/(\d{2})(?=\d)/g, "$1 ").trim() : d;
+}
 export const normName = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/gi, " ").trim().toLowerCase();
 export function hostOf(url: string | null | undefined) {
   if (!url) return null;

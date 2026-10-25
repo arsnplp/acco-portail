@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import type { EchangeType, ProspectSource, ProspectStatut } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireTeam } from "@/lib/auth";
-import { NOTE_OBLIGATOIRE, REGLES, fmtDayTime, statutApres, addDaysParis, hostOf, normName, normPhone, parisDateTime, parisDay, parisMidnight } from "@/lib/crm";
+import { NOTE_OBLIGATOIRE, REGLES, formatTel, nettoyerNom, fmtDayTime, statutApres, addDaysParis, hostOf, normName, normPhone, parisDateTime, parisDay, parisMidnight } from "@/lib/crm";
 
 export type CrmState = { error?: string; ok?: boolean; doublon?: { id: string; label: string; client: boolean } };
 
@@ -128,7 +128,7 @@ export async function createProspect(_prev: CrmState, f: FormData): Promise<CrmS
   const me = await requireTeam();
   const societe = txt(f, "societe");
   if (!societe) return { error: "Nom de la société requis." };
-  const d = { societe, siren: txt(f, "siren"), telephone: txt(f, "telephone"), siteWeb: txt(f, "siteWeb") };
+  const d = { societe, siren: txt(f, "siren"), telephone: formatTel(txt(f, "telephone")), siteWeb: txt(f, "siteWeb") };
   if (f.get("force") !== "1") {
     const doublon = await findDoublon(d);
     if (doublon) return { doublon, error: doublon.client ? `« ${doublon.label} » est déjà client.` : `« ${doublon.label} » existe déjà dans le CRM.` };
@@ -146,7 +146,7 @@ export async function createProspect(_prev: CrmState, f: FormData): Promise<CrmS
       relanceAt: txt(f, "relanceHeure") ? parisDateTime(txt(f, "relance") ?? parisDay(), txt(f, "relanceHeure")!) : parisMidnight(txt(f, "relance") ?? parisDay()),
       rappelAt: txt(f, "relanceHeure") ? parisDateTime(txt(f, "relance") ?? parisDay(), txt(f, "relanceHeure")!) : null,
       contacts: (txt(f, "prenom") || txt(f, "nom") || txt(f, "email"))
-        ? { create: { prenom: txt(f, "prenom"), nom: txt(f, "nom"), fonction: txt(f, "fonction"), email: txt(f, "email")?.toLowerCase(), telephone: d.telephone, principal: true } }
+        ? { create: { prenom: nettoyerNom(txt(f, "prenom")), nom: nettoyerNom(txt(f, "nom")), fonction: txt(f, "fonction"), email: txt(f, "email")?.toLowerCase(), telephone: d.telephone, principal: true } }
         : undefined,
     },
   });
@@ -169,7 +169,7 @@ export async function updateProspect(id: string, _prev: CrmState, f: FormData): 
     where: { id },
     data: {
       societe, siren: txt(f, "siren"), siret: txt(f, "siret"), dirigeant: txt(f, "dirigeant"), adresse: txt(f, "adresse"),
-      siteWeb: site ? (/^https?:\/\//.test(site) ? site : `https://${site}`) : null, telephone: txt(f, "telephone"),
+      siteWeb: site ? (/^https?:\/\//.test(site) ? site : `https://${site}`) : null, telephone: formatTel(txt(f, "telephone")),
       cibleId: await cibleIdFrom(txt(f, "cible")), source: source && SOURCES.includes(source) ? source : null,
       statut: statut && STATUTS.includes(statut) ? statut : undefined, motifPerte: txt(f, "motifPerte"),
       potentielEuros: num("potentielEuros"), fraisCreationEuros: num("fraisCreationEuros"), mensuelEuros: num("mensuelEuros"),
@@ -184,7 +184,7 @@ export async function updateProspect(id: string, _prev: CrmState, f: FormData): 
 
 export async function saveContact(prospectId: string, contactId: string | null, _prev: CrmState, f: FormData): Promise<CrmState> {
   await requireTeam();
-  const data = { prenom: txt(f, "prenom"), nom: txt(f, "nom"), fonction: txt(f, "fonction"), email: txt(f, "email")?.toLowerCase() ?? null, telephone: txt(f, "telephone"), principal: f.get("principal") === "on" };
+  const data = { prenom: nettoyerNom(txt(f, "prenom")), nom: nettoyerNom(txt(f, "nom")), fonction: txt(f, "fonction"), email: txt(f, "email")?.toLowerCase() ?? null, telephone: formatTel(txt(f, "telephone")), principal: f.get("principal") === "on" };
   if (!data.prenom && !data.nom) return { error: "Prénom ou nom requis." };
   await prisma.$transaction(async (tx) => {
     if (data.principal) await tx.prospectContact.updateMany({ where: { prospectId }, data: { principal: false } });

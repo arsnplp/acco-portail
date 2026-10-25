@@ -1,59 +1,91 @@
 import Link from "next/link";
-import { CalendarClockIcon, PhoneCallIcon, PhoneIcon } from "lucide-react";
+import { AlarmClockIcon, CalendarClockIcon, CheckIcon, PhoneCallIcon, PhoneIcon } from "lucide-react";
+import type { ProspectStatut } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireTeam } from "@/lib/auth";
 import { cn } from "@/lib/cn";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { STATUT, contactName, fmtDay, fmtTime, relanceInfo, teamName, todayBounds } from "@/lib/crm";
-import type { ProspectStatut } from "@prisma/client";
 import { EnablePush } from "@/components/push/enable-push";
 
+/** Relances sans heure : seulement les fiches en cours de suivi (« À contacter » se travaille en session depuis le pipeline). */
 const JOURNEE: ProspectStatut[] = ["A_RELANCER", "POSER_RDV", "A_SIGNER"];
 
 export const metadata = { title: "Ma journée" };
+
+type Slot = { id: string; at: Date; kind: "rappel" | "rdv"; prospectId: string; nom: string; detail: string; phone: string | null; fait: boolean; qui: string | null };
 
 export default async function MaJournee({ searchParams }: { searchParams: Promise<{ vue?: string }> }) {
   const me = await requireTeam();
   const equipe = (await searchParams).vue === "equipe";
   const { start, end } = todayBounds();
+  const now = new Date();
   const mine = equipe ? {} : { commercialId: me.id };
   const in7 = new Date(end.getTime() + 6 * 86400_000);
+  const contactSel = { orderBy: [{ principal: "desc" as const }, { createdAt: "asc" as const }], take: 1, select: { prenom: true, nom: true, telephone: true } };
 
-  const [due, rdvs, callsToday, doneToday] = await Promise.all([
+  const [rappels, due, rdvs, callsToday] = await Promise.all([
+    // Rappels à heure fixe du jour (toutes étapes sauf fiches closes), du plus tôt au plus tard.
     prisma.prospect.findMany({
-      // « À contacter » = la base de leads (travaillée en session depuis le pipeline) ; ici seulement les relances.
-      where: { ...mine, statut: { in: JOURNEE }, relanceAt: { lt: end } },
+      where: { ...mine, rappelAt: { gte: start, lt: end }, statut: { notIn: ["GAGNE", "PERDU"] } },
+      orderBy: { rappelAt: "asc" },
+      select: { id: true, societe: true, rappelAt: true, statut: true, telephone: true, commercial: { select: { firstName: true, email: true } }, contacts: contactSel, echanges: { orderBy: { date: "desc" }, take: 1, select: { date: true } } },
+    }),
+    prisma.prospect.findMany({
+      where: { ...mine, statut: { in: JOURNEE }, relanceAt: { lt: end }, OR: [{ rappelAt: null }, { rappelAt: { lt: start } }, { rappelAt: { gte: end } }] },
       orderBy: { relanceAt: "asc" },
-      select: {
-        id: true, societe: true, relanceAt: true, rappelAt: true, statut: true, telephone: true, commercial: { select: { firstName: true, email: true } },
-        contacts: { orderBy: [{ principal: "desc" }, { createdAt: "asc" }], take: 1, select: { prenom: true, nom: true, telephone: true } },
-        echanges: { where: { date: { gte: start } }, take: 1, select: { id: true } },
-      },
+      select: { id: true, societe: true, relanceAt: true, statut: true, telephone: true, commercial: { select: { firstName: true, email: true } }, contacts: contactSel, echanges: { where: { date: { gte: start } }, take: 1, select: { id: true } } },
     }),
     prisma.rendezVous.findMany({
       where: { ...(equipe ? {} : { commercialId: me.id }), resultat: "PREVU", debut: { gte: start, lt: in7 } },
       orderBy: { debut: "asc" },
-      include: { prospect: { select: { id: true, societe: true, contacts: { where: { principal: true }, take: 1, select: { prenom: true, nom: true } } } } },
+      include: { commercial: { select: { firstName: true, email: true } }, prospect: { select: { id: true, societe: true, telephone: true, contacts: contactSel } } },
     }),
     prisma.echange.count({ where: { ...(equipe ? { auteurId: { not: null } } : { auteurId: me.id }), date: { gte: start }, type: { in: ["NRP", "APPEL", "PRISE_RDV"] } } }),
-    prisma.echange.count({ where: { ...(equipe ? { auteurId: { not: null } } : { auteurId: me.id }), date: { gte: start } } }),
   ]);
+
+  // Planning du jour : rappels à heure fixe + RDV du jour, dans l'ordre chronologique.
+  const planning: Slot[] = [
+    ...rappels.map((p) => ({
+      id: `r-${p.id}`, at: p.rappelAt!, kind: "rappel" as const, prospectId: p.id, nom: contactName(p.contacts[0]) ?? p.societe,
+      detail: [contactName(p.contacts[0]) ? p.societe : null, STATUT[p.statut].label].filter(Boolean).join(" · "),
+      phone: p.contacts[0]?.telephone ?? p.telephone, fait: !!p.echanges[0] && p.echanges[0].date >= new Date(p.rappelAt!.getTime() - 30 * 60_000), qui: p.commercial ? teamName(p.commercial) : null,
+    })),
+    ...rdvs.filter((r) => r.debut < end).map((r) => ({
+      id: `v-${r.id}`, at: r.debut, kind: "rdv" as const, prospectId: r.prospect.id, nom: contactName(r.prospect.contacts[0]) ?? r.prospect.societe,
+      detail: [contactName(r.prospect.contacts[0]) ? r.prospect.societe : null, r.lieu ?? "Rendez-vous"].filter(Boolean).join(" · "),
+      phone: r.prospect.contacts[0]?.telephone ?? r.prospect.telephone, fait: false, qui: r.commercial ? teamName(r.commercial) : null,
+    })),
+  ].sort((a, b) => a.at.getTime() - b.at.getTime());
+
   const todo = due.filter((p) => p.echanges.length === 0);
   const late = todo.filter((p) => relanceInfo(p.relanceAt).state === "late").length;
-  const rdvToday = rdvs.filter((r) => r.debut < end).length;
-  const hour = parseInt(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Paris", hour: "2-digit", hourCycle: "h23" }).format(new Date()), 10);
+  const aVenir = planning.filter((s) => !s.fait && s.at.getTime() > now.getTime() - 15 * 60_000).length;
+  const hour = parseInt(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Paris", hour: "2-digit", hourCycle: "h23" }).format(now), 10);
+  const prochain = planning.find((s) => !s.fait && s.at.getTime() > now.getTime() - 15 * 60_000);
 
   const tiles = [
-    { n: todo.length - late, label: "relances aujourd’hui", tone: "text-yellow" },
+    { n: planning.length, label: "rappels et RDV à heure fixe", tone: "text-blue" },
+    { n: todo.length - late, label: "à appeler (sans heure)", tone: "text-yellow" },
     { n: late, label: "en retard", tone: late ? "text-pink" : "text-muted" },
-    { n: rdvToday, label: "RDV aujourd’hui", tone: "text-claude" },
     { n: callsToday, label: "appels passés", tone: "text-green" },
   ];
 
+  const etat = (s: Slot) => {
+    if (s.fait) return { label: "Fait", cls: "border-border bg-surface-2 text-text", line: "bg-border" };
+    const diff = s.at.getTime() - now.getTime();
+    if (diff < -15 * 60_000) return { label: "Passé", cls: "border-pink/40 bg-pink/10 text-pink", line: "bg-pink" };
+    if (diff <= 15 * 60_000) return { label: "Maintenant", cls: "border-yellow/50 bg-yellow/15 text-yellow", line: "bg-yellow" };
+    return { label: s.kind === "rdv" ? "RDV" : "Rappel", cls: s.kind === "rdv" ? "border-claude/40 bg-claude/10 text-claude" : "border-blue/40 bg-blue/10 text-blue", line: s.kind === "rdv" ? "bg-claude" : "bg-blue" };
+  };
+
   return (
     <main className="mx-auto max-w-3xl px-4 py-6">
-      <p className="text-sm text-text capitalize">{fmtDay(new Date())}</p>
+      <p className="text-sm text-text capitalize">{fmtDay(now)}</p>
       <h1 className="text-2xl">{hour < 18 ? "Bonjour" : "Bonsoir"} {me.firstName ?? ""}</h1>
+      <p className="mt-1 text-sm text-text">
+        {prochain ? <>Prochain : <span className="font-semibold text-title">{fmtTime(prochain.at)}</span> · {prochain.nom}{aVenir > 1 ? ` (puis ${aVenir - 1} autre${aVenir > 2 ? "s" : ""})` : ""}</> : planning.length ? "Plus rien à heure fixe aujourd’hui." : "Aucun rappel à heure fixe aujourd’hui."}
+      </p>
       <div className="mt-3 flex gap-1.5">
         <Link href="/crm" className={cn("rounded-full border px-3 py-1.5 text-sm", !equipe ? "border-title bg-title font-semibold text-bg" : "border-border text-text hover:text-title")}>Moi</Link>
         <Link href="/crm?vue=equipe" className={cn("rounded-full border px-3 py-1.5 text-sm", equipe ? "border-title bg-title font-semibold text-bg" : "border-border text-text hover:text-title")}>Toute l’équipe</Link>
@@ -67,14 +99,43 @@ export default async function MaJournee({ searchParams }: { searchParams: Promis
           </Card>
         ))}
       </div>
-
       {!equipe && <div className="mt-4"><EnablePush compact /></div>}
-      {doneToday > 0 && <p className="mt-2 text-center text-xs text-text">{doneToday} échange{doneToday > 1 ? "s" : ""} noté{doneToday > 1 ? "s" : ""} aujourd’hui</p>}
 
-      <SectionTitle icon={PhoneCallIcon}>À appeler</SectionTitle>
-      {todo.length === 0 ? <p className="text-sm text-text">Aucune relance (À relancer, Poser RDV, À signer) prévue aujourd’hui. Les leads « À contacter » se travaillent en session depuis le pipeline.</p> : (
+      {/* 1. Planning à heure fixe, en premier, dans l'ordre de la journée */}
+      <SectionTitle icon={AlarmClockIcon}>À heure fixe</SectionTitle>
+      {planning.length === 0 ? (
+        <p className="text-sm text-text">Aucun rappel ni RDV à heure fixe aujourd’hui. Ajoutez une heure à une relance (dans « Noter un échange ») pour la retrouver ici et recevoir un rappel.</p>
+      ) : (
+        <ol className="relative space-y-2">
+          {planning.map((s) => {
+            const e = etat(s);
+            return (
+              <li key={s.id} className={cn("flex items-stretch gap-3", s.fait && "opacity-60")}>
+                <div className="flex w-16 shrink-0 flex-col items-end pt-2.5">
+                  <span className={cn("font-title text-lg leading-none font-extrabold tabular-nums", s.fait ? "text-text line-through" : "text-title")}>{fmtTime(s.at)}</span>
+                </div>
+                <div className={cn("w-1 shrink-0 rounded-full", e.line)} aria-hidden />
+                <div className="flex min-w-0 flex-1 items-center gap-3 rounded-card border border-border bg-surface px-4 py-3">
+                  <Link href={`/crm/prospects/${s.prospectId}`} className="min-w-0 flex-1">
+                    <p className="truncate font-title text-[15px] font-semibold text-title">{s.nom}</p>
+                    <p className="truncate text-xs text-text">{s.detail}{equipe && s.qui ? ` · ${s.qui}` : ""}</p>
+                  </Link>
+                  <span className={cn("flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold", e.cls)}>
+                    {s.fait && <CheckIcon size={11} aria-hidden />}{e.label === "Maintenant" && <span className="size-1.5 animate-pulse rounded-full bg-yellow" />}{e.label}
+                  </span>
+                  {s.phone && !s.fait && <a href={`tel:${s.phone.replace(/\s/g, "")}`} aria-label="Appeler" className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border text-text hover:border-green hover:text-green"><PhoneIcon size={15} /></a>}
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+
+      {/* 2. Le reste des relances du jour, sans heure */}
+      <SectionTitle icon={PhoneCallIcon}>À appeler dans la journée</SectionTitle>
+      {todo.length === 0 ? <p className="text-sm text-text">Aucune relance sans heure (À relancer, Poser RDV, À signer) pour aujourd’hui. Les leads « À contacter » se travaillent en session depuis le pipeline.</p> : (
         <ul className="divide-y divide-border rounded-card border border-border bg-surface">
-          {todo.slice(0, 30).map((p) => {
+          {todo.slice(0, 40).map((p) => {
             const c = p.contacts[0], r = relanceInfo(p.relanceAt), phone = c?.telephone ?? p.telephone;
             return (
               <li key={p.id} className="flex items-center gap-3 px-4 py-3">
@@ -82,7 +143,7 @@ export default async function MaJournee({ searchParams }: { searchParams: Promis
                   <p className="truncate font-title text-[15px] font-semibold text-title">{contactName(c) ?? p.societe}</p>
                   <p className="truncate text-xs text-text">{[contactName(c) ? p.societe : null, STATUT[p.statut].label, equipe && p.commercial ? teamName(p.commercial) : null].filter(Boolean).join(" · ")}</p>
                 </Link>
-                <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium", r.state === "late" ? "bg-pink/15 text-pink" : "bg-yellow/15 text-yellow")}>{p.rappelAt ? `${r.state === "today" ? "" : r.label + " "}${fmtTime(p.rappelAt)}` : r.label}</span>
+                <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium", r.state === "late" ? "bg-pink/15 text-pink" : "bg-yellow/15 text-yellow")}>{r.label}</span>
                 {phone && <a href={`tel:${phone.replace(/\s/g, "")}`} aria-label="Appeler" className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border text-text hover:border-green hover:text-green"><PhoneIcon size={15} /></a>}
               </li>
             );
@@ -90,7 +151,7 @@ export default async function MaJournee({ searchParams }: { searchParams: Promis
         </ul>
       )}
 
-      <SectionTitle icon={CalendarClockIcon}>Rendez-vous des 7 prochains jours</SectionTitle>
+      <SectionTitle icon={CalendarClockIcon} action={<Link href="/crm/calendrier?vue=semaine" className="text-sm text-text hover:text-title">Calendrier</Link>}>Rendez-vous des 7 prochains jours</SectionTitle>
       {rdvs.length === 0 ? <p className="text-sm text-text">Aucun rendez-vous prévu.</p> : (
         <ul className="divide-y divide-border rounded-card border border-border bg-surface">
           {rdvs.map((r) => (
