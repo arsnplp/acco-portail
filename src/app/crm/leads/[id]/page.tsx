@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeftIcon, ExternalLinkIcon } from "lucide-react";
+import { ArrowLeftIcon, ExternalLinkIcon, MapPinIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireTeam } from "@/lib/auth";
 import { cn } from "@/lib/cn";
 import { AutoRefresh } from "@/components/messages/auto-refresh";
 import { fmtDayTime, teamName } from "@/lib/crm";
-import { COLONNES, COLONNES_PRINCIPALES, LISTE_STATUT, type Colonne, type LeadRow } from "@/lib/leads/colonnes";
+import { COLONNES, COLONNES_PRINCIPALES, LISTE_STATUT, ficheGoogle, type Colonne, type LeadRow } from "@/lib/leads/colonnes";
 import { DeleteLeadButton, ListActions } from "../forms";
 import { StatsPanel } from "../stats-panel";
 import { listeStats } from "@/lib/leads/stats";
@@ -29,7 +29,11 @@ export default async function LeadListePage({ params, searchParams }: { params: 
   const cols: Colonne[] = tout ? [...COLONNES] : COLONNES_PRINCIPALES;
   const restants = liste.leads.filter((l) => !l.prospectId).length;
   const st = LISTE_STATUT[liste.statut];
-  const show = (c: Colonne, v: unknown) => {
+  const show = (c: Colonne, v: unknown, d?: LeadRow) => {
+    if (c === "Fiche Google" && d) {
+      const f = ficheGoogle(d);
+      return f ? <a href={f.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 whitespace-nowrap text-blue hover:underline" title={f.exacte ? "Fiche Google" : "Recherche Google Maps (nom + adresse)"}><MapPinIcon size={12} aria-hidden />{f.exacte ? "Voir la fiche" : "Voir sur Maps"}</a> : <span className="text-muted">–</span>;
+    }
     if (v === null || v === undefined || v === "") return <span className="text-muted">–</span>;
     const s = String(v);
     if ((c === "Site web" || c === "Facebook" || c === "Instagram") && /^https?:/.test(s)) return <a href={s} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-blue hover:underline">{c === "Site web" ? s.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "") : c}<ExternalLinkIcon size={11} /></a>;
@@ -79,7 +83,7 @@ export default async function LeadListePage({ params, searchParams }: { params: 
                   const d = l.donnees as LeadRow;
                   return (
                     <tr key={l.id} className="border-t border-border align-top hover:bg-surface/60">
-                      {cols.map((c) => <td key={c} className={cn("px-3 py-2.5", c === "Entreprise" ? "font-semibold whitespace-nowrap text-title" : c === "Faiblesses SEO" ? "min-w-56 text-text-strong" : "whitespace-nowrap text-text-strong")}>{show(c, d[c])}</td>)}
+                      {cols.map((c) => <td key={c} className={cn("px-3 py-2.5", c === "Entreprise" ? "font-semibold whitespace-nowrap text-title" : c === "Faiblesses SEO" ? "min-w-56 text-text-strong" : "whitespace-nowrap text-text-strong")}>{show(c, d[c], d)}</td>)}
                       <td className="px-3 py-2.5 whitespace-nowrap">{l.prospectId ? <Link href={`/crm/prospects/${l.prospectId}`} className="text-xs text-green hover:underline">Dans le CRM</Link> : <span className="text-xs text-muted">Pas encore</span>}</td>
                       <td className="px-3 py-2.5">{!l.prospectId && <DeleteLeadButton id={l.id} />}</td>
                     </tr>

@@ -1,7 +1,7 @@
 /** Les colonnes d'une liste de leads, dans l'ordre du fichier Excel de référence. */
 export const COLONNES = [
   "Entreprise", "Secteur", "Ville", "Adresse", "Téléphone", "Email", "Site web", "Dirigeant", "Rôle", "Note Google", "Avis Google",
-  "Score", "SIREN", "SIRET", "TVA intracom", "Forme juridique", "Code NAF", "Date de création", "État", "Établissements (total)",
+  "Fiche Google", "Score", "SIREN", "SIRET", "TVA intracom", "Forme juridique", "Code NAF", "Date de création", "État", "Établissements (total)",
   "Établissements ouverts", "Fiabilité identité", "CMS", "Hébergeur", "Âge domaine", "Vitesse mobile", "Vitesse desktop", "HTTPS",
   "Responsive", "Google Ads", "Score SEO", "Faiblesses SEO", "Facebook", "Instagram",
 ] as const;
@@ -9,7 +9,15 @@ export type Colonne = (typeof COLONNES)[number];
 export type LeadRow = Partial<Record<Colonne, string | number | null>> & { _source?: string | null; _presence?: string | null };
 
 /** Colonnes affichées par défaut dans le tableau (les autres restent dans l'export). */
-export const COLONNES_PRINCIPALES: Colonne[] = ["Entreprise", "Ville", "Téléphone", "Site web", "Dirigeant", "Note Google", "Avis Google", "Score", "Faiblesses SEO"];
+export const COLONNES_PRINCIPALES: Colonne[] = ["Entreprise", "Ville", "Téléphone", "Site web", "Fiche Google", "Dirigeant", "Note Google", "Avis Google", "Score", "Faiblesses SEO"];
+
+/** Lien vers la fiche Google : celui trouvé à la génération, sinon une recherche Google Maps (nom + adresse) qui y mène. */
+export function ficheGoogle(d: LeadRow) {
+  const v = d["Fiche Google"];
+  if (typeof v === "string" && /^https?:\/\//.test(v)) return { url: v, exacte: true };
+  const q = [d.Entreprise, d.Adresse ?? d.Ville].filter(Boolean).join(" ");
+  return q ? { url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`, exacte: false } : null;
+}
 
 /** Statut d'une liste dans le coffre. */
 export const LISTE_STATUT = {

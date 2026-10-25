@@ -2,21 +2,25 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ExternalLinkIcon, FileSearchIcon, InfoIcon } from "lucide-react";
+import { ExternalLinkIcon, FileSearchIcon, InfoIcon, MapPinIcon } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
-import { COLONNES, type Colonne, type LeadRow } from "@/lib/leads/colonnes";
+import { COLONNES, ficheGoogle, type Colonne, type LeadRow } from "@/lib/leads/colonnes";
 
 type LeadInfo = { listeId: string; liste: string; generee: string; donnees: LeadRow } | null;
 
 /** Groupes de colonnes pour la fenêtre « Infos du lead ». */
 const GROUPES: { titre: string; cols: Colonne[] }[] = [
   { titre: "Contact", cols: ["Entreprise", "Secteur", "Ville", "Adresse", "Téléphone", "Email", "Dirigeant", "Rôle"] },
-  { titre: "Réputation et potentiel", cols: ["Score", "Note Google", "Avis Google", "Google Ads", "Facebook", "Instagram"] },
+  { titre: "Réputation et potentiel", cols: ["Fiche Google", "Score", "Note Google", "Avis Google", "Google Ads", "Facebook", "Instagram"] },
   { titre: "Site web", cols: ["Site web", "CMS", "Hébergeur", "Âge domaine", "HTTPS", "Responsive", "Vitesse mobile", "Vitesse desktop", "Score SEO", "Faiblesses SEO"] },
   { titre: "Entreprise (registre officiel)", cols: ["SIREN", "SIRET", "TVA intracom", "Forme juridique", "Code NAF", "Date de création", "État", "Établissements (total)", "Établissements ouverts", "Fiabilité identité"] },
 ];
 
-function valeur(c: Colonne, v: unknown) {
+function valeur(c: Colonne, v: unknown, d: LeadRow) {
+  if (c === "Fiche Google") {
+    const f = ficheGoogle(d);
+    return f ? <a href={f.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 font-semibold text-blue hover:underline"><MapPinIcon size={14} aria-hidden />{f.exacte ? "Ouvrir la fiche Google" : "Voir sur Google Maps (recherche nom + adresse)"}<ExternalLinkIcon size={11} /></a> : <span className="text-muted">–</span>;
+  }
   if (v === null || v === undefined || v === "") return <span className="text-muted">–</span>;
   const s = String(v);
   if (/^https?:\/\//.test(s)) return <a href={s} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 break-all text-blue hover:underline">{s.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}<ExternalLinkIcon size={11} /></a>;
@@ -51,9 +55,9 @@ export function LeadInfoButton({ lead }: { lead: LeadInfo }) {
                   <h3 className="mb-2 text-xs font-semibold tracking-wide text-text uppercase">{g.titre}</h3>
                   <dl className="grid gap-x-6 gap-y-2 rounded-card border border-border bg-surface p-4 text-sm sm:grid-cols-2">
                     {g.cols.map((c) => (
-                      <div key={c} className={c === "Faiblesses SEO" || c === "Adresse" ? "sm:col-span-2" : undefined}>
+                      <div key={c} className={c === "Faiblesses SEO" || c === "Adresse" || c === "Fiche Google" ? "sm:col-span-2" : undefined}>
                         <dt className="text-xs text-text">{c}</dt>
-                        <dd className="mt-0.5 text-text-strong">{valeur(c, lead.donnees[c])}</dd>
+                        <dd className="mt-0.5 text-text-strong">{valeur(c, lead.donnees[c], lead.donnees)}</dd>
                       </div>
                     ))}
                   </dl>

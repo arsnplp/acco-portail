@@ -17,7 +17,7 @@ import type { LeadRow } from "./colonnes";
 type Trouve = {
   entreprise: string; secteur?: string | null; code_postal?: string | null; ville?: string | null; adresse?: string | null; telephone?: string | null;
   email?: string | null; site_web?: string | null; note_google?: number | string | null; avis_google?: number | string | null; facebook?: string | null;
-  instagram?: string | null; google_ads?: boolean | string | null; presence?: string | null; source?: string | null;
+  instagram?: string | null; fiche_google?: string | null; google_ads?: boolean | string | null; presence?: string | null; source?: string | null;
 };
 type Reponse = { leads: Trouve[]; estimation_total_zone?: number | null; commentaire?: string | null };
 
@@ -39,6 +39,7 @@ RÈGLES STRICTES
 4. Parmi elles, privilégie les commerces qui tournent : beaucoup d'avis Google et une bonne note.
 5. N'inclus AUCUNE entreprise de la liste « déjà connues » fournie, même écrite différemment.
 6. Téléphone OBLIGATOIRE : une entreprise sans numéro trouvable n'entre pas dans la liste. Format « 06 12 34 56 78 ». "site_web" = le site propre de l'entreprise uniquement (une page Planity, Treatwell, Facebook ou Instagram n'est pas un site : mets-la dans "source" ou dans "facebook"/"instagram").
+7. "fiche_google" : copie le lien exact de la fiche Google Maps de l'entreprise quand tu la trouves (sinon null).
 
 MÉTHODE
 - Varie les recherches : le métier et ses synonymes × chaque ville, arrondissement ou quartier de la zone, + « Pages Jaunes », « Planity », « avis ».
@@ -62,6 +63,7 @@ Termine par un unique bloc \`\`\`json contenant exactement :
       "avis_google": 120,
       "facebook": "URL ou null",
       "instagram": "URL ou null",
+      "fiche_google": "lien de la fiche Google Maps (google.com/maps/place/…, maps.app.goo.gl/…, share.google/…) ou null",
       "google_ads": null,
       "presence": "sans site | site faible | site correct",
       "source": "pages consultées (Planity, Pages Jaunes, fiche Google…) et remarque utile"
@@ -163,7 +165,9 @@ function row(t: Trouve, reg: Registre | null, audit: Audit): LeadRow {
   return {
     Entreprise: t.entreprise.trim(), Secteur: t.secteur ?? null, Ville: ville, Adresse: t.adresse ?? null, "Téléphone": fmtPhone(t.telephone),
     Email: t.email ?? null, "Site web": t.site_web ?? null, Dirigeant: reg?.dirigeant ?? null, "Rôle": reg?.role ?? null,
-    "Note Google": num(t.note_google), "Avis Google": num(t.avis_google), Score: scoreLead(t, audit, reg),
+    "Note Google": num(t.note_google), "Avis Google": num(t.avis_google),
+    "Fiche Google": t.fiche_google && /^https?:\/\/([a-z]+\.)?(google\.[a-z.]+\/maps|maps\.app\.goo\.gl|goo\.gl\/maps|g\.page|share\.google)/i.test(t.fiche_google) ? t.fiche_google : null,
+    Score: scoreLead(t, audit, reg),
     SIREN: reg?.siren ?? null, SIRET: reg?.siret ?? null, "TVA intracom": reg?.tva ?? null, "Forme juridique": reg?.forme ?? null,
     "Code NAF": reg?.naf ?? null, "Date de création": reg?.creation ?? null, "État": reg?.etat ?? null,
     "Établissements (total)": reg?.etabTotal ?? null, "Établissements ouverts": reg?.etabOuverts ?? null, "Fiabilité identité": reg?.fiabilite ?? null,
