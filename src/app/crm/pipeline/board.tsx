@@ -8,7 +8,7 @@ import {
 } from "@dnd-kit/core";
 import type { ProspectStatut } from "@prisma/client";
 import Link from "next/link";
-import { PhoneIcon, PlayIcon, SearchIcon, TrophyIcon, XCircleIcon } from "lucide-react";
+import { ChevronDownIcon, PhoneIcon, UsersIcon, PlayIcon, SearchIcon, TrophyIcon, XCircleIcon } from "lucide-react";
 import { NrpMeter } from "@/components/crm/nrp-meter";
 import { cn } from "@/lib/cn";
 import { EtapeBanner } from "@/components/crm/etape-banner";
@@ -66,17 +66,13 @@ export function Board({ initial, team, cibles, meId, initialFilter }: { initial:
   return (
     <main className="mx-auto max-w-[1600px] px-4 py-4">
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        {/* Téléphone : menu déroulant (les puces passeraient sur plusieurs lignes). */}
-        <select value={who} onChange={(e) => setWho(e.target.value)} aria-label="Commercial" className="h-10 w-full rounded-full border border-border bg-surface px-4 text-sm font-semibold text-title outline-none sm:hidden">
-          {chips.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
-        </select>
-        <div className="hidden flex-wrap gap-1.5 sm:flex">
-          {chips.map((c) => (
-            <button key={c.id} type="button" onClick={() => setWho(c.id)} className={cn("rounded-full border px-3 py-1.5 text-sm", who === c.id ? "border-title bg-title font-semibold text-bg" : "border-border text-text hover:text-title")}>
-              {c.label}
-            </button>
-          ))}
-        </div>
+        <label className="relative inline-flex w-full items-center sm:w-56">
+          <UsersIcon size={15} className="pointer-events-none absolute left-3.5 text-text" aria-hidden />
+          <select value={who} onChange={(e) => setWho(e.target.value)} aria-label="Commercial" className="h-10 w-full appearance-none rounded-full border border-border bg-surface pr-9 pl-9 text-sm font-semibold text-title outline-none hover:border-text">
+            {chips.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+          </select>
+          <ChevronDownIcon size={15} className="pointer-events-none absolute right-3.5 text-text" aria-hidden />
+        </label>
         <div className="ml-auto flex w-full gap-2 sm:w-auto">
           <label className="relative flex-1 sm:w-64 sm:flex-none">
             <SearchIcon size={15} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted" aria-hidden />
