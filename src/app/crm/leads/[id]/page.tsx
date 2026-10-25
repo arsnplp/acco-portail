@@ -49,6 +49,7 @@ export default async function LeadListePage({ params, searchParams }: { params: 
         {liste.utiliseeAt ? ` · envoyée dans À contacter ${fmtDayTime(liste.utiliseeAt)}` : ""}
       </p>
       {liste.message && <p className={cn("mt-3 rounded-card border px-4 py-2.5 text-sm", liste.statut === "ERREUR" ? "border-pink/40 bg-pink/10 text-pink" : liste.obtenus < liste.demande ? "border-yellow/40 bg-yellow/10 text-yellow" : "border-green/40 bg-green/10 text-green")}>{liste.message}</p>}
+      {liste.statut === "ERREUR" && liste.erreur && <p className="mt-2 rounded-card border border-border bg-surface px-4 py-2.5 font-mono text-xs break-all text-text">Détail : {liste.erreur}</p>}
       {liste.statut === "GENERATION" && <p className="mt-3 rounded-card border border-yellow/40 bg-yellow/10 px-4 py-2.5 text-sm text-yellow">Recherche en cours (2 à 5 minutes). La page se met à jour toute seule.</p>}
 
       <div className="mt-4">

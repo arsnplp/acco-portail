@@ -96,12 +96,24 @@ async function rechercher(n: number, secteur: string, region: string, connues: s
   if (process.env.LEADS_MOCK) return { data: parseJson(readFileSync(process.env.LEADS_MOCK, "utf8")), recherches: 0, cout: 0 };
   const key = await anthropicKey();
   if (!key) throw new Error("Aucune clé Anthropic : ajoutez-la dans Admin → Paramètres.");
-  const client = new Anthropic({ apiKey: key });
+  const client = new Anthropic({ apiKey: key, timeout: 20 * 60_000 });
   const messages: Anthropic.MessageParam[] = [{ role: "user", content: userPrompt(n, secteur, region, connues) }];
-  const tools = [{ type: "web_search_20260318", name: "web_search", max_uses: Math.min(60, 10 + n), user_location: { type: "approximate", country: "FR", timezone: "Europe/Paris" } }] as unknown as Anthropic.ToolUnion[];
+  const outil = (type: string) => [{ type, name: "web_search", max_uses: Math.min(60, 10 + n), user_location: { type: "approximate", country: "FR", timezone: "Europe/Paris" } }] as unknown as Anthropic.ToolUnion[];
+  let tools = outil("web_search_20260318"); // recherche avec filtrage (moins de texte inutile, donc moins cher)
   let recherches = 0, inTok = 0, outTok = 0, text = "";
   for (let tour = 0; tour < 10; tour++) {
-    const res = await client.messages.create({ model: MODEL, max_tokens: 32_000, system: SYSTEM_PROMPT, tools, messages });
+    let res: Anthropic.Message;
+    try {
+      // Réponse longue (jusqu'à 50 leads) : en flux, sinon le SDK refuse au-delà de 10 minutes estimées.
+      res = await client.messages.stream({ model: MODEL, max_tokens: 32_000, system: SYSTEM_PROMPT, tools, messages }).finalMessage();
+    } catch (e) {
+      // Version de l'outil non disponible sur ce compte ou ce modèle : on repasse sur la recherche web classique.
+      if (tools !== outil("web_search_20250305") && /web_search|tool|invalid_request/i.test((e as Error).message) && !/credit|authentication|api.key/i.test((e as Error).message) && tour === 0 && !text) {
+        console.warn("[leads] recherche filtrée indisponible, repli :", (e as Error).message);
+        tools = outil("web_search_20250305");
+        res = await client.messages.stream({ model: MODEL, max_tokens: 32_000, system: SYSTEM_PROMPT, tools, messages }).finalMessage();
+      } else throw e;
+    }
     recherches += (res.usage as { server_tool_use?: { web_search_requests?: number } }).server_tool_use?.web_search_requests ?? 0;
     inTok += res.usage.input_tokens; outTok += res.usage.output_tokens;
     text = res.content.filter((c) => c.type === "text").map((c) => (c as Anthropic.TextBlock).text).join("\n");
@@ -239,6 +251,13 @@ export async function generateLeadList(listeId: string) {
     ]);
   } catch (e) {
     console.error("[leads]", e);
-    await prisma.leadListe.update({ where: { id: listeId }, data: { statut: "ERREUR", erreur: (e as Error).message.slice(0, 500), message: "La génération a échoué. Réessayez dans un instant." } });
+    const msg = (e as Error).message ?? String(e);
+    const lisible = /credit balance|billing/i.test(msg) ? "Crédit Anthropic insuffisant : rechargez le compte (console Anthropic → Billing)."
+      : /authentication|api.key|401/i.test(msg) ? "Clé Anthropic refusée : vérifiez-la dans Admin → Paramètres."
+      : /web.search.*(disabled|not enabled)|not.*enabled.*web/i.test(msg) ? "La recherche web n’est pas activée sur le compte Anthropic (console → Settings → Privacy / Web search)."
+      : /model/i.test(msg) && /not.found|404/i.test(msg) ? `Modèle introuvable (${MODEL}) : réglez LEADS_MODEL dans le .env du serveur.`
+      : /JSON|Réponse sans liste/i.test(msg) ? "La réponse de Claude était incomplète. Relancez la génération."
+      : "La génération a échoué. Relancez-la ; si ça recommence, envoyez le détail ci-dessous.";
+    await prisma.leadListe.update({ where: { id: listeId }, data: { statut: "ERREUR", erreur: msg.slice(0, 800), message: lisible } });
   }
 }
