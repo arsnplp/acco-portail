@@ -12,7 +12,7 @@ function b64ToUint8(b64: string) {
   return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
 }
 
-export function EnablePush({ compact = false }: { compact?: boolean }) {
+export function EnablePush({ compact = false, texte = "Soyez prévenu dès qu’un client vous écrit." }: { compact?: boolean; texte?: string }) {
   const [state, setState] = useState<State>("loading");
 
   useEffect(() => {
@@ -80,7 +80,7 @@ export function EnablePush({ compact = false }: { compact?: boolean }) {
   if (compact) {
     return (
       <div className="mb-6 flex items-center justify-between gap-3 rounded-card border border-border bg-surface px-4 py-3">
-        <p className="text-sm text-text-strong">Soyez prévenu dès qu’un client vous écrit.</p>
+        <p className="text-sm text-text-strong">{texte}</p>
         <Button variant="secondary" size="sm" onClick={enable}><Bell size={14} /> Activer</Button>
       </div>
     );

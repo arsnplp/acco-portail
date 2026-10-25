@@ -115,7 +115,7 @@ export default async function MaJournee({ searchParams }: { searchParams: Promis
           </Card>
         ))}
       </div>
-      {!equipe && !autre && <div className="mt-4"><EnablePush compact /></div>}
+      {!equipe && !autre && <div className="mt-4"><EnablePush compact texte="Recevez une notification à l’heure de vos rappels de relance." /></div>}
 
       {/* 1. Planning à heure fixe, en premier, dans l'ordre de la journée */}
       <SectionTitle icon={AlarmClockIcon}>À heure fixe</SectionTitle>

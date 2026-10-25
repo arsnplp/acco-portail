@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import type { NotificationKind } from "@prisma/client";
 import { sendEmail, layout, appUrl } from "@/lib/email";
 import { sendPushToUser } from "@/lib/push";
+import { isGestionnaire } from "@/lib/roles";
 
 type Pref = "contactRequests" | "reviews" | "changes" | "recaps" | "messages" | "offers" | "documents";
 
@@ -44,12 +45,13 @@ export async function notifyClient(opts: {
 type AdminPref = "changes" | "messages" | "referrals" | "documents" | "offers"; // offers : nouvelle commande d’un client
 
 /**
- * Push aux membres de l'équipe (rôle ADMIN) selon leurs réglages (Paramètres → Mes notifications).
+ * Push au gestionnaire du Suivi client (Arsène) selon ses réglages (Paramètres → Mes notifications).
  * Ne lève jamais d'erreur : une notification ratée ne doit pas casser l'action du client.
  */
 export async function notifyAdmins(opts: { title: string; body?: string; href: string; pref: AdminPref; tag?: string }) {
   try {
-    const admins = await prisma.user.findMany({ where: { role: "ADMIN" }, include: { notificationPref: true } });
+    // Partie Suivi client : seul le gestionnaire (Arsène) est prévenu, pas l'équipe commerciale.
+    const admins = (await prisma.user.findMany({ where: { role: "ADMIN" }, include: { notificationPref: true } })).filter(isGestionnaire);
     await Promise.all(
       admins.map(async (u) => {
         const p = u.notificationPref;

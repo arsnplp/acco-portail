@@ -1,6 +1,7 @@
 import tls from "node:tls";
 import { prisma } from "@/lib/prisma";
 import { sendEmail, layout, appUrl } from "@/lib/email";
+import { isGestionnaire } from "@/lib/roles";
 
 const TIMEOUT_MS = 10_000;
 
@@ -35,7 +36,8 @@ export async function checkSite(site: { id: string; name: string; url: string })
 }
 
 async function alertTeam(subject: string, html: string) {
-  const admins = await prisma.user.findMany({ where: { role: "ADMIN" }, select: { email: true } });
+  // Alertes des sites clients : pour le gestionnaire du Suivi client seulement.
+  const admins = (await prisma.user.findMany({ where: { role: "ADMIN" }, select: { email: true, role: true } })).filter(isGestionnaire);
   await Promise.all(admins.map((a) => sendEmail({ to: a.email, subject, html })));
 }
 

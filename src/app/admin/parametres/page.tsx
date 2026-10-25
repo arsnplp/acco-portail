@@ -33,7 +33,7 @@ export default async function ParametresPage({ searchParams }: { searchParams: P
   const moi = (
     <>
       <SectionTitle icon={BellIcon}>Mes notifications</SectionTitle>
-      <AdminNotifForm prefs={notifPrefs} />
+      <AdminNotifForm prefs={notifPrefs} gestion={isGestionnaire(admin)} />
 
       <SectionTitle icon={LockIcon}>Mon accès</SectionTitle>
       <div className="grid gap-3">

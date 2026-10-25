@@ -15,7 +15,7 @@ const EVENTS: Array<[keyof NotificationPreference, string]> = [
   ["documents", "Document ou fichier envoyé par un client"],
 ];
 
-export function AdminNotifForm({ prefs }: { prefs: NotificationPreference | null }) {
+export function AdminNotifForm({ prefs, gestion = true }: { prefs: NotificationPreference | null; gestion?: boolean }) {
   const get = (k: keyof NotificationPreference) => (prefs ? Boolean(prefs[k]) : true);
   const [pending, start] = useTransition();
   const [test, setTest] = useState<string | null>(null);
@@ -30,13 +30,18 @@ export function AdminNotifForm({ prefs }: { prefs: NotificationPreference | null
           {test && <span className="text-xs text-text">{test}</span>}
         </div>
       </div>
-      <form action={saveAdminNotifPrefs} className="rounded-card border border-border bg-surface">
+      {!gestion && (
+        <p className="rounded-card border border-border bg-surface p-4 text-sm text-text">
+          Vous recevez les notifications du <span className="font-semibold text-title">Suivi commercial</span> : les rappels de relance à heure fixe des prospects qui vous sont attribués. Celles du Suivi client (messages, modifications, commandes des clients) vont au gestionnaire.
+        </p>
+      )}
+      {gestion && <form action={saveAdminNotifPrefs} className="rounded-card border border-border bg-surface">
         <div className="border-b border-border"><Toggle name="pushEnabled" label="Recevoir les notifications push" defaultChecked={get("pushEnabled")} /></div>
         <div className="divide-y divide-border">
           {EVENTS.map(([k, label]) => <Toggle key={k} name={k} label={label} defaultChecked={get(k)} />)}
         </div>
         <div className="p-4"><SubmitButton size="sm" variant="secondary">Enregistrer</SubmitButton></div>
-      </form>
+      </form>}
     </div>
   );
 }
