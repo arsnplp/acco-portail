@@ -4,6 +4,7 @@
  *
  *   npx tsx --env-file=.env scripts/nettoyer-donnees-test.mts              # aperçu, ne supprime rien
  *   npx tsx --env-file=.env scripts/nettoyer-donnees-test.mts --confirmer  # supprime pour de bon
+ *   ... --confirmer --avec-fiches-manuelles   # retire aussi les fiches créées à la main pendant les essais
  *
  * Ce qui part :
  *  1. CRM : les prospects et projets de test (fiches « (test) », avec leurs contacts, échanges, RDV)
@@ -17,6 +18,7 @@ import { PrismaClient } from "@prisma/client";
 import { createClient } from "@supabase/supabase-js";
 
 const confirm = process.argv.includes("--confirmer");
+const manuelles = process.argv.includes("--avec-fiches-manuelles");
 const prisma = new PrismaClient();
 
 const TEST_ACCOUNTS = ["test.client@acco-lab.fr"];
@@ -32,6 +34,8 @@ const [prospects, projets, testUsers, demoUsers, demoClients, demoReviews, demoS
   prisma.site.findMany({ where: { searchConsoleProp: null, searchStats: { some: {} } }, select: { id: true, name: true, _count: { select: { searchStats: true } } } }),
 ]);
 const accounts = [...testUsers, ...demoUsers];
+// Fiches créées à la main (ni importées de l'ancien CRM, ni venues du coffre à leads) : souvent des essais.
+const fichesMain = await prisma.prospect.findMany({ where: { legacyId: null, lead: null }, select: { id: true, societe: true, contacts: { take: 1, select: { prenom: true, nom: true } } } });
 // Pour information : abonnements actifs du client « Acco » (le client qui servait de test), à résilier à la main s'ils étaient pour essayer.
 const accoSubs = await prisma.subscription.findMany({ where: { status: "ACTIF", client: { name: "Acco" } }, select: { label: true } });
 
@@ -41,6 +45,7 @@ console.log(`  • Comptes de connexion de test / démo : ${accounts.map((u) => 
 console.log(`  • Clients de démo : ${demoClients.map((c) => c.name).join(", ") || "aucun"}`);
 console.log(`  • Avis d’exemple : ${demoReviews}`);
 console.log(`  • Chiffres Search Console de démo : ${demoSites.map((s) => `${s.name} (${s._count.searchStats} mois)`).join(", ") || "aucun"}`);
+console.log(`  • Fiches CRM créées à la main : ${fichesMain.map((f) => [f.contacts[0]?.prenom, f.contacts[0]?.nom].filter(Boolean).join(" ") + ` (${f.societe})`).join(", ") || "aucune"}${fichesMain.length ? manuelles ? "  → supprimées" : "  → gardées (ajoutez --avec-fiches-manuelles pour les retirer)" : ""}`);
 if (accoSubs.length) console.log(`\n  (Non touché) Abonnements actifs du client Acco : ${accoSubs.map((s) => s.label).join(", ")}. Résiliez-les depuis sa fiche s’ils étaient pour essayer.`);
 
 if (!confirm) {
@@ -54,6 +59,10 @@ const [p, pr] = await prisma.$transaction([
   prisma.prospect.deleteMany({ where: { legacyId: { startsWith: "test-" } } }),
   prisma.projet.deleteMany({ where: { legacyId: { startsWith: "test-" } } }),
 ]);
+if (manuelles && fichesMain.length) {
+  const fm = await prisma.prospect.deleteMany({ where: { id: { in: fichesMain.map((f) => f.id) } } });
+  console.log(`✓ ${fm.count} fiche(s) créée(s) à la main supprimée(s)`);
+}
 const cibles = await prisma.cible.deleteMany({ where: { prospects: { none: {} } } });
 console.log(`✓ CRM : ${p.count} prospect(s) et ${pr.count} projet(s) de test supprimés, ${cibles.count} cible(s) inutilisée(s) retirée(s)`);
 
