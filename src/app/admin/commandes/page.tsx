@@ -33,7 +33,7 @@ export default async function CommandesPage() {
                   <p className="text-xs text-text">{o.client.name}{o.site ? ` · ${o.site.name}` : ""} · {timeAgo(o.createdAt)} · {fmtPrice(o.offer.priceCents)}{o.offer.billing === "MENSUEL" ? " / mois" : ""}</p>
                   {o.note && <p className="mt-2 text-sm text-text-strong">« {o.note} »</p>}
                 </div>
-                <Badge tone="pink">À rappeler</Badge>
+                <Badge tone="pink">{o.offer.module !== "NONE" ? `Module ${MODULE_LABEL[o.offer.module]}` : "À rappeler"}</Badge>
               </div>
               <form action={validateOrder.bind(null, o.id)} className="mt-4 flex flex-wrap items-end gap-2 border-t border-border pt-4">
                 {o.offer.module !== "NONE" && (
@@ -46,7 +46,7 @@ export default async function CommandesPage() {
                 )}
                 <SubmitButton size="sm" pendingLabel="…">Valider et activer</SubmitButton>
               </form>
-              <form action={refuseOrder.bind(null, o.id)} className="mt-2"><SubmitButton variant="ghost" size="sm" pendingLabel="…">Refuser / sans suite</SubmitButton></form>
+              <form action={refuseOrder.bind(null, o.id)} className="mt-2"><SubmitButton variant="ghost" size="sm" pendingLabel="…">Annuler la demande</SubmitButton></form>
             </Card>
           ))} />
       )}
@@ -57,7 +57,7 @@ export default async function CommandesPage() {
           <MoreList title="Historique des commandes" labels={done.map((o) => `${o.client.name} ${o.offer.name}`)} items={done.map((o) => (
               <Card key={o.id} className="flex items-center justify-between gap-3 py-3">
                 <div className="min-w-0"><p className="truncate font-medium text-title">{o.offer.name}</p><p className="text-xs text-text">{o.client.name}{o.site ? ` · ${o.site.name}` : ""} · {o.validatedBy?.firstName ?? ""} · {timeAgo(o.validatedAt ?? o.createdAt)}</p></div>
-                <Badge tone={o.status === "VALIDEE" ? "green" : "neutral"}>{o.status === "VALIDEE" ? "Validée" : "Refusée"}</Badge>
+                <Badge tone={o.status === "VALIDEE" ? "green" : "neutral"}>{o.status === "VALIDEE" ? "Validée" : "Annulée"}</Badge>
               </Card>
             ))} />
         </>

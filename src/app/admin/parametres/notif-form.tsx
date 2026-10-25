@@ -11,6 +11,7 @@ const EVENTS: Array<[keyof NotificationPreference, string]> = [
   ["changes", "Nouvelle demande de modification (ou rouverte)"],
   ["messages", "Message d’un client"],
   ["referrals", "Nouvelle recommandation"],
+  ["offers", "Nouvelle commande ou demande de module"],
   ["documents", "Document ou fichier envoyé par un client"],
 ];
 

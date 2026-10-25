@@ -1,6 +1,6 @@
 import { Lock, Star, MessageSquareText } from "lucide-react";
 import { requireClientSite, monthRange } from "@/lib/sites";
-import { hasModule } from "@/lib/offers";
+import { activePromo, hasModule } from "@/lib/offers";
 import { prisma } from "@/lib/prisma";
 import { syncReviews } from "@/lib/reviews";
 import { Button } from "@/components/ui/button";
@@ -9,8 +9,9 @@ import { Card, SectionTitle } from "@/components/ui/card";
 import { Empty } from "@/components/ui/empty";
 import { Avatar } from "@/components/ui/avatar";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { fmtDateShort } from "@/lib/format";
+import { fmtDateShort, fmtPrice } from "@/lib/format";
 import { ReplyForm } from "./reply-form";
+import { DemandeAvis } from "./demande";
 import { refreshReviews } from "./actions";
 import { isStale } from "@/lib/reviews";
 import { CircleCheckIcon, MessageSquareIcon } from "lucide-react";
@@ -20,7 +21,7 @@ export const metadata = { title: "Avis" };
 export default async function AvisPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { site } = await requireClientSite(id);
-  if (!(await hasModule(site.id, "AVIS"))) return <LockedAvis />;
+  if (!(await hasModule(site.id, "AVIS"))) return <LockedAvis siteId={site.id} />;
 
   // Première ouverture ou données de plus de 6 h : on synchronise à la volée.
   if (isStale(site.reviewsSyncedAt)) {
@@ -98,8 +99,10 @@ function ReviewCard({ r, children }: { r: { authorName: string; authorPhotoUrl: 
   );
 }
 
-async function LockedAvis() {
-  const offer = await prisma.offer.findFirst({ where: { module: "AVIS", isArchived: false }, select: { slug: true } });
+async function LockedAvis({ siteId }: { siteId: string }) {
+  const offer = await prisma.offer.findFirst({ where: { module: "AVIS", isArchived: false }, orderBy: { order: "asc" }, include: { promotions: true } });
+  const enCours = offer ? await prisma.order.findFirst({ where: { offerId: offer.id, siteId, status: "A_TRAITER" }, select: { createdAt: true } }) : null;
+  const promo = offer ? activePromo(offer) : null;
   return (
     <div className="relative">
       <div className="pointer-events-none select-none opacity-60 blur-[6px]" aria-hidden>
@@ -115,7 +118,8 @@ async function LockedAvis() {
           <span className="mx-auto flex size-12 items-center justify-center rounded-full border border-border text-yellow"><Lock size={20} /></span>
           <h2 className="mt-4 text-lg">Vos avis Google, ici</h2>
           <p className="mt-2 text-sm text-text">Recevez plus d’avis grâce à la plaquette de comptoir NFC + QR, et répondez en un tap avec une réponse déjà rédigée.</p>
-          <Button href={`/offres#${offer?.slug ?? ""}`} className="mt-5 w-full">Débloquer avec la plaquette avis Google</Button>
+          {offer && <p className="mt-3 text-sm font-semibold text-title">{fmtPrice(promo?.price ?? offer.priceCents)}{offer.billing === "MENSUEL" ? " / mois" : ""}{offer.setupCents ? <span className="font-normal text-text"> + {fmtPrice(offer.setupCents)} la plaquette</span> : null}</p>}
+          {offer ? <DemandeAvis siteId={siteId} enCours={!!enCours} depuis={enCours ? fmtDateShort(enCours.createdAt) : null} /> : <Button href="/messages" className="mt-5 w-full">Nous écrire</Button>}
         </Card>
       </div>
     </div>

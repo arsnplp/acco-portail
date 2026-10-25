@@ -41,7 +41,7 @@ export async function notifyClient(opts: {
   );
 }
 
-type AdminPref = "changes" | "messages" | "referrals" | "documents";
+type AdminPref = "changes" | "messages" | "referrals" | "documents" | "offers"; // offers : nouvelle commande d’un client
 
 /**
  * Push aux membres de l'équipe (rôle ADMIN) selon leurs réglages (Paramètres → Mes notifications).

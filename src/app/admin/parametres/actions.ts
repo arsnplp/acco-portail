@@ -26,7 +26,7 @@ export async function disconnectGoogleAction() {
 export async function saveAdminNotifPrefs(formData: FormData) {
   const admin = await requireAdmin();
   const on = (k: string) => formData.get(k) === "on";
-  const data = { pushEnabled: on("pushEnabled"), changes: on("changes"), messages: on("messages"), referrals: on("referrals"), documents: on("documents") };
+  const data = { pushEnabled: on("pushEnabled"), changes: on("changes"), messages: on("messages"), referrals: on("referrals"), documents: on("documents"), offers: on("offers") };
   await prisma.notificationPreference.upsert({ where: { userId: admin.id }, create: { userId: admin.id, ...data }, update: data });
   revalidatePath("/admin/parametres");
 }

@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { notifyAdmins } from "@/lib/notify";
 import { prisma } from "@/lib/prisma";
 import { requireClientContext } from "@/lib/auth";
 
@@ -17,6 +19,7 @@ export async function orderOffer(offerId: string, _prev: OrderState, formData: F
   const already = await prisma.order.findFirst({ where: { clientId: client.id, offerId, status: "A_TRAITER", siteId } });
   if (already) return { ok: true };
   await prisma.order.create({ data: { clientId: client.id, offerId, siteId, note: String(formData.get("note") ?? "").trim().slice(0, 500) || null } });
+  after(() => notifyAdmins({ pref: "offers", tag: "commande", href: "/admin/commandes", title: `Nouvelle commande · ${client.name}`, body: offer.name }));
   revalidatePath("/offres");
   revalidatePath("/admin/commandes");
   revalidatePath("/admin");
