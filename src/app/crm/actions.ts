@@ -90,7 +90,8 @@ export async function logEchange(prospectId: string, _prev: CrmState, f: FormDat
     });
   });
   refresh(prospectId);
-  if (f.get("session") === "1") redirect("/crm/session");
+  const session = String(f.get("session") ?? "");
+  if (session) redirect(`/crm/session?${session}`); // session d'appels : fiche suivante de la colonne
   return { ok: true };
 }
 

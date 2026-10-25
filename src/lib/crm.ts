@@ -54,7 +54,7 @@ export const MOTIFS_PERTE = ["Pas intéressé", "A déjà un site", "Trop cher",
  * Le commercial peut toujours modifier avant d'enregistrer.
  */
 export const REGLES: Record<EchangeType, { statut: ProspectStatut | null; relanceJours: number | null }> = {
-  NRP: { statut: "A_RELANCER", relanceJours: 2 },
+  NRP: { statut: null, relanceJours: 2 }, // pas de réponse : reste où il est (« À contacter » tant qu'on ne l'a jamais eu)
   APPEL: { statut: null, relanceJours: 7 },
   MAIL: { statut: null, relanceJours: 3 },
   PP: { statut: null, relanceJours: 7 },
@@ -64,13 +64,15 @@ export const REGLES: Record<EchangeType, { statut: ProspectStatut | null; relanc
   NOTE: { statut: null, relanceJours: null },
 };
 
-/** Statut proposé après un échange : on ne fait jamais reculer un prospect déjà avancé sur un simple NRP, appel ou mail. */
+/** Statut proposé après un échange (on ne fait jamais reculer un prospect déjà avancé sur un simple NRP, appel ou mail). */
 export function statutApres(type: EchangeType, current: ProspectStatut): ProspectStatut {
-  const proposed = REGLES[type].statut;
-  if (!proposed) return current;
-  if (type === "NRP") return current === "A_CONTACTER" ? "A_RELANCER" : current;
-  return proposed;
+  // « À contacter » = jamais eu au téléphone (aucun échange, ou seulement des NRP). Dès qu'on l'a eu : « À relancer ».
+  if (current === "A_CONTACTER" && (type === "APPEL" || type === "MAIL" || type === "PP")) return "A_RELANCER";
+  return REGLES[type].statut ?? current;
 }
+
+/** Jauge NRP : 0 à 5 appels sans réponse (5 = « 5 et plus »). */
+export const nrpTone = (n: number) => (n >= 5 ? "red" : n >= 3 ? "orange" : n >= 1 ? "yellow" : "none");
 
 // ─── Dates au fuseau de Paris (le serveur tourne en UTC) ─────
 const TZ = "Europe/Paris";

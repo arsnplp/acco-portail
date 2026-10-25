@@ -4,8 +4,13 @@ Accès : carte « Commercial » du tableau de bord admin, ou directement `/crm`.
 (alternants, commerciaux) arrivent directement ici et ne voient pas le reste de l'admin.
 
 ## Mode Prospection
-- **Ma journée** (`/crm`) : relances du jour et en retard, RDV de la semaine, bouton « Lancer ma session d'appels »
-  qui enchaîne les fiches (noter l'échange ouvre la suivante, « Passer » saute une fiche).
+- **Ma journée** (`/crm`) : relances du jour et en retard, RDV de la semaine.
+- **Sessions d'appels** : bouton « Lancer la session » en haut de chaque colonne du pipeline (avec les filtres en
+  cours). Noter l'échange ouvre la fiche suivante de la colonne, « Passer » saute une fiche, « Arrêter » revient au pipeline.
+- **À contacter** = jamais eu au téléphone (aucun échange ou que des NRP). Un NRP laisse la fiche où elle est ;
+  un appel, mail ou PP la fait passer en « À relancer ». Pour remettre les fiches existantes d'aplomb :
+  `npx tsx --env-file=.env scripts/recaler-a-contacter.mts` (aperçu) puis `--confirmer`.
+- **Jauge NRP** sur chaque carte et fiche : 0 à 5+ appels sans réponse (jaune, orange, rouge).
 - **Pipeline** (`/crm/pipeline`) : 5 colonnes, glisser-déposer les cartes ; en glissant, zones Gagné / Perdu en bas
   (Perdu demande le motif). Filtres : Tous, Moi, chaque commercial, Sans commercial, recherche, cible.
 - **Fiche** : noter un échange (NRP, Appel, Mail, PP = prospection physique, Prise de RDV, RDV) ; le statut et la

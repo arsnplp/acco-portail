@@ -14,7 +14,7 @@ const box = "rounded-card border border-border bg-surface p-4";
 const plusDays = (today: string, n: number) => { const d = new Date(`${today}T12:00:00`); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
 
 // ─── Noter un échange ────────────────────────────────────────
-export function EchangeForm({ prospectId, statut, session, today }: { prospectId: string; statut: ProspectStatut; session: boolean; today: string }) {
+export function EchangeForm({ prospectId, statut, session, today }: { prospectId: string; statut: ProspectStatut; session: string; today: string }) {
   const [type, setType] = useState<EchangeType | null>(null);
   const [relance, setRelance] = useState("");
   const [next, setNext] = useState<ProspectStatut>(statut);
@@ -39,7 +39,7 @@ export function EchangeForm({ prospectId, statut, session, today }: { prospectId
     <section>
       <SectionTitle icon={MessageSquarePlusIcon}>Noter un échange</SectionTitle>
       <form key={key} action={action} className={cn(box, "space-y-4")}>
-        <input type="hidden" name="session" value={session ? "1" : "0"} />
+        <input type="hidden" name="session" value={session} />
         <input type="hidden" name="type" value={type ?? ""} />
         <input type="hidden" name="report" value={report ? "1" : "0"} />
         <div className="grid grid-cols-3 gap-2">

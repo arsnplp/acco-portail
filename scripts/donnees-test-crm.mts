@@ -50,8 +50,8 @@ const NOTES: Record<EchangeType, string[]> = {
 
 /** Profil de chaque statut : où en est la relance et quels échanges ont eu lieu. */
 const PARCOURS: Record<ProspectStatut, { n: number; relance: () => number; echanges: EchangeType[][] }> = {
-  A_CONTACTER: { n: 12, relance: () => pick([-6, -3, -1, 0, 0, 0, 1, 2, 5]), echanges: [[], [], ["NRP"], ["PP"]] },
-  A_RELANCER: { n: 9, relance: () => pick([-4, -2, -1, 0, 0, 1, 3, 7]), echanges: [["NRP", "NRP"], ["APPEL"], ["NRP", "APPEL", "MAIL"], ["PP", "APPEL"]] },
+  A_CONTACTER: { n: 12, relance: () => pick([-6, -3, -1, 0, 0, 0, 1, 2, 5]), echanges: [[], [], ["NRP"], ["NRP", "NRP"], ["NRP", "NRP", "NRP", "NRP"], ["NRP", "NRP", "NRP", "NRP", "NRP", "NRP"]] },
+  A_RELANCER: { n: 9, relance: () => pick([-4, -2, -1, 0, 0, 1, 3, 7]), echanges: [["NRP", "APPEL"], ["APPEL"], ["NRP", "APPEL", "MAIL"], ["PP", "APPEL"], ["NRP", "NRP", "NRP", "APPEL", "NRP"]] },
   POSER_RDV: { n: 8, relance: () => pick([-2, 0, 0, 1, 2, 4]), echanges: [["APPEL", "MAIL"], ["NRP", "APPEL"], ["PP", "APPEL", "MAIL"], ["APPEL", "PRISE_RDV", "NO_SHOW"]] },
   RDV_POSE: { n: 6, relance: () => pick([0, 1, 2, 3, 5, 8]), echanges: [["APPEL", "PRISE_RDV"], ["NRP", "APPEL", "PRISE_RDV"], ["PP", "PRISE_RDV"]] },
   A_SIGNER: { n: 4, relance: () => pick([-1, 0, 1, 2]), echanges: [["APPEL", "PRISE_RDV", "RDV"], ["PP", "PRISE_RDV", "RDV", "MAIL"]] },

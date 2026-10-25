@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarClockIcon, PhoneCallIcon, PhoneIcon, ZapIcon } from "lucide-react";
+import { CalendarClockIcon, PhoneCallIcon, PhoneIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireTeam } from "@/lib/auth";
 import { cn } from "@/lib/cn";
@@ -63,11 +63,6 @@ export default async function MaJournee({ searchParams }: { searchParams: Promis
         ))}
       </div>
 
-      {!equipe && (
-        <Link href="/crm/session" className={cn("mt-5 flex h-14 items-center justify-center gap-2 rounded-card text-base font-semibold", todo.length ? "bg-title text-bg hover:bg-text-strong" : "pointer-events-none border border-border text-muted")}>
-          <ZapIcon size={18} aria-hidden /> {todo.length ? `Lancer ma session d’appels (${todo.length})` : "Aucune relance à faire aujourd’hui"}
-        </Link>
-      )}
       {doneToday > 0 && <p className="mt-2 text-center text-xs text-text">{doneToday} échange{doneToday > 1 ? "s" : ""} noté{doneToday > 1 ? "s" : ""} aujourd’hui</p>}
 
       <SectionTitle icon={PhoneCallIcon}>À appeler</SectionTitle>

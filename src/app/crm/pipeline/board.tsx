@@ -3,11 +3,13 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  DndContext, DragOverlay, PointerSensor, TouchSensor, useDraggable, useDroppable, useSensor, useSensors,
+  DndContext, DragOverlay, MouseSensor, TouchSensor, useDraggable, useDroppable, useSensor, useSensors,
   type DragEndEvent, type DragStartEvent,
 } from "@dnd-kit/core";
 import type { ProspectStatut } from "@prisma/client";
-import { PhoneIcon, SearchIcon, TrophyIcon, XCircleIcon } from "lucide-react";
+import Link from "next/link";
+import { PhoneIcon, PlayIcon, SearchIcon, TrophyIcon, XCircleIcon } from "lucide-react";
+import { NrpMeter } from "@/components/crm/nrp-meter";
 import { cn } from "@/lib/cn";
 import { MOTIFS_PERTE, PIPELINE, STATUT, initialsOf, logoUrl, relanceInfo } from "@/lib/crm";
 import { Dialog } from "@/components/ui/dialog";
@@ -16,7 +18,7 @@ import { Logo } from "@/components/crm/logo";
 
 export type CardData = {
   id: string; societe: string; statut: ProspectStatut; relanceAt: string | null; contact: string | null;
-  telephone: string | null; siteWeb: string | null; cible: string | null; commercialId: string | null;
+  telephone: string | null; siteWeb: string | null; cible: string | null; commercialId: string | null; nrp: number;
 };
 type Member = { id: string; name: string; avatarUrl: string | null };
 
@@ -34,8 +36,9 @@ export function Board({ initial, team, cibles, meId, initialFilter }: { initial:
   const members = useMemo(() => new Map(team.map((m) => [m.id, m])), [team]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } }),
+    // Souris : on glisse dès 6 px. Doigt : appui long (0,3 s) pour attraper une carte, sinon on fait défiler les colonnes.
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 300, tolerance: 8 } }),
   );
 
   const visible = cards.filter((c) =>
@@ -82,10 +85,19 @@ export function Board({ initial, team, cibles, meId, initialFilter }: { initial:
         </div>
       </div>
 
+      <div className="-mx-4 mb-3 flex gap-1.5 overflow-x-auto px-4 lg:hidden">
+        {PIPELINE.map((s) => (
+          <button key={s} type="button" onClick={() => document.getElementById(`col-${s}`)?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" })} className="flex shrink-0 items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs text-text-strong">
+            <span className={cn("size-1.5 rounded-full", DOT[STATUT[s].tone])} /> {STATUT[s].label} <span className="text-text">{visible.filter((c) => c.statut === s).length}</span>
+          </button>
+        ))}
+      </div>
+
       <DndContext sensors={sensors} onDragStart={(e: DragStartEvent) => setDragging(cards.find((c) => c.id === e.active.id) ?? null)} onDragEnd={onEnd} onDragCancel={() => setDragging(null)}>
         <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-4 lg:mx-0 lg:grid lg:grid-cols-5 lg:overflow-visible lg:px-0">
           {PIPELINE.map((s) => (
-            <Column key={s} statut={s} cards={visible.filter((c) => c.statut === s)} members={members} onOpen={(id) => router.push(`/crm/prospects/${id}`)} />
+            <Column key={s} statut={s} cards={visible.filter((c) => c.statut === s)} members={members} onOpen={(id) => router.push(`/crm/prospects/${id}`)}
+              sessionHref={`/crm/session?${new URLSearchParams({ statut: s, c: who === meId ? "me" : who, ...(cible ? { cible } : {}) })}`} />
           ))}
         </div>
         {dragging && (
@@ -111,17 +123,24 @@ export function Board({ initial, team, cibles, meId, initialFilter }: { initial:
   );
 }
 
-function Column({ statut, cards, members, onOpen }: { statut: ProspectStatut; cards: CardData[]; members: Map<string, Member>; onOpen: (id: string) => void }) {
+function Column({ statut, cards, members, onOpen, sessionHref }: { statut: ProspectStatut; cards: CardData[]; members: Map<string, Member>; onOpen: (id: string) => void; sessionHref: string }) {
   const { setNodeRef, isOver } = useDroppable({ id: statut });
   const late = cards.filter((c) => relanceInfo(c.relanceAt).state === "late").length;
   return (
-    <section ref={setNodeRef} className={cn("flex w-[84vw] max-w-sm shrink-0 snap-start flex-col rounded-card border bg-surface/60 lg:w-auto lg:max-w-none", isOver ? "border-text" : "border-border")}>
+    <section ref={setNodeRef} id={`col-${statut}`} className={cn("flex w-[84vw] max-w-sm shrink-0 snap-start flex-col rounded-card border bg-surface/60 lg:w-auto lg:max-w-none", isOver ? "border-text" : "border-border")}>
       <header className="flex items-center gap-2 px-3 pt-3 pb-2">
         <span className={cn("size-2 rounded-full", DOT[STATUT[statut].tone])} />
         <h2 className="text-sm font-semibold text-title">{STATUT[statut].label}</h2>
         <span className="text-xs text-text">{cards.length}</span>
         {late > 0 && <span className="ml-auto text-[11px] font-medium text-pink">{late} en retard</span>}
       </header>
+      <div className="px-2">
+        {cards.length > 0 ? (
+          <Link href={sessionHref} className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-yellow/40 bg-yellow/10 text-xs font-semibold text-yellow hover:bg-yellow/20">
+            <PlayIcon size={13} className="fill-yellow" aria-hidden /> Lancer la session ({cards.length})
+          </Link>
+        ) : <div className="h-9" />}
+      </div>
       <div className="flex min-h-24 flex-col gap-2 p-2 lg:max-h-[calc(100dvh-220px)] lg:overflow-y-auto">
         {cards.map((c) => <Draggable key={c.id} card={c} member={c.commercialId ? members.get(c.commercialId) : undefined} onOpen={onOpen} />)}
         {cards.length === 0 && <p className="px-2 py-6 text-center text-xs text-muted">Glissez une carte ici</p>}
@@ -160,6 +179,7 @@ function Card({ card, member, overlay }: { card: CardData; member?: Member; over
       </div>
       <div className="mt-2.5 flex items-center gap-2 text-[11px]">
         <span className={cn("shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 font-medium", r.state === "late" ? "bg-pink/15 text-pink" : r.state === "today" ? "bg-yellow/15 text-yellow" : "bg-surface-2 text-text")}>{r.label}</span>
+        <NrpMeter n={card.nrp} />
         {card.cible && <span className="truncate text-muted">{card.cible}</span>}
         {member && <span title={member.name} className="ml-auto flex size-5 shrink-0 items-center justify-center rounded-full bg-surface-2 text-[9px] font-semibold text-text-strong">{initialsOf(member.name)}</span>}
       </div>

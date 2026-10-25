@@ -1,19 +1,22 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ExternalLinkIcon, MailIcon, MapPinIcon, PhoneIcon, SkipForwardIcon, ZapIcon } from "lucide-react";
+import { ExternalLinkIcon, MailIcon, MapPinIcon, PhoneIcon, SkipForwardIcon, SquareIcon, ZapIcon } from "lucide-react";
+import { readSession, sessionQuery, sessionWhere } from "@/lib/crm-session";
+import { NrpMeter } from "@/components/crm/nrp-meter";
 import { prisma } from "@/lib/prisma";
 import { requireTeam } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { Logo } from "@/components/crm/logo";
-import { STATUT, contactName, logoUrl, relanceInfo, teamName, parisDay } from "@/lib/crm";
+import { STATUT, contactName, logoUrl, relanceInfo, teamName, parisDay, todayBounds } from "@/lib/crm";
 import { EchangeForm, ProspectForm, Contacts, Historique, AssignButton, RdvList } from "./forms";
 
 export const metadata = { title: "Fiche prospect" };
 
-export default async function ProspectPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ session?: string; skip?: string }> }) {
+export default async function ProspectPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
   const me = await requireTeam();
   const { id } = await params;
-  const { session, skip } = await searchParams;
+  const sp = await searchParams;
+  const sess = sp.session === "1" ? readSession(sp) : null;
   const [p, team, cibles] = await Promise.all([
     prisma.prospect.findUnique({
       where: { id },
@@ -37,16 +40,21 @@ export default async function ProspectPage({ params, searchParams }: { params: P
   const email = p.contacts.find((c) => c.email)?.email;
   const logo = logoUrl(p.siteWeb);
   const r = relanceInfo(p.relanceAt);
-  const inSession = session === "1";
-  const skipList = [...(skip?.split(",").filter(Boolean) ?? []), p.id].join(",");
+  const remaining = sess ? await prisma.prospect.count({ where: sessionWhere(sess, me.id, todayBounds().start) }) : 0;
+  const nrp = p.echanges.filter((e) => e.type === "NRP").length;
   const echanges = [...p.echanges, ...clientEchanges].sort((a, b) => b.date.getTime() - a.date.getTime());
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-4">
-      {inSession && (
-        <div className="mb-4 flex items-center gap-3 rounded-card border border-yellow/40 bg-yellow/10 px-4 py-2.5 text-sm text-yellow">
-          <ZapIcon size={16} aria-hidden /> Session d’appels : notez l’échange, la fiche suivante s’ouvre toute seule.
-          <Link href={`/crm/session?skip=${skipList}`} className="ml-auto flex items-center gap-1 font-semibold hover:underline"><SkipForwardIcon size={14} aria-hidden /> Passer</Link>
+      {sess && (
+        <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-card border border-yellow/40 bg-yellow/10 px-4 py-2.5 text-sm text-yellow">
+          <ZapIcon size={16} aria-hidden />
+          <span>Session « {STATUT[sess.statut].label} » · {remaining} fiche{remaining > 1 ? "s" : ""} restante{remaining > 1 ? "s" : ""}</span>
+          <span className="hidden text-xs text-yellow/70 sm:inline">notez l’échange, la suivante s’ouvre toute seule</span>
+          <span className="ml-auto flex items-center gap-4">
+            <Link href={`/crm/session?${sessionQuery(sess, p.id)}`} className="flex items-center gap-1 font-semibold hover:underline"><SkipForwardIcon size={14} aria-hidden /> Passer</Link>
+            <Link href="/crm/pipeline" className="flex items-center gap-1 text-yellow/80 hover:underline"><SquareIcon size={12} aria-hidden /> Arrêter</Link>
+          </span>
         </div>
       )}
 
@@ -60,6 +68,7 @@ export default async function ProspectPage({ params, searchParams }: { params: P
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <Badge tone={STATUT[p.statut].tone}>{STATUT[p.statut].label}</Badge>
             <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${r.state === "late" ? "bg-pink/15 text-pink" : r.state === "today" ? "bg-yellow/15 text-yellow" : "bg-surface-2 text-text"}`}>Relance : {r.label}</span>
+            <NrpMeter n={nrp} className="rounded-full bg-surface-2 px-2.5 py-1" />
             {p.cible && <span className="text-xs text-text">{p.cible.nom}</span>}
             {p.client && <Link href={`/admin/clients/${p.client.id}`} className="text-xs text-green hover:underline">Client du portail</Link>}
           </div>
@@ -79,7 +88,7 @@ export default async function ProspectPage({ params, searchParams }: { params: P
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         <div className="space-y-6">
-          <EchangeForm prospectId={p.id} statut={p.statut} session={inSession} today={parisDay()} />
+          <EchangeForm prospectId={p.id} statut={p.statut} session={sess ? sessionQuery(sess) : ""} today={parisDay()} />
           <Historique items={echanges.map((e) => ({ id: e.id, type: e.type, notes: e.notes, date: e.date.toISOString(), auteur: e.auteur ? teamName(e.auteur) : e.auteurNom, client: !e.prospectId }))} />
         </div>
         <div className="space-y-6">

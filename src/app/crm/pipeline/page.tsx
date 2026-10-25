@@ -16,6 +16,7 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
         id: true, societe: true, statut: true, relanceAt: true, telephone: true, siteWeb: true, commercialId: true,
         cible: { select: { nom: true } },
         contacts: { orderBy: [{ principal: "desc" }, { createdAt: "asc" }], take: 1, select: { prenom: true, nom: true, telephone: true } },
+        _count: { select: { echanges: { where: { type: "NRP" } } } },
       },
     }),
     prisma.user.findMany({ where: { role: { in: ["ADMIN", "COMMERCIAL"] } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true, avatarUrl: true } }),
@@ -24,7 +25,7 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
   const cards: CardData[] = prospects.map((p) => ({
     id: p.id, societe: p.societe, statut: p.statut, relanceAt: p.relanceAt?.toISOString() ?? null,
     contact: contactName(p.contacts[0]), telephone: p.contacts[0]?.telephone ?? p.telephone, siteWeb: p.siteWeb,
-    cible: p.cible?.nom ?? null, commercialId: p.commercialId,
+    cible: p.cible?.nom ?? null, commercialId: p.commercialId, nrp: p._count.echanges,
   }));
   return (
     <Board
