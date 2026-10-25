@@ -34,7 +34,7 @@ export function ClientForms({ client, sites }: { client: ClientInfo; sites: { id
             <SubmitButton size="sm">Créer le site (en création)</SubmitButton>
           </form>
         </Panel>
-        <Panel title="Ajouter un abonnement ou un module">
+        <Panel title="Ajouter un abonnement sur mesure">
           <form action={a4} className="space-y-3">
             <Field label="Libellé"><Input name="label" placeholder="Site vitrine — abonnement" required /></Field>
             <div className="grid grid-cols-2 gap-3">

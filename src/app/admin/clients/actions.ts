@@ -145,3 +145,44 @@ export async function sendInvitation(clientId: string, userId: string) {
   await sendInvitationEmail({ email: user.email, firstName: user.firstName, clientName: client.name, clientId, inviterId: admin.id });
   revalidatePath(`/admin/clients/${clientId}`);
 }
+
+/**
+ * Activer une offre du catalogue pour un client, depuis sa fiche (sans passer par une commande).
+ * Le client n'est prévenu que si la case est cochée.
+ */
+export async function activateOffer(clientId: string, offerId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireAdmin();
+  const { activePromo } = await import("@/lib/offers");
+  const offer = await prisma.offer.findUnique({ where: { id: offerId }, include: { promotions: true } });
+  if (!offer) return { error: "Offre introuvable" };
+  const siteId = String(formData.get("siteId") ?? "") || null;
+  if (offer.module !== "NONE" && !siteId) return { error: "Choisissez le site sur lequel débloquer le module." };
+  if (siteId && !(await prisma.site.findFirst({ where: { id: siteId, clientId }, select: { id: true } }))) return { error: "Site introuvable" };
+  const promo = activePromo(offer);
+  const price = promo ? promo.price : offer.priceCents;
+  const months = parseInt(String(formData.get("commitmentMonths") ?? "0"), 10) || 0;
+  await prisma.subscription.create({
+    data: {
+      clientId, siteId, offerId, label: offer.name, module: offer.module, billing: offer.billing, priceCents: price,
+      commitmentEndsAt: months > 0 ? new Date(new Date().setMonth(new Date().getMonth() + months)) : null,
+    },
+  });
+  // Une commande en attente pour cette offre est considérée comme traitée.
+  await prisma.order.updateMany({ where: { clientId, offerId, status: "A_TRAITER" }, data: { status: "VALIDEE", validatedAt: new Date() } });
+  if (formData.get("notify") === "on") {
+    const { notifyClient } = await import("@/lib/notify");
+    const { fmtPrice } = await import("@/lib/format");
+    await notifyClient({
+      clientId, siteId, kind: "COMMANDE_VALIDEE", pref: "offers",
+      title: `${offer.name} : c’est activé`,
+      body: `${fmtPrice(price)}${offer.billing === "MENSUEL" ? " / mois" : ""}`,
+      href: offer.module !== "NONE" && siteId ? `/sites/${siteId}/avis` : "/compte",
+    });
+  }
+  revalidatePath(`/admin/clients/${clientId}`);
+  revalidatePath("/admin/offres");
+  revalidatePath("/offres");
+  revalidatePath("/compte");
+  if (siteId) revalidatePath(`/sites/${siteId}`, "layout");
+  return {};
+}

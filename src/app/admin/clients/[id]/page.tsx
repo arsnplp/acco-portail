@@ -1,13 +1,14 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { AdminPage } from "@/components/admin/page";
-import { MoreList } from "@/components/ui/more-list";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SITE_STATUS, PROJECT_STEPS } from "@/lib/labels";
 import { fmtDate, fmtPrice } from "@/lib/format";
 import { ClientForms } from "./forms";
-import { cancelSubscription, sendInvitation } from "../actions";
+import { OffresClient } from "./offres";
+import { activePromo, MODULE_LABEL } from "@/lib/offers";
+import { sendInvitation } from "../actions";
 import { FolderOpen, ChevronRight } from "lucide-react";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { CreditCardIcon, FileTextIcon, GlobeIcon, UserIcon } from "lucide-react";
@@ -27,6 +28,18 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   });
   if (!client) notFound();
   const pendingDocs = client._count.documentRequests;
+  const [offers, orders] = await Promise.all([
+    prisma.offer.findMany({ where: { OR: [{ isArchived: false }, { subscriptions: { some: { clientId: client.id, status: "ACTIF" } } }] }, orderBy: { order: "asc" }, include: { promotions: true } }),
+    prisma.order.findMany({ where: { clientId: client.id, status: "A_TRAITER" }, select: { offerId: true } }),
+  ]);
+  const commandes = new Set(orders.map((o) => o.offerId));
+  const actives = client.subscriptions.filter((s) => s.status === "ACTIF");
+  const mensuel = actives.filter((s) => s.billing === "MENSUEL").reduce((a, s) => a + s.priceCents, 0);
+  const ponctuel = actives.filter((s) => s.billing !== "MENSUEL").reduce((a, s) => a + s.priceCents, 0);
+  const toActive = (s: (typeof actives)[number]) => ({
+    id: s.id, label: s.label, price: `${fmtPrice(s.priceCents)}${s.billing === "MENSUEL" ? " / mois" : ""}`, since: fmtDate(s.startedAt),
+    site: s.site?.name ?? null, endsAt: s.commitmentEndsAt ? fmtDate(s.commitmentEndsAt) : null, quota: s.monthlyQuota,
+  });
 
   return (
     <AdminPage title={client.name} back={{ href: "/admin/clients", label: "Clients" }}>
@@ -43,29 +56,21 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         ))}
       </div>
 
-      <SectionTitle icon={CreditCardIcon}>Abonnements et modules</SectionTitle>
-      <div className="grid gap-2">
-        <MoreList title="Abonnements" labels={client.subscriptions.map((s) => s.label)} className="grid gap-2" items={client.subscriptions.map((s) => (
-          <Card key={s.id} className="flex items-center justify-between gap-3 py-3">
-            <div>
-              <p className="font-semibold text-title">{s.label}</p>
-              <p className="text-xs text-text">
-                {s.site?.name ? `${s.site.name} · ` : ""}{fmtPrice(s.priceCents)}{s.billing === "MENSUEL" ? " / mois" : ""}
-                {s.monthlyQuota ? ` · ${s.monthlyQuota} modif/mois` : ""}
-                {s.commitmentEndsAt ? ` · engagement jusqu’au ${fmtDate(s.commitmentEndsAt)}` : ""}
-              </p>
-            </div>
-            {s.status === "ACTIF" ? (
-              <form action={cancelSubscription.bind(null, client.id, s.id)}>
-                <SubmitButton variant="ghost" size="sm" pendingLabel="…">Résilier</SubmitButton>
-              </form>
-            ) : (
-              <Badge tone="pink">Résilié</Badge>
-            )}
-          </Card>
-        ))} />
-        {client.subscriptions.length === 0 && <p className="text-sm text-text">Aucun abonnement.</p>}
-      </div>
+      <SectionTitle icon={CreditCardIcon}>Offres et abonnements</SectionTitle>
+      <OffresClient
+        clientId={client.id}
+        totaux={{ actives: actives.length, mensuel: fmtPrice(mensuel), ponctuel: fmtPrice(ponctuel) }}
+        base={actives.filter((s) => !s.offerId).map(toActive)}
+        offres={offers.map((o) => ({
+          id: o.id, name: o.name, benefit: o.benefit, mensuel: o.billing === "MENSUEL",
+          price: `${fmtPrice(activePromo(o)?.price ?? o.priceCents)}${o.billing === "MENSUEL" ? " / mois" : ""}${o.setupCents ? ` + ${fmtPrice(o.setupCents)} à l’installation` : ""}`,
+          module: o.module !== "NONE" ? MODULE_LABEL[o.module] : null,
+          actives: actives.filter((s) => s.offerId === o.id).map(toActive),
+          commandee: commandes.has(o.id),
+        }))}
+        resiliees={client.subscriptions.filter((s) => s.status === "RESILIE").map((s) => ({ id: s.id, label: s.label, quand: s.cancelledAt ? `résiliée le ${fmtDate(s.cancelledAt)}` : "résiliée" }))}
+        sites={client.sites.map((s) => ({ id: s.id, name: s.name }))}
+      />
 
       <SectionTitle icon={UserIcon}>Accès du client</SectionTitle>
       <div className="grid gap-2">
