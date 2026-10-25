@@ -30,6 +30,19 @@ Accès : carte « Commercial » du tableau de bord admin, ou directement `/crm`.
   signatures, CA signé (création + 12 mois), activité par type, RDV, pipeline, entonnoir, classement.
 - **Équipe** (admins) : créer le compte d'un alternant / commercial (lien de connexion envoyé à SON adresse), retirer un accès.
 
+## Coffre à leads (`/crm/leads`)
+- **Générer** : nombre (1 à 50), secteur et région en texte libre, attribution (commercial ou personne). Claude cherche
+  sur le web (outil de recherche web de l'API Anthropic), le registre officiel (recherche-entreprises.api.gouv.fr,
+  gratuit) complète SIREN, SIRET, dirigeant, forme, NAF, création, état, établissements ; un audit du site remplit
+  CMS, hébergeur, HTTPS, mobile, âge du domaine, score et faiblesses SEO. 34 colonnes, comme le fichier Excel de référence.
+  Vitesse mobile/desktop : seulement si `PAGESPEED_API_KEY` est dans le .env du serveur.
+- **Doublons** : tout ce qui est déjà dans le CRM, le portail ou le coffre est écarté (téléphone, SIREN, site, nom).
+  Message « il ne reste que X leads pour cette région » si la zone s'épuise, sinon une estimation de ce qui reste.
+- **Utiliser** : « Envoyer dans À contacter » crée les fiches (dirigeant en contact principal, note de synthèse),
+  attribuées au commercial de la liste, et la liste passe en « Utilisée ». Export CSV pour Excel.
+- Clé : celle d'Admin → Paramètres (Anthropic, sinon celle de Claude Code). Modèle : `LEADS_MODEL` (défaut claude-sonnet-5-5).
+  Coût indicatif affiché sur chaque liste. La génération tourne en arrière-plan (2 à 5 min), 3 listes en même temps au plus.
+
 ## Mise en place (une fois)
 ```bash
 # Mac, dans le dossier du portail

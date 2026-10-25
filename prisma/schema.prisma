@@ -215,6 +215,8 @@ model User {
   crmProjets        Projet[]                @relation("ProjetResponsable")
   crmTaches         Tache[]                 @relation("TacheResponsable")
   crmTacheModeles   TacheModele[]           @relation("TacheModeleResponsable")
+  leadListes        LeadListe[]             @relation("LeadListeCommercial")
+  leadListesCreees  LeadListe[]             @relation("LeadListeAuteur")
 }
 
 model ClientMembership {
@@ -896,6 +898,7 @@ model Prospect {
   contacts   ProspectContact[]
   echanges   Echange[]
   rendezVous RendezVous[]
+  lead       Lead?
 
   @@index([statut, relanceAt])
   @@index([rappelAt])
@@ -1073,4 +1076,60 @@ model SousTache {
   tache Tache @relation(fields: [tacheId], references: [id], onDelete: Cascade)
 
   @@index([tacheId])
+}
+
+// ─── Coffre à leads : listes générées (recherche web + registre officiel), envoyées ensuite dans « À contacter » ───
+
+enum LeadListeStatut {
+  GENERATION
+  PRETE
+  ERREUR
+  UTILISEE
+}
+
+model LeadListe {
+  id             String          @id @default(cuid())
+  secteur        String
+  region         String
+  demande        Int
+  obtenus        Int             @default(0)
+  ecartes        Int             @default(0) // déjà dans le CRM, le portail ou le coffre
+  estimationZone Int? // nombre d'entreprises de ce type estimé dans la zone
+  statut         LeadListeStatut @default(GENERATION)
+  message        String?
+  erreur         String?
+  recherches     Int             @default(0) // recherches web utilisées
+  coutUsd        Float?
+  commercialId   String?
+  auteurId       String?
+  utiliseeAt     DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  commercial User?  @relation("LeadListeCommercial", fields: [commercialId], references: [id], onDelete: SetNull)
+  auteur     User?  @relation("LeadListeAuteur", fields: [auteurId], references: [id], onDelete: SetNull)
+  leads      Lead[]
+
+  @@index([createdAt])
+}
+
+model Lead {
+  id         String   @id @default(cuid())
+  listeId    String
+  entreprise String
+  telephone  String?
+  siteWeb    String?
+  siren      String?
+  ville      String?
+  score      Int?
+  donnees    Json // toutes les colonnes (Entreprise, Secteur, Ville, … Instagram)
+  prospectId String?  @unique // rempli quand le lead part dans « À contacter »
+  createdAt  DateTime @default(now())
+
+  liste    LeadListe @relation(fields: [listeId], references: [id], onDelete: Cascade)
+  prospect Prospect? @relation(fields: [prospectId], references: [id], onDelete: SetNull)
+
+  @@index([listeId])
+  @@index([siren])
+  @@index([telephone])
 }
