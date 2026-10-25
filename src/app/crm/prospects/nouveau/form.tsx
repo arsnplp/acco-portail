@@ -1,5 +1,6 @@
 "use client";
 
+import { DateInput, TimeInput } from "@/components/ui/date-time";
 import { TelInput } from "@/components/crm/tel-input";
 import Link from "next/link";
 import { useActionState } from "react";
@@ -37,7 +38,7 @@ export function NewProspectForm({ meId, team, cibles, today, isAdmin }: { meId: 
               : <><input type="hidden" name="commercialId" value={meId} /><Input value="Moi" disabled /></>}
           </Field>
           <Field label="Première relance" hint="heure facultative">
-            <div className="grid grid-cols-[minmax(0,1fr)_92px] gap-2"><Input type="date" name="relance" defaultValue={today} className="px-3" /><Input type="time" name="relanceHeure" step={300} aria-label="Heure de rappel" className="px-2" /></div>
+            <div className="grid grid-cols-2 gap-2"><DateInput name="relance" defaultValue={today} label="Date de relance" /><TimeInput name="relanceHeure" optional label="Heure de rappel (facultative)" /></div>
           </Field>
         </div>
         <Field label="Site web" hint="optionnel"><Input name="siteWeb" placeholder="exemple.fr" /></Field>

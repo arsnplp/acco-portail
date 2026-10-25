@@ -1,5 +1,6 @@
 "use client";
 
+import { DateInput, TimeInput } from "@/components/ui/date-time";
 import { TelInput } from "@/components/crm/tel-input";
 import { useActionState, useEffect, useState, useTransition } from "react";
 import type { EchangeType, ProspectSource, ProspectStatut, RdvResultat } from "@prisma/client";
@@ -69,9 +70,9 @@ export function EchangeForm({ prospectId, statut, session, today }: { prospectId
                 </div>
                 {report && (
                   <div className="space-y-2">
-                    <div className="grid grid-cols-[1fr_auto] gap-2 sm:grid-cols-[1fr_auto_1fr]">
-                      <Field label="Nouvelle date"><Input type="date" name="reportDay" required min={today} /></Field>
-                      <Field label="Heure"><Input type="time" name="reportTime" defaultValue="10:00" step={900} /></Field>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      <Field label="Nouvelle date"><DateInput name="reportDay" required min={today} /></Field>
+                      <Field label="Heure"><TimeInput name="reportTime" defaultValue="10:00" step={900} required /></Field>
                       <div className="col-span-2 sm:col-span-1"><Field label="Lieu" hint="optionnel"><Input name="reportLieu" placeholder="Sur place, visio…" /></Field></div>
                     </div>
                     <p className="text-xs text-text">Le report est rattaché au RDV manqué : il ne compte pas comme un nouveau RDV pris.</p>
@@ -89,9 +90,9 @@ export function EchangeForm({ prospectId, statut, session, today }: { prospectId
               <Textarea name="notes" placeholder={type === "NRP" ? "Note (optionnelle) : messagerie, barrage…" : type === "NO_SHOW" ? "Note (optionnelle) : prévenu ou pas…" : "Note (optionnelle)"} className="min-h-20" />
             )}
             {type === "PRISE_RDV" && (
-              <div className="grid grid-cols-[1fr_auto] gap-2 sm:grid-cols-[1fr_auto_1fr]">
-                <Field label="Date du RDV"><Input type="date" name="rdvDay" required min={today} /></Field>
-                <Field label="Heure"><Input type="time" name="rdvTime" defaultValue="10:00" step={900} /></Field>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <Field label="Date du RDV"><DateInput name="rdvDay" required min={today} /></Field>
+                <Field label="Heure"><TimeInput name="rdvTime" defaultValue="10:00" step={900} required /></Field>
                 <div className="col-span-2 sm:col-span-1"><Field label="Lieu" hint="optionnel"><Input name="rdvLieu" placeholder="Sur place, visio…" /></Field></div>
               </div>
             )}
@@ -103,11 +104,10 @@ export function EchangeForm({ prospectId, statut, session, today }: { prospectId
                     const v = plusDays(today, n);
                     return <button key={label} type="button" onClick={() => setRelance(v)} className={cn("rounded-full border px-3 py-1.5 text-xs", relance === v ? "border-title bg-title font-semibold text-bg" : "border-border text-text hover:text-title")}>{label}</button>;
                   })}
-                  <Input type="date" name="relance" value={relance} onChange={(e) => setRelance(e.target.value)} className="h-9 w-auto px-3 py-1 text-sm" />
-                  <label className="flex items-center gap-1.5 text-xs text-text">
-                    <BellIcon size={14} aria-hidden />
-                    <Input type="time" name="relanceHeure" step={300} aria-label="Heure de rappel (facultative)" className="h-9 w-auto px-3 py-1 text-sm" />
-                  </label>
+                </div>
+                <div className="mt-2 grid grid-cols-2 gap-2 sm:max-w-md">
+                  <div className="min-w-0"><p className="mb-1 text-xs text-text">Date</p><DateInput name="relance" value={relance} onChange={setRelance} label="Date de relance" /></div>
+                  <div className="min-w-0"><p className="mb-1 flex items-center gap-1 text-xs text-text"><BellIcon size={12} aria-hidden /> Rappel à</p><TimeInput name="relanceHeure" optional label="Heure de rappel (facultative)" /></div>
                 </div>
                 <p className="mt-1.5 text-xs text-muted">Heure facultative : le commercial reçoit un rappel sur son téléphone et dans l’app à cette heure-là.</p>
               </div>
@@ -247,9 +247,9 @@ export function ProspectForm({ p, team, cibles, canDelete, isAdmin }: { p: P; te
             </Select>
           </Field>
           <Field label="Prochaine relance">
-            <div className="grid grid-cols-[minmax(0,1fr)_92px] gap-2">
-              <Input type="date" name="relance" defaultValue={p.relance} className="px-3" />
-              <Input type="time" name="relanceHeure" defaultValue={p.relanceHeure} step={300} aria-label="Heure de rappel (facultative)" className="px-2" />
+            <div className="grid grid-cols-2 gap-2">
+              <DateInput name="relance" defaultValue={p.relance} label="Date de relance" />
+              <TimeInput name="relanceHeure" defaultValue={p.relanceHeure} optional label="Heure de rappel (facultative)" />
             </div>
           </Field>
         </div>

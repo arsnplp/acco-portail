@@ -89,3 +89,30 @@ html, body { overflow-x: clip; max-width: 100%; }
 .pb-nav {
   padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 16px);
 }
+
+/* Champs date / heure : sur iPhone (Safari), sans ces règles ils s'affichent centrés, débordent
+   ou s'écrasent quand ils sont vides. On les aligne et on leur donne une hauteur stable. */
+input[type="date"],
+input[type="time"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  min-height: 3rem;
+  line-height: 1.25;
+  text-align: left;
+}
+input[type="date"]::-webkit-date-and-time-value,
+input[type="time"]::-webkit-date-and-time-value {
+  text-align: left;
+  margin: 0;
+  min-height: 1.25em;
+}
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  opacity: 0.6;
+  cursor: pointer;
+}
+/* Champ vide : on masque le gabarit du navigateur (« mm/dd/yyyy ») au profit du nôtre, sauf pendant la saisie. */
+input[data-vide]:not(:focus)::-webkit-datetime-edit {
+  opacity: 0;
+}
