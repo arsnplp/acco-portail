@@ -11,7 +11,8 @@ import Link from "next/link";
 import { PhoneIcon, PlayIcon, SearchIcon, TrophyIcon, XCircleIcon } from "lucide-react";
 import { NrpMeter } from "@/components/crm/nrp-meter";
 import { cn } from "@/lib/cn";
-import { matchRecherche, MOTIFS_PERTE, PIPELINE, STATUT, initialsOf, logoUrl, relanceInfo } from "@/lib/crm";
+import { EtapeBanner } from "@/components/crm/etape-banner";
+import { matchRecherche, MOTIFS_PERTE, PIPELINE, initialsOf, logoUrl, relanceInfo } from "@/lib/crm";
 import { Dialog } from "@/components/ui/dialog";
 import { moveProspect } from "../actions";
 import { Logo } from "@/components/crm/logo";
@@ -22,7 +23,6 @@ export type CardData = {
 };
 type Member = { id: string; name: string; avatarUrl: string | null };
 
-const DOT: Record<string, string> = { blue: "bg-blue", neutral: "bg-text", yellow: "bg-yellow", claude: "bg-claude", pink: "bg-pink", green: "bg-green" };
 
 export function Board({ initial, team, cibles, meId, initialFilter }: { initial: CardData[]; team: Member[]; cibles: string[]; meId: string; initialFilter: string }) {
   const router = useRouter();
@@ -66,7 +66,11 @@ export function Board({ initial, team, cibles, meId, initialFilter }: { initial:
   return (
     <main className="mx-auto max-w-[1600px] px-4 py-4">
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="flex flex-wrap gap-1.5">
+        {/* Téléphone : menu déroulant (les puces passeraient sur plusieurs lignes). */}
+        <select value={who} onChange={(e) => setWho(e.target.value)} aria-label="Commercial" className="h-10 w-full rounded-full border border-border bg-surface px-4 text-sm font-semibold text-title outline-none sm:hidden">
+          {chips.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+        </select>
+        <div className="hidden flex-wrap gap-1.5 sm:flex">
           {chips.map((c) => (
             <button key={c.id} type="button" onClick={() => setWho(c.id)} className={cn("rounded-full border px-3 py-1.5 text-sm", who === c.id ? "border-title bg-title font-semibold text-bg" : "border-border text-text hover:text-title")}>
               {c.label}
@@ -83,14 +87,6 @@ export function Board({ initial, team, cibles, meId, initialFilter }: { initial:
             {cibles.map((c) => <option key={c}>{c}</option>)}
           </select>
         </div>
-      </div>
-
-      <div className="-mx-4 mb-3 flex gap-1.5 overflow-x-auto px-4 lg:hidden">
-        {PIPELINE.map((s) => (
-          <button key={s} type="button" onClick={() => document.getElementById(`col-${s}`)?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" })} className="flex shrink-0 items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs text-text-strong">
-            <span className={cn("size-1.5 rounded-full", DOT[STATUT[s].tone])} /> {STATUT[s].label} <span className="text-text">{visible.filter((c) => c.statut === s).length}</span>
-          </button>
-        ))}
       </div>
 
       <DndContext sensors={sensors} onDragStart={(e: DragStartEvent) => setDragging(cards.find((c) => c.id === e.active.id) ?? null)} onDragEnd={onEnd} onDragCancel={() => setDragging(null)}>
@@ -128,12 +124,9 @@ function Column({ statut, cards, members, onOpen, sessionHref }: { statut: Prosp
   const late = cards.filter((c) => relanceInfo(c.relanceAt).state === "late").length;
   return (
     <section ref={setNodeRef} id={`col-${statut}`} className={cn("relative flex w-[84vw] max-w-sm shrink-0 snap-start flex-col rounded-card border bg-surface/60 lg:w-auto lg:max-w-none", isOver ? "border-text" : "border-border")}>
-      <header className="flex items-center gap-2 px-3 pt-3 pb-2">
-        <span className={cn("size-2 rounded-full", DOT[STATUT[statut].tone])} />
-        <h2 className="text-sm font-semibold text-title">{STATUT[statut].label}</h2>
-        <span className="text-xs text-text">{cards.length}</span>
-        {late > 0 && <span className="ml-auto text-[11px] font-medium text-pink">{late} en retard</span>}
-      </header>
+      <EtapeBanner statut={statut} className="m-1.5 mb-2 h-20 rounded-[10px]" corner={late > 0 ? <span className="rounded-full bg-pink px-2 py-0.5 text-[10px] font-semibold text-black">{late} en retard</span> : null}>
+        <span className="ml-auto rounded-full bg-black/55 px-2 py-0.5 text-xs font-semibold text-white tabular-nums backdrop-blur">{cards.length}</span>
+      </EtapeBanner>
       <div className="px-2">
         {cards.length > 0 ? (
           <Link href={sessionHref} className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-yellow/40 bg-yellow/10 text-xs font-semibold text-yellow hover:bg-yellow/20">

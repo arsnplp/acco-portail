@@ -43,6 +43,11 @@ export const VIZ = {
 export const ECHANGE_COULEUR: Record<EchangeType, string> = {
   NRP: VIZ.violet, APPEL: VIZ.blue, MAIL: VIZ.aqua, PP: VIZ.yellow, PRISE_RDV: VIZ.orange, RDV: VIZ.green, NO_SHOW: VIZ.red, NOTE: "#7a7d85",
 };
+/** Bandeau illustré de chaque étape du pipeline (public/etapes). */
+export const ETAPE_IMAGE: Partial<Record<ProspectStatut, string>> = {
+  A_CONTACTER: "/etapes/a-contacter.webp", A_RELANCER: "/etapes/a-relancer.webp", POSER_RDV: "/etapes/poser-rdv.webp",
+  RDV_POSE: "/etapes/rdv-pose.webp", A_SIGNER: "/etapes/a-signer.webp",
+};
 export const STATUT_COULEUR: Record<ProspectStatut, string> = {
   A_CONTACTER: VIZ.blue, A_RELANCER: VIZ.violet, POSER_RDV: VIZ.yellow, RDV_POSE: VIZ.orange, A_SIGNER: VIZ.magenta, GAGNE: VIZ.aqua, PERDU: "#4b4e55",
 };

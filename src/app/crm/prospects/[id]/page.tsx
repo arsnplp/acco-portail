@@ -1,3 +1,4 @@
+import { EtapeBanner } from "@/components/crm/etape-banner";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ExternalLinkIcon, MailIcon, MapPinIcon, PhoneIcon, SkipForwardIcon, SquareIcon, ZapIcon } from "lucide-react";
@@ -9,7 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { requireTeam } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { Logo } from "@/components/crm/logo";
-import { STATUT, contactName, fmtDayTime, fmtTime, logoUrl, relanceInfo, teamName, parisDay, todayBounds } from "@/lib/crm";
+import { ETAPE_IMAGE, STATUT, contactName, fmtDayTime, fmtTime, logoUrl, relanceInfo, teamName, parisDay, todayBounds } from "@/lib/crm";
 import { EchangeForm, ProspectForm, Contacts, Historique, AssignControl, RdvList } from "./forms";
 
 export const metadata = { title: "Fiche prospect" };
@@ -49,6 +50,8 @@ export default async function ProspectPage({ params, searchParams }: { params: P
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-4">
+      {/* Téléphone uniquement : bandeau de l'étape où en est le prospect. */}
+      {ETAPE_IMAGE[p.statut] && <EtapeBanner statut={p.statut} className="-mx-4 -mt-4 mb-4 h-28 sm:hidden" />}
       {sess && (
         <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-card border border-yellow/40 bg-yellow/10 px-4 py-2.5 text-sm text-yellow">
           <ZapIcon size={16} aria-hidden />
