@@ -44,7 +44,7 @@ Tokens dans `src/app/globals.css` : fond `#0e0e0f`, cartes `#1a1a1b`, bordures `
 
 ## Tâches planifiées
 
-Routes protégées par `CRON_SECRET` : `/api/cron/monitor` (5 min), `/api/cron/reviews` (6 h), `/api/cron/recaps` (le 4 du mois), `/api/cron/rgpd` (nuit). Détail dans `DEPLOIEMENT.md`.
+Routes protégées par `CRON_SECRET` : `/api/cron/monitor` (5 min), `/api/cron/reviews` (6 h), `/api/cron/recaps` (secours : les récaps partent déjà seuls le 4 à 8 h, boucle du serveur), `/api/cron/rgpd` (nuit). Détail dans `DEPLOIEMENT.md`.
 
 ## Étapes
 

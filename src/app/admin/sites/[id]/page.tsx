@@ -10,15 +10,15 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { CHANGE_STATUS, SITE_STATUS } from "@/lib/labels";
 import { fmtDateShort, daysUntil } from "@/lib/format";
 import { SiteForms } from "./forms";
-import { addAssetRequest, generateRecap, syncReviewsAction, checkSiteNow } from "../actions";
+import { addAssetRequest, syncReviewsAction, checkSiteNow } from "../actions";
 import { Dot } from "@/components/ui/badge";
 import { businessApiEnabled, getReviewsProvider } from "@/lib/reviews-provider";
 import { searchConsoleConfigured, listProperties } from "@/lib/google-search";
-import { SyncSearchConsoleForm, RecapPreviewForm } from "./sync-form";
+import { SyncSearchConsoleForm, RecapHistory } from "./sync-form";
 import { connectedGoogleEmail } from "@/lib/google-oauth";
 import { aiConfigured } from "@/lib/ai";
 import { getSecret } from "@/lib/settings";
-import { monthLabel } from "@/lib/recaps";
+import { monthLabel, moisDuRecap, prochainEnvoi } from "@/lib/recaps";
 import { ActivityIcon, ChartColumnIcon, ClockIcon, KeyRoundIcon, PaperclipIcon, PuzzleIcon, StarIcon, WrenchIcon } from "lucide-react";
 
 export default async function SiteAdminPage({ params }: { params: Promise<{ id: string }> }) {
@@ -42,6 +42,19 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
   const avisActive = site.subscriptions.some((x) => x.module === "AVIS");
   const [bizApi, aiOn, turnstileSiteKey] = await Promise.all([businessApiEnabled(), aiConfigured(), getSecret("turnstile_site_key")]);
   const locations = gestion && avisActive && bizApi ? await (await getReviewsProvider()).listLocations().catch(() => []) : [];
+  // Récap mensuel : vert si le mois écoulé est synchronisé et l'envoi automatique actif.
+  const cible = moisDuRecap();
+  const last = site.searchStats[0];
+  const synced = site.recapAuto && !!last && last.year === cible.year && last.month === cible.month;
+  const [envoisRaw, prochain] = gestion && site.status === "EN_LIGNE"
+    ? await Promise.all([
+        prisma.monthlyRecap.findMany({ where: { siteId: site.id }, orderBy: [{ year: "desc" }, { month: "desc" }], select: { year: true, month: true, sentAt: true, clicks: true } }),
+        prochainEnvoi(site.id),
+      ])
+    : [[], null];
+  const fmtParis = (d: Date, withTime = false) => d.toLocaleString("fr-FR", { timeZone: "Europe/Paris", day: "numeric", month: "long", year: "numeric", ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}) });
+  const envois = envoisRaw.map((r) => ({ mois: monthLabel(r.year, r.month), sentAt: r.sentAt ? fmtParis(r.sentAt) : null, clicks: r.clicks }));
+  const prochainTxt = !prochain ? "" : prochain.enRetard ? "dans l’heure (envoi du mois en cours)" : fmtParis(prochain.date, true);
   const reviewCount = avisActive ? await prisma.review.count({ where: { siteId: site.id } }) : 0;
 
   return (
@@ -107,15 +120,11 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
               {" "}{aiOn ? "Résumés rédigés par Claude." : "Résumés rédigés par gabarit (activez Claude dans Paramètres → Clés et services)."}
             </p>
             <p className="text-xs text-text">
-              Dernier mois synchronisé : {site.searchStats[0] ? monthLabel(site.searchStats[0].year, site.searchStats[0].month) : "aucun"} · Dernier récap : {site.recaps[0] ? `${monthLabel(site.recaps[0].year, site.recaps[0].month)}${site.recaps[0].sentAt ? " (envoyé)" : " (non envoyé)"}` : "aucun"}
+              Dernier mois synchronisé : {last ? monthLabel(last.year, last.month) : "aucun"} · Récap mensuel : {site.recapAuto ? <span className="text-green">envoyé automatiquement le 4 de chaque mois</span> : <span className="text-yellow">pas encore automatique, synchronisez pour l’activer</span>}
             </p>
             <div className="flex flex-wrap items-end gap-2">
-              <SyncSearchConsoleForm siteId={site.id} />
-              <form action={generateRecap.bind(null, site.id)} className="flex items-end gap-2">
-                <label className="flex h-11 items-center gap-2 text-xs text-text"><input type="checkbox" name="notify" className="accent-white" /> Envoyer au client</label>
-                <SubmitButton size="sm" pendingLabel="Génération…">Générer le récap du mois dernier</SubmitButton>
-              </form>
-              <RecapPreviewForm siteId={site.id} />
+              <SyncSearchConsoleForm siteId={site.id} synced={synced} />
+              <RecapHistory envois={envois} prochain={prochainTxt} auto={site.recapAuto} />
             </div>
           </Card>
         </>

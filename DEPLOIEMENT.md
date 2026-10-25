@@ -115,7 +115,7 @@ URL=https://app.acco-lab.fr/api/cron
 | --- | --- | --- |
 | monitor | toutes les 5 min | site répond, temps de réponse, SSL → voyants « État du site », alertes équipe |
 | reviews | toutes les 6 h | nouveaux avis Google (module Avis) |
-| recaps | le 4 du mois à 7 h | chiffres Search Console du mois écoulé + récap envoyé aux clients |
+| recaps | le 4 du mois à 7 h (facultatif) | secours : le serveur envoie déjà seul les récaps le 4 à 8 h (sites synchronisés uniquement) |
 | rgpd | chaque nuit | suppression des demandes de contact de plus de 24 mois |
 
 ## 9. Mettre à jour l'app

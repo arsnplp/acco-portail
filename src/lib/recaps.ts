@@ -5,6 +5,7 @@ import { notifyClient } from "@/lib/notify";
 import { appUrl } from "@/lib/email";
 import { recapEmail } from "@/lib/emails/recap";
 import { maybeCreateReviewPrompt } from "@/lib/review-prompt";
+import { parisDateTime } from "@/lib/crm";
 
 export const MONTHS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
 export const monthLabel = (year: number, month: number) => `${MONTHS[month - 1]} ${year}`;
@@ -138,13 +139,50 @@ export async function recapEmailFor(siteId: string, year: number, month: number)
   });
 }
 
-/** Tâche du 4 du mois : tous les sites en ligne. */
-export async function runMonthlyRecaps(target = previousMonth()) {
-  const sites = await prisma.site.findMany({ where: { status: "EN_LIGNE" }, select: { id: true, name: true } });
+// ─── Envoi automatique ───────────────────────────────────────
+/** Jour du mois et heure (Paris) de l'envoi automatique : le 4 à 8 h (Google a alors les chiffres du mois écoulé). */
+export const RECAP_JOUR = 4;
+export const RECAP_HEURE = 8;
+
+function parisParts(d = new Date()) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Paris", year: "numeric", month: "numeric", day: "numeric", hour: "numeric", hourCycle: "h23" }).formatToParts(d).map((x) => [x.type, Number(x.value)]));
+  return { year: p.year, month: p.month, day: p.day, hour: p.hour };
+}
+/** Le mois dont le récap part ce mois-ci (le mois précédent, à l'heure de Paris). */
+export function moisDuRecap(d = new Date()) {
+  const p = parisParts(d);
+  return p.month === 1 ? { year: p.year - 1, month: 12 } : { year: p.year, month: p.month - 1 };
+}
+/** L'envoi de ce mois est-il ouvert (le 4 à 8 h passé) ? */
+export function envoiOuvert(d = new Date()) {
+  const p = parisParts(d);
+  return p.day > RECAP_JOUR || (p.day === RECAP_JOUR && p.hour >= RECAP_HEURE);
+}
+/** Date du prochain envoi pour un site : le 4 du mois prochain si celui du mois est fait, sinon le 4 de ce mois (ou « dès que possible »). */
+export async function prochainEnvoi(siteId: string, d = new Date()): Promise<{ date: Date; enRetard: boolean }> {
+  const p = parisParts(d);
+  const cible = moisDuRecap(d);
+  const fait = await prisma.monthlyRecap.findFirst({ where: { siteId, ...cible, sentAt: { not: null } }, select: { id: true } });
+  const le4 = (year: number, month: number) => parisDateTime(`${year}-${String(month).padStart(2, "0")}-${String(RECAP_JOUR).padStart(2, "0")}`, `${String(RECAP_HEURE).padStart(2, "0")}:00`);
+  if (fait) return { date: p.month === 12 ? le4(p.year + 1, 1) : le4(p.year, p.month + 1), enRetard: false };
+  return envoiOuvert(d) ? { date: d, enRetard: true } : { date: le4(p.year, p.month), enRetard: false };
+}
+
+/**
+ * Envoi mensuel : pour chaque site en ligne en récap automatique (synchro Search Console réussie),
+ * récupère les chiffres du mois écoulé, rédige le récap et l'envoie au client, une seule fois par mois.
+ * Si Google ne répond pas, on réessaie au passage suivant.
+ */
+export async function runMonthlyRecaps(target = moisDuRecap()) {
+  const sites = await prisma.site.findMany({
+    where: { status: "EN_LIGNE", recapAuto: true, searchConsoleProp: { not: null }, recaps: { none: { ...target, sentAt: { not: null } } } },
+    select: { id: true, name: true },
+  });
   const results: { site: string; ok: boolean; error?: string }[] = [];
   for (const s of sites) {
     try {
-      await syncSiteMonth(s.id, target.year, target.month);
+      const stats = await syncSiteMonth(s.id, target.year, target.month);
+      if (!stats) { results.push({ site: s.name, ok: false, error: "chiffres Google indisponibles, nouvel essai plus tard" }); continue; }
       await buildRecap(s.id, target.year, target.month, { notify: true });
       results.push({ site: s.name, ok: true });
     } catch (e) {
@@ -152,4 +190,40 @@ export async function runMonthlyRecaps(target = previousMonth()) {
     }
   }
   return { target, results };
+}
+
+/**
+ * Après une synchro réelle réussie : le site passe en récap automatique, et le récap du mois écoulé
+ * part tout de suite s'il n'est pas encore parti (si on est avant le 4, il partira le 4).
+ */
+export async function activerRecapAuto(siteId: string): Promise<string> {
+  await prisma.site.update({ where: { id: siteId }, data: { recapAuto: true } });
+  const t = moisDuRecap();
+  const deja = await prisma.monthlyRecap.findUnique({ where: { siteId_year_month: { siteId, ...t } }, select: { sentAt: true } });
+  const label = monthLabel(t.year, t.month);
+  if (deja?.sentAt) return `Récap de ${label} déjà envoyé le ${deja.sentAt.toLocaleDateString("fr-FR", { timeZone: "Europe/Paris" })}.`;
+  if (!envoiOuvert()) {
+    await buildRecap(siteId, t.year, t.month);
+    return `Récap de ${label} prêt, envoi automatique le ${RECAP_JOUR}.`;
+  }
+  const r = await buildRecap(siteId, t.year, t.month, { notify: true });
+  return r ? `Récap de ${label} envoyé au client.` : `Pas encore de chiffres pour ${label} : nouvel essai automatique dans l’heure.`;
+}
+
+/** Boucle du serveur : toutes les heures, envoie les récaps du mois dès que le 4 à 8 h est passé. */
+export function startRecapsTicker() {
+  const g = globalThis as { __recapsTicker?: NodeJS.Timeout };
+  if (g.__recapsTicker) return;
+  const tick = async () => {
+    if (!envoiOuvert()) return;
+    try {
+      const out = await runMonthlyRecaps();
+      const sent = out.results.filter((r) => r.ok).length;
+      if (out.results.length) console.log(`[recaps] ${monthLabel(out.target.year, out.target.month)} : ${sent} envoyé(s)`, out.results.filter((r) => !r.ok));
+    } catch (e) {
+      console.warn("[recaps]", (e as Error).message);
+    }
+  };
+  setTimeout(tick, 90_000);
+  g.__recapsTicker = setInterval(tick, 3600_000);
 }

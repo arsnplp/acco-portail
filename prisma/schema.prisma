@@ -266,6 +266,7 @@ model Site {
   launchedAt        DateTime?
   siteKey           String      @unique @default(cuid()) // clé des formulaires
   searchConsoleProp String? // ex. sc-domain:example.fr
+  recapAuto         Boolean   @default(false) // récap mensuel envoyé tout seul le 4 (activé par une synchro réussie)
   googleLocationId  String? // fiche Google Business Profile
   reviewsSyncedAt   DateTime?
   reviewAverage     Float?

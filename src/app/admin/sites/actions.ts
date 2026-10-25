@@ -58,10 +58,9 @@ export async function updateSite(siteId: string, _prev: ActionState, formData: F
   if (goesLive) await maybeCreateReviewPrompt(before.clientId, "SITE_EN_LIGNE");
   // Première liaison à une propriété (ou propriété changée) : on récupère 12 mois et on prépare le récap du mois dernier.
   if (status === "EN_LIGNE" && searchConsoleProp && searchConsoleProp !== before.searchConsoleProp) {
-    const { syncSiteMonths, buildRecap, previousMonth } = await import("@/lib/recaps");
-    await syncSiteMonths(siteId, 12);
-    const t = previousMonth();
-    await buildRecap(siteId, t.year, t.month);
+    const { syncSiteMonths, activerRecapAuto } = await import("@/lib/recaps");
+    const res = await syncSiteMonths(siteId, 12);
+    if (res.real && res.months > 0) await activerRecapAuto(siteId);
   }
 
   revalidatePath(`/admin/sites/${siteId}`);
@@ -99,36 +98,16 @@ export type SyncState = { error?: string; ok?: string };
 export async function syncSearchConsole(siteId: string, _prev: SyncState, formData: FormData): Promise<SyncState> {
   await requireGestionnaire();
   const months = Math.min(24, Math.max(1, parseInt(String(formData.get("months") ?? "12"), 10) || 12));
-  const { syncSiteMonths } = await import("@/lib/recaps");
+  const { syncSiteMonths, activerRecapAuto } = await import("@/lib/recaps");
   const res = await syncSiteMonths(siteId, months);
+  let recap = "";
+  if (res.real && res.months > 0) recap = await activerRecapAuto(siteId);
   revalidatePath(`/admin/sites/${siteId}`);
   revalidatePath(`/sites/${siteId}/resultats`);
   if (res.error) return { error: `Google a refusé : ${res.error}` };
   if (!res.real) return { error: "Chiffres de démo : Google n’est pas connecté ou la propriété Search Console du site est vide." };
-  return { ok: `${res.months} mois récupérés depuis Google.` };
-}
-
-/** Envoie l'email du récap du mois dernier à l'admin connecté (aperçu : le client ne reçoit rien). */
-export async function sendRecapPreview(siteId: string, _prev: SyncState): Promise<SyncState> {
-  const admin = await requireGestionnaire();
-  const { buildRecap, recapEmailFor, previousMonth } = await import("@/lib/recaps");
-  const { sendEmail } = await import("@/lib/email");
-  const t = previousMonth();
-  if (!(await buildRecap(siteId, t.year, t.month))) return { error: "Pas de chiffres pour le mois dernier : cliquez d’abord sur Synchroniser." };
-  const mail = await recapEmailFor(siteId, t.year, t.month);
-  if (!mail) return { error: "Récap introuvable." };
-  const res = await sendEmail({ to: admin.email, subject: `[Aperçu] ${mail.subject}`, html: mail.html, text: mail.text });
-  revalidatePath(`/admin/sites/${siteId}`);
-  return res.sent ? { ok: `Aperçu envoyé à ${admin.email}.` } : { error: `Email non envoyé : ${"error" in res && res.error ? res.error : "clé Resend absente (Paramètres)"}` };
-}
-
-export async function generateRecap(siteId: string, formData: FormData) {
-  await requireGestionnaire();
-  const { buildRecap, previousMonth } = await import("@/lib/recaps");
-  const t = previousMonth();
-  await buildRecap(siteId, t.year, t.month, { notify: formData.get("notify") === "on" });
-  revalidatePath(`/admin/sites/${siteId}`);
-  revalidatePath(`/sites/${siteId}/resultats`);
+  if (res.months === 0) return { error: "Google n’a renvoyé aucun mois : la propriété est-elle la bonne ?" };
+  return { ok: `${res.months} mois récupérés depuis Google. Récap mensuel automatique activé. ${recap}` };
 }
 
 export async function syncReviewsAction(siteId: string) {
