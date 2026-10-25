@@ -25,7 +25,7 @@ export const getCurrentUser = cache(async () => {
       email,
       firstName: meta.first_name ?? null,
       lastName: meta.last_name ?? null,
-      role: meta.role === "ADMIN" ? "ADMIN" : "CLIENT",
+      role: meta.role === "ADMIN" ? "ADMIN" : meta.role === "COMMERCIAL" ? "COMMERCIAL" : "CLIENT",
     },
     update: { email },
     include: { memberships: { include: { client: true }, orderBy: { createdAt: "asc" } } },
@@ -43,7 +43,15 @@ export async function requireUser() {
 
 export async function requireAdmin() {
   const user = await requireUser();
+  if (user.role === "COMMERCIAL") redirect("/crm");
   if (user.role !== "ADMIN") redirect("/");
+  return user;
+}
+
+/** Équipe (admins + commerciaux / alternants) : accès à l'espace Commercial. */
+export async function requireTeam() {
+  const user = await requireUser();
+  if (user.role === "CLIENT") redirect("/");
   return user;
 }
 
@@ -51,6 +59,7 @@ export async function requireAdmin() {
 export async function requireClientContext() {
   const user = await requireUser();
   if (user.role === "ADMIN") redirect("/admin");
+  if (user.role === "COMMERCIAL") redirect("/crm");
   if (user.memberships.length === 0) redirect("/connexion?erreur=aucun-compte");
 
   const cookieStore = await cookies();

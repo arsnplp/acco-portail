@@ -9,7 +9,7 @@ export default async function NouveauMotDePasse({ searchParams }: { searchParams
   const { premiere } = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/connexion?erreur=lien-invalide");
-  const next = user.role === "ADMIN" ? "/admin" : "/";
+  const next = user.role === "ADMIN" ? "/admin" : user.role === "COMMERCIAL" ? "/crm" : "/";
   return (
     <main className="flex-1 flex flex-col items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm">

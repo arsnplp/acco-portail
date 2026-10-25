@@ -18,6 +18,7 @@ datasource db {
 enum Role {
   CLIENT
   ADMIN
+  COMMERCIAL // équipe (alternants, commerciaux) : accès à l'espace Commercial uniquement
 }
 
 enum MembershipRole {
@@ -183,6 +184,9 @@ model Client {
   reviewPrompts    ReviewPrompt[]
   notifications    Notification[]
   referralCode     String             @unique @default(cuid())
+  crmProspect      Prospect?
+  crmEchanges      Echange[]
+  crmProjets       Projet[]
 }
 
 model User {
@@ -205,6 +209,12 @@ model User {
   historyEntries    SiteHistoryEntry[]
   validatedOrders   Order[]                 @relation("ValidatedOrders")
   documentRequests  DocumentRequest[]
+  crmProspects      Prospect[]              @relation("ProspectCommercial")
+  crmEchanges       Echange[]               @relation("EchangeAuteur")
+  crmRendezVous     RendezVous[]            @relation("RdvCommercial")
+  crmProjets        Projet[]                @relation("ProjetResponsable")
+  crmTaches         Tache[]                 @relation("TacheResponsable")
+  crmTacheModeles   TacheModele[]           @relation("TacheModeleResponsable")
 }
 
 model ClientMembership {
@@ -280,6 +290,7 @@ model Site {
   documents        Document[]
   documentRequests DocumentRequest[]
   notifications    Notification[]
+  crmProjets       Projet[]
 
   @@index([clientId])
 }
@@ -445,8 +456,8 @@ model ChangeRequest {
   claudeFinishedAt DateTime?
   claudeMergedAt   DateTime?
 
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   site        Site                      @relation(fields: [siteId], references: [id], onDelete: Cascade)
   assignee    User?                     @relation("AssignedChanges", fields: [assigneeId], references: [id], onDelete: SetNull)
@@ -776,4 +787,282 @@ model Setting {
   key       String   @id // "google_review_url", "referral_reward_label", ...
   value     String
   updatedAt DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────────────────────
+// Espace Commercial (CRM) : prospection et production.
+// Tables à part : rien ici ne modifie le fonctionnement du portail.
+// ─────────────────────────────────────────────────────────────
+
+enum ProspectStatut {
+  A_CONTACTER
+  A_RELANCER
+  POSER_RDV
+  RDV_POSE
+  A_SIGNER
+  GAGNE
+  PERDU
+}
+
+enum ProspectSource {
+  COLD_CALL
+  PROSPECTION_PHYSIQUE
+  RECOMMANDATION
+  SITE_WEB
+  AUTRE
+}
+
+enum EchangeType {
+  NRP // ne répond pas
+  APPEL
+  MAIL
+  PP // prospection physique
+  RDV // le rendez-vous a eu lieu
+  PRISE_RDV
+  NOTE
+}
+
+enum RdvResultat {
+  PREVU
+  FAIT
+  ANNULE
+}
+
+enum Priorite {
+  BASSE
+  MOYENNE
+  HAUTE
+}
+
+enum ProjetStatut {
+  A_FAIRE
+  EN_COURS
+  EN_PAUSE
+  TERMINE
+}
+
+enum TacheStatut {
+  A_FAIRE
+  EN_COURS
+  FAIT
+}
+
+enum Recurrence {
+  PONCTUEL
+  HEBDOMADAIRE
+  MENSUEL_FIXE // le N du mois
+  MENSUEL_RELATIF // le 1er lundi du mois…
+}
+
+model Cible {
+  id        String     @id @default(cuid())
+  nom       String     @unique
+  createdAt DateTime   @default(now())
+  prospects Prospect[]
+}
+
+model Prospect {
+  id                 String          @id @default(cuid())
+  legacyId           String?         @unique // ID de l'ancien CRM (import)
+  societe            String
+  siren              String?
+  siret              String?
+  dirigeant          String?
+  adresse            String?
+  siteWeb            String?
+  telephone          String?
+  cibleId            String?
+  source             ProspectSource?
+  statut             ProspectStatut  @default(A_CONTACTER)
+  motifPerte         String?
+  potentielEuros     Int? // potentiel mensuel estimé
+  fraisCreationEuros Int? // signé : frais de création
+  mensuelEuros       Int? // signé : abonnement mensuel
+  commercialId       String?
+  relanceAt          DateTime?
+  clientId           String?         @unique // rempli quand le prospect devient client du portail
+  gagneAt            DateTime?
+  perduAt            DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  cible      Cible?            @relation(fields: [cibleId], references: [id], onDelete: SetNull)
+  commercial User?             @relation("ProspectCommercial", fields: [commercialId], references: [id], onDelete: SetNull)
+  client     Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  contacts   ProspectContact[]
+  echanges   Echange[]
+  rendezVous RendezVous[]
+
+  @@index([statut, relanceAt])
+  @@index([commercialId])
+  @@index([siren])
+  @@index([telephone])
+}
+
+model ProspectContact {
+  id         String   @id @default(cuid())
+  prospectId String
+  prenom     String?
+  nom        String?
+  fonction   String?
+  email      String?
+  telephone  String?
+  principal  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  prospect Prospect @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+
+  @@index([prospectId])
+}
+
+model Echange {
+  id         String      @id @default(cuid())
+  legacyId   String?     @unique
+  prospectId String?
+  clientId   String? // échange avec un client sans fiche prospect (historique importé)
+  type       EchangeType
+  notes      String?
+  date       DateTime    @default(now())
+  auteurId   String?
+  auteurNom  String? // auteur externe (mail entrant)
+  origine    String      @default("saisie") // saisie, import, gmail
+  createdAt  DateTime    @default(now())
+
+  prospect Prospect? @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  client   Client?   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  auteur   User?     @relation("EchangeAuteur", fields: [auteurId], references: [id], onDelete: SetNull)
+
+  @@index([prospectId, date])
+  @@index([clientId, date])
+  @@index([auteurId, date])
+}
+
+model RendezVous {
+  id           String      @id @default(cuid())
+  prospectId   String
+  commercialId String?
+  debut        DateTime
+  dureeMin     Int         @default(60)
+  lieu         String?
+  resultat     RdvResultat @default(PREVU)
+  createdAt    DateTime    @default(now())
+
+  prospect   Prospect @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  commercial User?    @relation("RdvCommercial", fields: [commercialId], references: [id], onDelete: SetNull)
+
+  @@index([debut])
+}
+
+model ProjetModele {
+  id          String        @id @default(cuid())
+  legacyId    String?       @unique
+  nom         String
+  description String?
+  createdAt   DateTime      @default(now())
+  taches      TacheModele[]
+  projets     Projet[]
+}
+
+model TacheModele {
+  id            String     @id @default(cuid())
+  legacyId      String?    @unique
+  modeleId      String
+  titre         String
+  description   String?
+  responsableId String?
+  priorite      Priorite   @default(MOYENNE)
+  recurrence    Recurrence @default(PONCTUEL)
+  jourSemaine   Int? // 1 = lundi … 7 = dimanche
+  jourMois      Int? // 1 … 31
+  positionMois  Int? // 1 = 1er … 5 = dernier (avec jourSemaine)
+  delaiJours    Int        @default(0) // échéance = début du projet + délai
+  ordre         Int        @default(0)
+
+  modele      ProjetModele      @relation(fields: [modeleId], references: [id], onDelete: Cascade)
+  responsable User?             @relation("TacheModeleResponsable", fields: [responsableId], references: [id], onDelete: SetNull)
+  sousTaches  SousTacheModele[]
+  taches      Tache[]
+
+  @@index([modeleId])
+}
+
+model SousTacheModele {
+  id       String  @id @default(cuid())
+  legacyId String? @unique
+  tacheId  String
+  intitule String
+  ordre    Int     @default(0)
+
+  tache TacheModele @relation(fields: [tacheId], references: [id], onDelete: Cascade)
+
+  @@index([tacheId])
+}
+
+model Projet {
+  id            String       @id @default(cuid())
+  legacyId      String?      @unique
+  clientId      String?
+  siteId        String?
+  modeleId      String?
+  nom           String
+  description   String?
+  statut        ProjetStatut @default(EN_COURS)
+  priorite      Priorite     @default(MOYENNE)
+  debut         DateTime?
+  echeance      DateTime?
+  responsableId String?
+  brief         Json? // formulaire de cadrage
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  client      Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  site        Site?         @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  modele      ProjetModele? @relation(fields: [modeleId], references: [id], onDelete: SetNull)
+  responsable User?         @relation("ProjetResponsable", fields: [responsableId], references: [id], onDelete: SetNull)
+  taches      Tache[]
+
+  @@index([clientId])
+}
+
+model Tache {
+  id            String      @id @default(cuid())
+  legacyId      String?     @unique
+  projetId      String?
+  modeleId      String?
+  titre         String
+  description   String?
+  responsableId String?
+  statut        TacheStatut @default(A_FAIRE)
+  priorite      Priorite    @default(MOYENNE)
+  debut         DateTime?
+  echeance      DateTime?
+  faitLe        DateTime?
+  recurrence    Recurrence  @default(PONCTUEL)
+  jourSemaine   Int?
+  jourMois      Int?
+  positionMois  Int?
+  ordre         Int         @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  projet      Projet?      @relation(fields: [projetId], references: [id], onDelete: Cascade)
+  modele      TacheModele? @relation(fields: [modeleId], references: [id], onDelete: SetNull)
+  responsable User?        @relation("TacheResponsable", fields: [responsableId], references: [id], onDelete: SetNull)
+  sousTaches  SousTache[]
+
+  @@index([responsableId, statut, echeance])
+  @@index([projetId])
+}
+
+model SousTache {
+  id       String  @id @default(cuid())
+  legacyId String? @unique
+  tacheId  String
+  titre    String
+  fait     Boolean @default(false)
+  ordre    Int     @default(0)
+
+  tache Tache @relation(fields: [tacheId], references: [id], onDelete: Cascade)
+
+  @@index([tacheId])
 }
