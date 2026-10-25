@@ -11,6 +11,7 @@ import { featureEnabled } from "@/lib/settings";
 function revalidate(siteId: string) {
   revalidatePath("/admin/modifications");
   revalidatePath("/admin");
+  revalidatePath("/admin/suivi");
   revalidatePath(`/sites/${siteId}/modifications`);
 }
 

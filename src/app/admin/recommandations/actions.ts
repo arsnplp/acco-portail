@@ -8,6 +8,7 @@ import { notifyClient } from "@/lib/notify";
 function revalidate() {
   revalidatePath("/admin/recommandations");
   revalidatePath("/admin");
+  revalidatePath("/admin/suivi");
   revalidatePath("/compte/recommandations");
 }
 

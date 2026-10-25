@@ -20,5 +20,6 @@ export async function orderOffer(offerId: string, _prev: OrderState, formData: F
   revalidatePath("/offres");
   revalidatePath("/admin/commandes");
   revalidatePath("/admin");
+  revalidatePath("/admin/suivi");
   return { ok: true };
 }

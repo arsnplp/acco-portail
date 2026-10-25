@@ -10,6 +10,7 @@ import { fmtPrice } from "@/lib/format";
 function revalidate(clientId: string, siteId?: string | null) {
   revalidatePath("/admin/commandes");
   revalidatePath("/admin");
+  revalidatePath("/admin/suivi");
   revalidatePath(`/admin/clients/${clientId}`);
   revalidatePath("/offres");
   revalidatePath("/compte");

@@ -16,6 +16,7 @@ function revalidate(clientId: string) {
   revalidatePath(`/admin/clients/${clientId}`);
   revalidatePath(`/admin/clients/${clientId}/documents`);
   revalidatePath("/admin");
+  revalidatePath("/admin/suivi");
   revalidatePath("/compte/documents");
 }
 

@@ -6,7 +6,8 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
 
 const ITEMS = [
-  ["/admin", "Tableau de bord"],
+  ["/admin", "← Accueil"],
+  ["/admin/suivi", "Tableau de bord"],
   ["/admin/clients", "Clients"],
   ["/admin/sites", "Sites"],
   ["/admin/modifications", "Modifications"],
@@ -42,11 +43,13 @@ export function AdminNav() {
     return () => el.removeEventListener("wheel", onWheel);
   }, []);
 
+  // L'accueil (choix entre Suivi client et Suivi commercial) n'a pas d'onglets.
+  if (pathname === "/admin") return null;
   return (
     <nav className="sticky top-14 z-20 border-b border-border bg-bg/95 backdrop-blur">
       <ul ref={listRef} className="mx-auto flex max-w-3xl gap-1 overflow-x-auto overscroll-x-contain px-4 [scrollbar-width:none] [touch-action:pan-x] [&::-webkit-scrollbar]:hidden">
         {ITEMS.map(([href, label]) => {
-          const active = href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
+          const active = href !== "/admin" && pathname.startsWith(href);
           return (
             <li key={href} className="shrink-0">
               <Link
