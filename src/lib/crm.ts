@@ -45,8 +45,8 @@ export const ECHANGE_COULEUR: Record<EchangeType, string> = {
 };
 /** Bandeau illustré de chaque étape du pipeline (public/etapes). */
 export const ETAPE_IMAGE: Partial<Record<ProspectStatut, string>> = {
-  A_CONTACTER: "/etapes/a-contacter.webp", A_RELANCER: "/etapes/a-relancer.webp", POSER_RDV: "/etapes/poser-rdv.webp",
-  RDV_POSE: "/etapes/rdv-pose.webp", A_SIGNER: "/etapes/a-signer.webp",
+  A_CONTACTER: "/etapes/traineau.webp", A_RELANCER: "/etapes/trail.webp", POSER_RDV: "/etapes/arc.webp",
+  RDV_POSE: "/etapes/boxe.webp", A_SIGNER: "/etapes/sommet.webp",
 };
 export const STATUT_COULEUR: Record<ProspectStatut, string> = {
   A_CONTACTER: VIZ.blue, A_RELANCER: VIZ.violet, POSER_RDV: VIZ.yellow, RDV_POSE: VIZ.orange, A_SIGNER: VIZ.magenta, GAGNE: VIZ.aqua, PERDU: "#4b4e55",
