@@ -4,7 +4,8 @@ import { Card, SectionTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { addDays, fmtDate, daysUntil } from "@/lib/format";
 import { cn } from "@/lib/cn";
-import { CircleCheckIcon, HourglassIcon } from "lucide-react";
+import { CircleCheckIcon, HourglassIcon, LayoutGridIcon } from "lucide-react";
+import { Espaces } from "@/components/espaces/espaces";
 
 export const metadata = { title: "Tableau de bord" };
 
@@ -40,6 +41,9 @@ export default async function AdminHome() {
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6">
       <h1 className="text-2xl">Tableau de bord</h1>
       <p className="mt-1 text-sm text-text">{clients} client{clients > 1 ? "s" : ""} · {sites} site{sites > 1 ? "s" : ""} · {total === 0 ? "rien à traiter, tout est à jour" : `${total} chose${total > 1 ? "s" : ""} à traiter`}</p>
+
+      <SectionTitle icon={LayoutGridIcon}>Espaces</SectionTitle>
+      <Espaces />
 
       <SectionTitle icon={CircleCheckIcon}>À traiter</SectionTitle>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
