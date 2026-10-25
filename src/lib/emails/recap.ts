@@ -51,6 +51,13 @@ function tile(value: string, label: string, extra = "") {
   </td></tr></table></td>`;
 }
 
+/** Barre de progression en tableau (les div à largeur en % ne s'affichent pas dans Outlook sur PC). */
+function bar(pct: number) {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-radius:4px;background:${C.border}" bgcolor="${C.border}"><tr>
+    <td width="${pct}%" height="4" bgcolor="${C.blue}" style="height:4px;line-height:4px;font-size:0;border-radius:4px;background:${C.blue}">&nbsp;</td>${pct < 100 ? `<td height="4" style="height:4px;line-height:4px;font-size:0">&nbsp;</td>` : ""}
+  </tr></table>`;
+}
+
 export function recapEmail(d: RecapEmailData) {
   const subject = `${d.siteName} : votre mois de ${d.monthLabel}`;
   const queries = d.topQueries.filter((q) => q.query).slice(0, 5);
@@ -112,7 +119,7 @@ export function recapEmail(d: RecapEmailData) {
           <td style="font-size:14px;color:${C.strong}">${esc(q.query)}</td>
           <td align="right" style="font-size:13px;color:${C.text};white-space:nowrap">${fmt(q.clicks)} visite${q.clicks > 1 ? "s" : ""}</td>
         </tr><tr><td></td><td colspan="2" style="padding-top:6px">
-          <div style="height:4px;border-radius:4px;background:${C.border}"><div style="height:4px;border-radius:4px;background:${C.blue};width:${Math.max(4, Math.round((q.clicks / maxQ) * 100))}%"></div></div>
+          ${bar(Math.max(4, Math.round((q.clicks / maxQ) * 100)))}
         </td></tr></table>
       </td></tr>`).join("")}
     </table>
