@@ -83,7 +83,7 @@ export default async function ProspectPage({ params, searchParams }: { params: P
           <Historique items={echanges.map((e) => ({ id: e.id, type: e.type, notes: e.notes, date: e.date.toISOString(), auteur: e.auteur ? teamName(e.auteur) : e.auteurNom, client: !e.prospectId }))} />
         </div>
         <div className="space-y-6">
-          <RdvList items={p.rendezVous.map((x) => ({ id: x.id, debut: x.debut.toISOString(), lieu: x.lieu, resultat: x.resultat }))} />
+          <RdvList items={p.rendezVous.map((x) => ({ id: x.id, debut: x.debut.toISOString(), lieu: x.lieu, resultat: x.resultat, report: !!x.reportDeId }))} />
           <Contacts prospectId={p.id} contacts={p.contacts.map((c) => ({ id: c.id, prenom: c.prenom, nom: c.nom, fonction: c.fonction, email: c.email, telephone: c.telephone, principal: c.principal }))} />
           <ProspectForm
             p={{

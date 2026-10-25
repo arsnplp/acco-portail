@@ -38,8 +38,8 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
     prisma.prospect.findMany({ where: { statut: "GAGNE" }, select: { commercialId: true, fraisCreationEuros: true, mensuelEuros: true } }),
     prisma.echange.findMany({ where: { ...byAuteur, date: { gte: since, lt: end } }, select: { type: true, date: true, auteurId: true, prospectId: true } }),
     prisma.echange.findMany({ where: { ...byAuteur, date: { gte: prevSince, lt: since } }, select: { type: true, prospectId: true } }),
-    prisma.rendezVous.findMany({ where: { ...byCommercial, createdAt: { gte: since, lt: end } }, select: { createdAt: true, resultat: true, commercialId: true } }),
-    prisma.rendezVous.count({ where: { ...byCommercial, createdAt: { gte: prevSince, lt: since }, resultat: { notIn: ["NO_SHOW", "ANNULE"] } } }),
+    prisma.rendezVous.findMany({ where: { ...byCommercial, createdAt: { gte: since, lt: end } }, select: { createdAt: true, resultat: true, commercialId: true, reportDeId: true } }),
+    prisma.rendezVous.count({ where: { ...byCommercial, createdAt: { gte: prevSince, lt: since }, resultat: { notIn: ["NO_SHOW", "ANNULE"] }, reportDeId: null } }),
     prisma.rendezVous.findMany({ where: { ...byCommercial, debut: { gte: since, lt: end }, resultat: { in: ["FAIT", "NO_SHOW"] } }, select: { debut: true, resultat: true, commercialId: true } }),
     prisma.prospect.findMany({ where: { ...byCommercial, statut: "GAGNE", gagneAt: { gte: since, lt: end } }, select: { commercialId: true, fraisCreationEuros: true, mensuelEuros: true } }),
     prisma.prospect.findMany({ where: { ...byCommercial, statut: "GAGNE", gagneAt: { gte: prevSince, lt: since } }, select: { fraisCreationEuros: true, mensuelEuros: true } }),
@@ -49,7 +49,9 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
   // ─── Chiffres clés ───
   const appels = echanges.filter((e) => APPELS.includes(e.type)).length;
   const prevAppels = prevEchanges.filter((e) => APPELS.includes(e.type)).length;
-  const pris = rdvPris.filter((r) => r.resultat !== "NO_SHOW" && r.resultat !== "ANNULE");
+  // RDV pris : ni no show, ni annulé, ni report d'un no show.
+  const pris = rdvPris.filter((r) => r.resultat !== "NO_SHOW" && r.resultat !== "ANNULE" && !r.reportDeId);
+  const reports = rdvPris.filter((r) => r.reportDeId).length;
   const honores = rdvTenus.filter((r) => r.resultat === "FAIT").length;
   const noShows = rdvTenus.filter((r) => r.resultat === "NO_SHOW").length;
   const tauxNoShow = honores + noShows ? Math.round((noShows / (honores + noShows)) * 100) : null;
@@ -119,7 +121,7 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl">Stats</h1>
-          <p className="mt-1 text-sm text-text">{who ? `Les chiffres de ${teamName(team.find((u) => u.id === who) ?? me)}` : "Toute l’équipe"} sur {PERIODES.find((x) => x.v === String(jours))?.label}. Les no show ne comptent pas dans les RDV pris.</p>
+          <p className="mt-1 text-sm text-text">{who ? `Les chiffres de ${teamName(team.find((u) => u.id === who) ?? me)}` : "Toute l’équipe"} sur {PERIODES.find((x) => x.v === String(jours))?.label}. Les no show et leurs reports ne comptent pas dans les RDV pris.</p>
         </div>
         <div className="flex rounded-full border border-border p-0.5 text-sm">
           {PERIODES.map((x) => (
@@ -145,7 +147,7 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
       <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
         <KpiTile label="Appels passés" value={String(appels)} now={appels} prev={prevAppels} color={VIZ.blue} />
         <KpiTile label="RDV pris" value={String(pris.length)} now={pris.length} prev={prevRdvPris} color={VIZ.orange} sub={`${honores} honoré${honores > 1 ? "s" : ""}`} />
-        <KpiTile label="No show" value={String(noShows)} color={VIZ.red} sub={tauxNoShow === null ? "aucun RDV passé" : `${tauxNoShow} % des RDV passés`} />
+        <KpiTile label="No show" value={String(noShows)} color={VIZ.red} sub={`${tauxNoShow === null ? "aucun RDV passé" : `${tauxNoShow} % des RDV passés`}${reports ? ` · ${reports} reporté${reports > 1 ? "s" : ""}` : ""}`} />
         <KpiTile label="Signatures" value={String(wins.length)} now={wins.length} prev={prevWins.length} color={VIZ.aqua} sub={transfo === null ? undefined : `${transfo} % des contactés`} />
         <KpiTile label="CA signé" value={euros(caPeriode)} now={caPeriode} prev={prevCa} color={VIZ.green} sub="création + 12 mois" className="col-span-2 lg:col-span-1" />
       </div>
@@ -157,7 +159,7 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
         <Panel title="Répartition" subtitle={`${echanges.filter((e) => e.type !== "NOTE").length} échanges sur la période`}>
           <HBars items={parType} />
         </Panel>
-        <Panel title="Rendez-vous" subtitle={`RDV pris ${unitLabel} (sans les no show) et no show`} className="lg:col-span-2">
+        <Panel title="Rendez-vous" subtitle={`RDV pris ${unitLabel} (sans les no show ni leurs reports) et no show`} className="lg:col-span-2">
           <GroupedBars buckets={rdvSerie} series={[{ key: "pris", label: "RDV pris", color: VIZ.orange }, { key: "noshow", label: "No show", color: VIZ.red }]} />
         </Panel>
         <Panel title="Pipeline" subtitle="Prospects par statut, aujourd’hui">

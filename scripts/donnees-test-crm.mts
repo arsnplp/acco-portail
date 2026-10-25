@@ -99,6 +99,7 @@ async function creer() {
         },
       });
       // Historique : échanges espacés de 3 jours, le dernier il y a 1 à 3 jours.
+      let dernierRdv: string | null = null;
       for (const [j, type] of parcours.entries()) {
         const d = start + j * 4;
         await prisma.echange.create({ data: { legacyId: `${TAG}${i}-${j}`, prospectId: p.id, type, notes: pick(NOTES[type]) || null, date: day(d, 9 + Math.floor(rnd() * 8), pick([0, 15, 30, 45])), auteurId: commercial?.id ?? team[0]!.id } });
@@ -106,7 +107,8 @@ async function creer() {
         if (type === "PRISE_RDV") {
           const futur = statut === "RDV_POSE";
           const suite = parcours[j + 1]; // l'échange d'après dit si le RDV a été honoré ou non
-          await prisma.rendezVous.create({ data: { prospectId: p.id, commercialId: commercial?.id ?? null, createdAt: day(d, 11), debut: futur ? day(cfg.relance(), pick([9, 10, 14, 16]), pick([0, 30])) : day(d + 3, 14), resultat: futur ? "PREVU" : suite === "NO_SHOW" ? "NO_SHOW" : "FAIT", lieu: pick(["Sur place", "Visio", null]) } });
+          const report = parcours[j - 1] === "NO_SHOW"; // recalé juste après un no show
+          dernierRdv = (await prisma.rendezVous.create({ data: { prospectId: p.id, commercialId: commercial?.id ?? null, createdAt: day(d, 11), reportDeId: report ? dernierRdv : null, debut: futur ? day(cfg.relance(), pick([9, 10, 14, 16]), pick([0, 30])) : day(d + 3, 14), resultat: futur ? "PREVU" : suite === "NO_SHOW" ? "NO_SHOW" : "FAIT", lieu: pick(["Sur place", "Visio", null]) } })).id;
           rdvs++;
         }
       }

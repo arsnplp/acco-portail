@@ -11,8 +11,10 @@ Accès : carte « Commercial » du tableau de bord admin, ou directement `/crm`.
 - **Fiche** : noter un échange (NRP, Appel, Mail, PP = prospection physique, Prise de RDV, RDV) ; le statut et la
   relance proposés se remplissent seuls et restent modifiables. « Je reprends » s'attribue le prospect.
 - **Nouveau** : contrôle des doublons (SIREN, téléphone, site, nom) sur les prospects et les clients du portail.
-- **No show** : dans « Noter un échange », RDV → « No show ». Le RDV passe en no show (exclu des RDV pris) et le
-  prospect repart en « Poser RDV » avec relance le lendemain.
+- **No show** : dans « Noter un échange », RDV → « No show ». Le RDV passe en no show (exclu des RDV pris).
+  « À recaler plus tard » : le prospect repart en « Poser RDV ». « Reporter le RDV » : nouvelle date, le prospect
+  reste en « RDV posé » et le report (rattaché au RDV manqué) ne compte pas comme un nouveau RDV pris.
+- **Notes obligatoires** pour Appel, PP, RDV et Prise de RDV.
 - **Stats** (`/crm/stats`) : période (7 j, 30 j, 3 mois, 12 mois) et commercial ; appels, RDV pris, no show,
   signatures, CA signé (création + 12 mois), activité par type, RDV, pipeline, entonnoir, classement.
 - **Équipe** (admins) : créer le compte d'un alternant / commercial (lien de connexion envoyé à SON adresse), retirer un accès.

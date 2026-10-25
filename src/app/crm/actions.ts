@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import type { EchangeType, ProspectSource, ProspectStatut } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireTeam } from "@/lib/auth";
-import { REGLES, statutApres, addDaysParis, hostOf, normName, normPhone, parisDateTime, parisDay, parisMidnight } from "@/lib/crm";
+import { NOTE_OBLIGATOIRE, REGLES, fmtDayTime, statutApres, addDaysParis, hostOf, normName, normPhone, parisDateTime, parisDay, parisMidnight } from "@/lib/crm";
 
 export type CrmState = { error?: string; ok?: boolean; doublon?: { id: string; label: string; client: boolean } };
 
@@ -58,16 +58,22 @@ export async function logEchange(prospectId: string, _prev: CrmState, f: FormDat
   const prospect = await prisma.prospect.findUnique({ where: { id: prospectId } });
   if (!prospect) return { error: "Fiche introuvable." };
 
+  const notes = txt(f, "notes");
+  if (NOTE_OBLIGATOIRE.includes(type) && !notes) return { error: "La note est obligatoire pour ce type d’échange." };
   const rdvDay = txt(f, "rdvDay"), rdvTime = txt(f, "rdvTime") ?? "10:00";
   if (type === "PRISE_RDV" && !rdvDay) return { error: "Indiquez la date du rendez-vous." };
-  const rdvAt = rdvDay ? parisDateTime(rdvDay, rdvTime) : null;
+  const rdvAt = type === "PRISE_RDV" && rdvDay ? parisDateTime(rdvDay, rdvTime) : null;
+  // No show recalé : nouvelle date, enregistrée comme report (pas comme un nouveau RDV pris).
+  const reportDay = type === "NO_SHOW" && f.get("report") === "1" ? txt(f, "reportDay") : null;
+  if (type === "NO_SHOW" && f.get("report") === "1" && !reportDay) return { error: "Indiquez la nouvelle date du rendez-vous." };
+  const reportAt = reportDay ? parisDateTime(reportDay, txt(f, "reportTime") ?? "10:00") : null;
   const relanceDay = txt(f, "relance");
-  const relanceAt = relanceDay ? parisMidnight(relanceDay) : rdvAt ?? (REGLES[type].relanceJours !== null ? addDaysParis(REGLES[type].relanceJours!) : prospect.relanceAt);
+  const relanceAt = relanceDay ? parisMidnight(relanceDay) : rdvAt ?? reportAt ?? (REGLES[type].relanceJours !== null ? addDaysParis(REGLES[type].relanceJours!) : prospect.relanceAt);
   const wanted = txt(f, "statut") as ProspectStatut | null;
   const statut = wanted && STATUTS.includes(wanted) ? wanted : statutApres(type, prospect.statut);
 
   await prisma.$transaction(async (tx) => {
-    await tx.echange.create({ data: { prospectId, type, notes: txt(f, "notes"), auteurId: me.id } });
+    await tx.echange.create({ data: { prospectId, type, notes: reportAt ? `${notes ? notes + "\n" : ""}RDV reporté au ${fmtDayTime(reportAt)}` : notes, auteurId: me.id } });
     if (rdvAt) await tx.rendezVous.create({ data: { prospectId, commercialId: prospect.commercialId ?? me.id, debut: rdvAt, lieu: txt(f, "rdvLieu") } });
     if (type === "RDV" || type === "NO_SHOW") {
       // Le RDV concerné : le dernier prévu déjà commencé, sinon le dernier passé (ex. importé « fait »), sinon le prochain prévu.
@@ -76,6 +82,7 @@ export async function logEchange(prospectId: string, _prev: CrmState, f: FormDat
         ?? (await tx.rendezVous.findFirst({ where: { prospectId, resultat: { in: ["FAIT", "NO_SHOW"] }, debut: { lte: soon } }, orderBy: { debut: "desc" } }))
         ?? (await tx.rendezVous.findFirst({ where: { prospectId, resultat: "PREVU" }, orderBy: { debut: "asc" } }));
       if (rdv) await tx.rendezVous.update({ where: { id: rdv.id }, data: { resultat: type === "RDV" ? "FAIT" : "NO_SHOW" } });
+      if (reportAt) await tx.rendezVous.create({ data: { prospectId, commercialId: rdv?.commercialId ?? prospect.commercialId ?? me.id, debut: reportAt, lieu: txt(f, "reportLieu") ?? rdv?.lieu ?? null, reportDeId: rdv?.id ?? null } });
     }
     await tx.prospect.update({
       where: { id: prospectId },

@@ -4,7 +4,7 @@ import { useActionState, useEffect, useState, useTransition } from "react";
 import type { EchangeType, ProspectSource, ProspectStatut, RdvResultat } from "@prisma/client";
 import { UserXIcon, CalendarClockIcon, CheckIcon, HistoryIcon, MessageSquarePlusIcon, PencilIcon, PlusIcon, StarIcon, Trash2Icon, UserRoundIcon, BuildingIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { ECHANGE, ECHANGE_SAISIE, MOTIFS_PERTE, PIPELINE, REGLES, SOURCE, STATUT, fmtDayTime, statutApres } from "@/lib/crm";
+import { ECHANGE, ECHANGE_SAISIE, NOTE_OBLIGATOIRE, MOTIFS_PERTE, PIPELINE, REGLES, SOURCE, STATUT, fmtDayTime, statutApres } from "@/lib/crm";
 import { Field, FormError, Input, Select, Textarea } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { SectionTitle } from "@/components/ui/card";
@@ -19,14 +19,16 @@ export function EchangeForm({ prospectId, statut, session, today }: { prospectId
   const [relance, setRelance] = useState("");
   const [next, setNext] = useState<ProspectStatut>(statut);
   const [key, setKey] = useState(0);
+  const [report, setReport] = useState(false);
   const [state, action] = useActionState<CrmState, FormData>(async (prev, fd) => {
     const r = await logEchange(prospectId, prev, fd);
-    if (r.ok) { setType(null); setRelance(""); setKey((k) => k + 1); }
+    if (r.ok) { setType(null); setRelance(""); setReport(false); setKey((k) => k + 1); }
     return r;
   }, {});
 
   function pick(t: EchangeType) {
     setType(t);
+    setReport(false);
     const r = REGLES[t];
     setNext(statutApres(t, statut));
     setRelance(r.relanceJours !== null ? plusDays(today, r.relanceJours) : "");
@@ -39,6 +41,7 @@ export function EchangeForm({ prospectId, statut, session, today }: { prospectId
       <form key={key} action={action} className={cn(box, "space-y-4")}>
         <input type="hidden" name="session" value={session ? "1" : "0"} />
         <input type="hidden" name="type" value={type ?? ""} />
+        <input type="hidden" name="report" value={report ? "1" : "0"} />
         <div className="grid grid-cols-3 gap-2">
           {ECHANGE_SAISIE.map((t) => {
             const on = type === t || (t === "RDV" && type === "NO_SHOW");
@@ -56,12 +59,34 @@ export function EchangeForm({ prospectId, statut, session, today }: { prospectId
               <button type="button" onClick={() => pick("RDV")} className={cn("flex h-11 items-center justify-center gap-2 rounded-card border text-sm font-semibold", type === "RDV" ? "border-green bg-green/15 text-green" : "border-border text-text-strong hover:border-text")}><CheckIcon size={16} aria-hidden /> Oui, RDV honoré</button>
               <button type="button" onClick={() => pick("NO_SHOW")} className={cn("flex h-11 items-center justify-center gap-2 rounded-card border text-sm font-semibold", type === "NO_SHOW" ? "border-pink bg-pink/15 text-pink" : "border-border text-text-strong hover:border-text")}><UserXIcon size={16} aria-hidden /> No show</button>
             </div>
-            {type === "NO_SHOW" && <p className="mt-2 text-xs text-text">Le RDV passe en « no show » : il ne compte plus dans les RDV pris des stats. Le prospect repart en « Poser RDV ».</p>}
+            {type === "NO_SHOW" && (
+              <div className="mt-3 space-y-3">
+                <p className="text-xs text-text">Le RDV passe en « no show » : il ne compte pas dans les RDV pris des stats.</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => { setReport(false); setNext("POSER_RDV"); setRelance(plusDays(today, 1)); }} className={cn("h-10 rounded-card border text-sm", !report ? "border-title bg-title font-semibold text-bg" : "border-border text-text-strong hover:border-text")}>À recaler plus tard</button>
+                  <button type="button" onClick={() => { setReport(true); setNext("RDV_POSE"); }} className={cn("flex h-10 items-center justify-center gap-1.5 rounded-card border text-sm", report ? "border-title bg-title font-semibold text-bg" : "border-border text-text-strong hover:border-text")}><CalendarClockIcon size={15} aria-hidden /> Reporter le RDV</button>
+                </div>
+                {report && (
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-[1fr_auto] gap-2 sm:grid-cols-[1fr_auto_1fr]">
+                      <Field label="Nouvelle date"><Input type="date" name="reportDay" required min={today} /></Field>
+                      <Field label="Heure"><Input type="time" name="reportTime" defaultValue="10:00" step={900} /></Field>
+                      <div className="col-span-2 sm:col-span-1"><Field label="Lieu" hint="optionnel"><Input name="reportLieu" placeholder="Sur place, visio…" /></Field></div>
+                    </div>
+                    <p className="text-xs text-text">Le report est rattaché au RDV manqué : il ne compte pas comme un nouveau RDV pris.</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
         {type && (
           <>
-            <Textarea name="notes" placeholder={type === "NRP" ? "Optionnel (messagerie, barrage…)" : type === "NO_SHOW" ? "Optionnel (prévenu ou pas, à recaler…)" : "Ce qui s’est dit"} className="min-h-20" autoFocus={type !== "NRP" && type !== "NO_SHOW"} />
+            {NOTE_OBLIGATOIRE.includes(type) ? (
+              <Field label="Note" hint="obligatoire"><Textarea name="notes" required placeholder="Ce qui s’est dit, ce qu’il faut retenir" className="min-h-20" autoFocus /></Field>
+            ) : (
+              <Textarea name="notes" placeholder={type === "NRP" ? "Note (optionnelle) : messagerie, barrage…" : type === "NO_SHOW" ? "Note (optionnelle) : prévenu ou pas…" : "Note (optionnelle)"} className="min-h-20" />
+            )}
             {type === "PRISE_RDV" && (
               <div className="grid grid-cols-[1fr_auto] gap-2 sm:grid-cols-[1fr_auto_1fr]">
                 <Field label="Date du RDV"><Input type="date" name="rdvDay" required min={today} /></Field>
@@ -69,7 +94,7 @@ export function EchangeForm({ prospectId, statut, session, today }: { prospectId
                 <div className="col-span-2 sm:col-span-1"><Field label="Lieu" hint="optionnel"><Input name="rdvLieu" placeholder="Sur place, visio…" /></Field></div>
               </div>
             )}
-            {type !== "PRISE_RDV" && (
+            {type !== "PRISE_RDV" && !report && (
               <div>
                 <p className="mb-2 text-sm font-medium text-text-strong">Prochaine relance</p>
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -124,7 +149,7 @@ export function Historique({ items }: { items: Item[] }) {
 }
 
 // ─── Rendez-vous ─────────────────────────────────────────────
-export function RdvList({ items }: { items: { id: string; debut: string; lieu: string | null; resultat: RdvResultat }[] }) {
+export function RdvList({ items }: { items: { id: string; debut: string; lieu: string | null; resultat: RdvResultat; report: boolean }[] }) {
   const [, start] = useTransition();
   if (items.length === 0) return null;
   return (
@@ -135,7 +160,7 @@ export function RdvList({ items }: { items: { id: string; debut: string; lieu: s
           <li key={r.id} className="flex items-center gap-3 px-4 py-3 text-sm">
             <div className="min-w-0 flex-1">
               <p className={cn("font-semibold", r.resultat === "ANNULE" ? "text-muted line-through" : r.resultat === "NO_SHOW" ? "text-pink" : "text-title")}>{fmtDayTime(r.debut)}</p>
-              {r.lieu && <p className="truncate text-xs text-text">{r.lieu}</p>}
+              {(r.lieu || r.report) && <p className="truncate text-xs text-text">{[r.report ? "Report d’un no show" : null, r.lieu].filter(Boolean).join(" · ")}</p>}
             </div>
             <select value={r.resultat} onChange={(e) => start(() => setRdvResultat(r.id, e.target.value as "FAIT" | "ANNULE" | "PREVU" | "NO_SHOW"))} className="rounded-full border border-border bg-surface-2 px-2.5 py-1 text-xs text-text-strong" aria-label="Résultat du RDV">
               <option value="PREVU">Prévu</option><option value="FAIT">Honoré</option><option value="NO_SHOW">No show</option><option value="ANNULE">Annulé</option>

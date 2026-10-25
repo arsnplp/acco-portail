@@ -947,10 +947,13 @@ model RendezVous {
   dureeMin     Int         @default(60)
   lieu         String?
   resultat     RdvResultat @default(PREVU)
+  reportDeId   String? // RDV recalé après un no show : ne compte pas comme un nouveau RDV pris
   createdAt    DateTime    @default(now())
 
-  prospect   Prospect @relation(fields: [prospectId], references: [id], onDelete: Cascade)
-  commercial User?    @relation("RdvCommercial", fields: [commercialId], references: [id], onDelete: SetNull)
+  prospect   Prospect     @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  commercial User?        @relation("RdvCommercial", fields: [commercialId], references: [id], onDelete: SetNull)
+  reportDe   RendezVous?  @relation("RdvReport", fields: [reportDeId], references: [id], onDelete: SetNull)
+  reports    RendezVous[] @relation("RdvReport")
 
   @@index([debut])
 }

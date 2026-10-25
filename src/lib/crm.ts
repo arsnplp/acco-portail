@@ -24,6 +24,8 @@ export const ECHANGE: Record<EchangeType, { label: string; short: string }> = {
   NO_SHOW: { label: "No show (pas venu au RDV)", short: "No show" },
   NOTE: { label: "Note", short: "Note" },
 };
+/** Types d'échange dont la note écrite est obligatoire. */
+export const NOTE_OBLIGATOIRE: EchangeType[] = ["APPEL", "PP", "RDV", "PRISE_RDV"];
 export const ECHANGE_SAISIE: EchangeType[] = ["NRP", "APPEL", "MAIL", "PP", "PRISE_RDV", "RDV"];
 
 export const SOURCE: Record<ProspectSource, string> = {
