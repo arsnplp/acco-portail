@@ -819,12 +819,14 @@ enum EchangeType {
   PP // prospection physique
   RDV // le rendez-vous a eu lieu
   PRISE_RDV
+  NO_SHOW // le prospect n'est pas venu au RDV (ne compte pas comme RDV pris)
   NOTE
 }
 
 enum RdvResultat {
   PREVU
   FAIT
+  NO_SHOW
   ANNULE
 }
 

@@ -44,6 +44,7 @@ const NOTES: Record<EchangeType, string[]> = {
   PP: ["Passage en boutique, carte laissée", "Vu le gérant sur place, très ouvert", "Passage : fermé, repasser mardi"],
   PRISE_RDV: ["RDV pris pour présenter la maquette", "RDV visio calé avec la gérante"],
   RDV: ["RDV fait : très chaud, attend le contrat", "RDV fait : hésite sur l'abonnement", "RDV fait : veut une boutique en ligne"],
+  NO_SHOW: ["Pas venue, ne répond plus", "No show, a prévenu 10 min avant", "Personne au rendez-vous"],
   NOTE: ["Note interne"],
 };
 
@@ -51,11 +52,11 @@ const NOTES: Record<EchangeType, string[]> = {
 const PARCOURS: Record<ProspectStatut, { n: number; relance: () => number; echanges: EchangeType[][] }> = {
   A_CONTACTER: { n: 12, relance: () => pick([-6, -3, -1, 0, 0, 0, 1, 2, 5]), echanges: [[], [], ["NRP"], ["PP"]] },
   A_RELANCER: { n: 9, relance: () => pick([-4, -2, -1, 0, 0, 1, 3, 7]), echanges: [["NRP", "NRP"], ["APPEL"], ["NRP", "APPEL", "MAIL"], ["PP", "APPEL"]] },
-  POSER_RDV: { n: 6, relance: () => pick([-2, 0, 0, 1, 2, 4]), echanges: [["APPEL", "MAIL"], ["NRP", "APPEL"], ["PP", "APPEL", "MAIL"]] },
+  POSER_RDV: { n: 8, relance: () => pick([-2, 0, 0, 1, 2, 4]), echanges: [["APPEL", "MAIL"], ["NRP", "APPEL"], ["PP", "APPEL", "MAIL"], ["APPEL", "PRISE_RDV", "NO_SHOW"]] },
   RDV_POSE: { n: 6, relance: () => pick([0, 1, 2, 3, 5, 8]), echanges: [["APPEL", "PRISE_RDV"], ["NRP", "APPEL", "PRISE_RDV"], ["PP", "PRISE_RDV"]] },
   A_SIGNER: { n: 4, relance: () => pick([-1, 0, 1, 2]), echanges: [["APPEL", "PRISE_RDV", "RDV"], ["PP", "PRISE_RDV", "RDV", "MAIL"]] },
-  GAGNE: { n: 3, relance: () => 0, echanges: [["APPEL", "PRISE_RDV", "RDV", "MAIL"]] },
-  PERDU: { n: 3, relance: () => 0, echanges: [["NRP", "NRP", "APPEL"], ["APPEL", "PRISE_RDV", "RDV"]] },
+  GAGNE: { n: 6, relance: () => 0, echanges: [["APPEL", "PRISE_RDV", "RDV", "MAIL"], ["PP", "PRISE_RDV", "NO_SHOW", "PRISE_RDV", "RDV"]] },
+  PERDU: { n: 4, relance: () => 0, echanges: [["NRP", "NRP", "APPEL"], ["APPEL", "PRISE_RDV", "RDV"], ["APPEL", "PRISE_RDV", "NO_SHOW"]] },
 };
 
 async function creer() {
@@ -78,7 +79,7 @@ async function creer() {
       // Numéros réservés à la fiction par l'ARCEP (06 39 98 xx xx) : aucun risque d'appeler quelqu'un.
       const tel = `06 39 98 ${String(10 + (i % 90)).padStart(2, "0")} ${String(10 + ((i * 7) % 90)).padStart(2, "0")}`;
       const parcours = pick(cfg.echanges);
-      const start = -(parcours.length * 3 + Math.floor(rnd() * 5));
+      const start = -(parcours.length * 4 + 1 + Math.floor(rnd() * (statut === "A_CONTACTER" ? 6 : 70)));
       const p = await prisma.prospect.create({
         data: {
           legacyId: `${TAG}${i}`, societe, telephone: tel, adresse: `${1 + Math.floor(rnd() * 80)} ${pick(RUES)}, ${pick(VILLES)}`,
@@ -86,7 +87,7 @@ async function creer() {
           statut, commercialId: commercial?.id ?? null, potentielEuros: pick([50, 80, 99, 100, 150]),
           relanceAt: statut === "GAGNE" || statut === "PERDU" ? null : day(cfg.relance(), 0),
           motifPerte: statut === "PERDU" ? pick(["Trop cher", "A déjà un site", "Pas intéressé"]) : null,
-          perduAt: statut === "PERDU" ? day(-2) : null, gagneAt: statut === "GAGNE" ? day(-3) : null,
+          perduAt: statut === "PERDU" ? day(start + parcours.length * 4) : null, gagneAt: statut === "GAGNE" ? day(start + parcours.length * 4) : null,
           fraisCreationEuros: statut === "GAGNE" ? pick([490, 790, 990]) : null, mensuelEuros: statut === "GAGNE" ? pick([50, 99, 150]) : null,
           createdAt: day(start - 2),
           contacts: {
@@ -99,12 +100,13 @@ async function creer() {
       });
       // Historique : échanges espacés de 3 jours, le dernier il y a 1 à 3 jours.
       for (const [j, type] of parcours.entries()) {
-        const d = start + j * 3;
+        const d = start + j * 4;
         await prisma.echange.create({ data: { legacyId: `${TAG}${i}-${j}`, prospectId: p.id, type, notes: pick(NOTES[type]) || null, date: day(d, 9 + Math.floor(rnd() * 8), pick([0, 15, 30, 45])), auteurId: commercial?.id ?? team[0]!.id } });
         echanges++;
         if (type === "PRISE_RDV") {
           const futur = statut === "RDV_POSE";
-          await prisma.rendezVous.create({ data: { prospectId: p.id, commercialId: commercial?.id ?? null, debut: futur ? day(cfg.relance(), pick([9, 10, 14, 16]), pick([0, 30])) : day(d + 2, 14), resultat: futur ? "PREVU" : "FAIT", lieu: pick(["Sur place", "Visio", null]) } });
+          const suite = parcours[j + 1]; // l'échange d'après dit si le RDV a été honoré ou non
+          await prisma.rendezVous.create({ data: { prospectId: p.id, commercialId: commercial?.id ?? null, createdAt: day(d, 11), debut: futur ? day(cfg.relance(), pick([9, 10, 14, 16]), pick([0, 30])) : day(d + 3, 14), resultat: futur ? "PREVU" : suite === "NO_SHOW" ? "NO_SHOW" : "FAIT", lieu: pick(["Sur place", "Visio", null]) } });
           rdvs++;
         }
       }

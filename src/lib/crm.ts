@@ -20,7 +20,8 @@ export const ECHANGE: Record<EchangeType, { label: string; short: string }> = {
   MAIL: { label: "Mail", short: "Mail" },
   PP: { label: "Prospection physique", short: "PP" },
   PRISE_RDV: { label: "Prise de RDV", short: "Prise de RDV" },
-  RDV: { label: "RDV effectué", short: "RDV" },
+  RDV: { label: "RDV honoré", short: "RDV" },
+  NO_SHOW: { label: "No show (pas venu au RDV)", short: "No show" },
   NOTE: { label: "Note", short: "Note" },
 };
 export const ECHANGE_SAISIE: EchangeType[] = ["NRP", "APPEL", "MAIL", "PP", "PRISE_RDV", "RDV"];
@@ -31,6 +32,17 @@ export const SOURCE: Record<ProspectSource, string> = {
   RECOMMANDATION: "Recommandation",
   SITE_WEB: "Site web",
   AUTRE: "Autre",
+};
+
+/** Couleurs des graphiques (palette validée pour le fond sombre : daltonisme et contraste). Toujours accompagnées d'un libellé. */
+export const VIZ = {
+  blue: "#3987e5", orange: "#d95926", aqua: "#199e70", yellow: "#c98500", magenta: "#d55181", green: "#008300", violet: "#9085e9", red: "#e66767",
+} as const;
+export const ECHANGE_COULEUR: Record<EchangeType, string> = {
+  NRP: VIZ.violet, APPEL: VIZ.blue, MAIL: VIZ.aqua, PP: VIZ.yellow, PRISE_RDV: VIZ.orange, RDV: VIZ.green, NO_SHOW: VIZ.red, NOTE: "#7a7d85",
+};
+export const STATUT_COULEUR: Record<ProspectStatut, string> = {
+  A_CONTACTER: VIZ.blue, A_RELANCER: VIZ.violet, POSER_RDV: VIZ.yellow, RDV_POSE: VIZ.orange, A_SIGNER: VIZ.magenta, GAGNE: VIZ.aqua, PERDU: "#4b4e55",
 };
 
 export const MOTIFS_PERTE = ["Pas intéressé", "A déjà un site", "Trop cher", "Injoignable", "Pas le bon moment", "Autre"];
@@ -46,6 +58,7 @@ export const REGLES: Record<EchangeType, { statut: ProspectStatut | null; relanc
   PP: { statut: null, relanceJours: 7 },
   PRISE_RDV: { statut: "RDV_POSE", relanceJours: null }, // relance = jour du RDV
   RDV: { statut: "A_SIGNER", relanceJours: 2 },
+  NO_SHOW: { statut: "POSER_RDV", relanceJours: 1 }, // on recale un RDV dès demain
   NOTE: { statut: null, relanceJours: null },
 };
 

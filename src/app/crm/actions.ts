@@ -10,7 +10,7 @@ import { REGLES, statutApres, addDaysParis, hostOf, normName, normPhone, parisDa
 export type CrmState = { error?: string; ok?: boolean; doublon?: { id: string; label: string; client: boolean } };
 
 const STATUTS: ProspectStatut[] = ["A_CONTACTER", "A_RELANCER", "POSER_RDV", "RDV_POSE", "A_SIGNER", "GAGNE", "PERDU"];
-const TYPES: EchangeType[] = ["NRP", "APPEL", "MAIL", "PP", "RDV", "PRISE_RDV", "NOTE"];
+const TYPES: EchangeType[] = ["NRP", "APPEL", "MAIL", "PP", "RDV", "PRISE_RDV", "NO_SHOW", "NOTE"];
 const SOURCES: ProspectSource[] = ["COLD_CALL", "PROSPECTION_PHYSIQUE", "RECOMMANDATION", "SITE_WEB", "AUTRE"];
 const txt = (f: FormData, k: string) => String(f.get(k) ?? "").trim() || null;
 
@@ -69,7 +69,14 @@ export async function logEchange(prospectId: string, _prev: CrmState, f: FormDat
   await prisma.$transaction(async (tx) => {
     await tx.echange.create({ data: { prospectId, type, notes: txt(f, "notes"), auteurId: me.id } });
     if (rdvAt) await tx.rendezVous.create({ data: { prospectId, commercialId: prospect.commercialId ?? me.id, debut: rdvAt, lieu: txt(f, "rdvLieu") } });
-    if (type === "RDV") await tx.rendezVous.updateMany({ where: { prospectId, resultat: "PREVU", debut: { lte: new Date() } }, data: { resultat: "FAIT" } });
+    if (type === "RDV" || type === "NO_SHOW") {
+      // Le RDV concerné : le dernier prévu déjà commencé, sinon le dernier passé (ex. importé « fait »), sinon le prochain prévu.
+      const soon = new Date(Date.now() + 3 * 3600_000);
+      const rdv = (await tx.rendezVous.findFirst({ where: { prospectId, resultat: "PREVU", debut: { lte: soon } }, orderBy: { debut: "desc" } }))
+        ?? (await tx.rendezVous.findFirst({ where: { prospectId, resultat: { in: ["FAIT", "NO_SHOW"] }, debut: { lte: soon } }, orderBy: { debut: "desc" } }))
+        ?? (await tx.rendezVous.findFirst({ where: { prospectId, resultat: "PREVU" }, orderBy: { debut: "asc" } }));
+      if (rdv) await tx.rendezVous.update({ where: { id: rdv.id }, data: { resultat: type === "RDV" ? "FAIT" : "NO_SHOW" } });
+    }
     await tx.prospect.update({
       where: { id: prospectId },
       data: { statut, relanceAt, commercialId: prospect.commercialId ?? me.id, perduAt: statut === "PERDU" ? new Date() : null, gagneAt: statut === "GAGNE" ? prospect.gagneAt ?? new Date() : prospect.gagneAt },
@@ -190,7 +197,7 @@ export async function deleteProspect(id: string) {
   redirect("/crm/pipeline");
 }
 
-export async function setRdvResultat(id: string, resultat: "FAIT" | "ANNULE" | "PREVU") {
+export async function setRdvResultat(id: string, resultat: "FAIT" | "ANNULE" | "PREVU" | "NO_SHOW") {
   await requireTeam();
   const r = await prisma.rendezVous.update({ where: { id }, data: { resultat } });
   refresh(r.prospectId);

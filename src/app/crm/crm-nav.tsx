@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FolderKanbanIcon, KanbanSquareIcon, PlusIcon, SunIcon, UsersIcon, type LucideIcon } from "lucide-react";
+import { ChartColumnIcon, FolderKanbanIcon, KanbanSquareIcon, PlusIcon, SunIcon, UsersIcon, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 type Item = { href: string; label: string; icon: LucideIcon; exact?: boolean };
@@ -11,6 +11,7 @@ const PROSPECTION: Item[] = [
   { href: "/crm", label: "Ma journée", icon: SunIcon, exact: true },
   { href: "/crm/pipeline", label: "Pipeline", icon: KanbanSquareIcon },
   { href: "/crm/prospects/nouveau", label: "Nouveau", icon: PlusIcon },
+  { href: "/crm/stats", label: "Stats", icon: ChartColumnIcon },
 ];
 
 function useItems(admin: boolean) {

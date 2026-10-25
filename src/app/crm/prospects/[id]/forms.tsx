@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState, useTransition } from "react";
 import type { EchangeType, ProspectSource, ProspectStatut, RdvResultat } from "@prisma/client";
-import { CalendarClockIcon, CheckIcon, HistoryIcon, MessageSquarePlusIcon, PencilIcon, PlusIcon, StarIcon, Trash2Icon, UserRoundIcon, BuildingIcon } from "lucide-react";
+import { UserXIcon, CalendarClockIcon, CheckIcon, HistoryIcon, MessageSquarePlusIcon, PencilIcon, PlusIcon, StarIcon, Trash2Icon, UserRoundIcon, BuildingIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { ECHANGE, ECHANGE_SAISIE, MOTIFS_PERTE, PIPELINE, REGLES, SOURCE, STATUT, fmtDayTime, statutApres } from "@/lib/crm";
 import { Field, FormError, Input, Select, Textarea } from "@/components/ui/field";
@@ -40,15 +40,28 @@ export function EchangeForm({ prospectId, statut, session, today }: { prospectId
         <input type="hidden" name="session" value={session ? "1" : "0"} />
         <input type="hidden" name="type" value={type ?? ""} />
         <div className="grid grid-cols-3 gap-2">
-          {ECHANGE_SAISIE.map((t) => (
-            <button key={t} type="button" onClick={() => pick(t)} className={cn("h-11 rounded-card border text-sm font-semibold transition-colors", type === t ? "border-title bg-title text-bg" : "border-border text-text-strong hover:border-text")}>
-              {ECHANGE[t].short}
-            </button>
-          ))}
+          {ECHANGE_SAISIE.map((t) => {
+            const on = type === t || (t === "RDV" && type === "NO_SHOW");
+            return (
+              <button key={t} type="button" onClick={() => pick(t)} className={cn("h-11 rounded-card border text-sm font-semibold transition-colors", on ? "border-title bg-title text-bg" : "border-border text-text-strong hover:border-text")}>
+                {ECHANGE[t].short}
+              </button>
+            );
+          })}
         </div>
+        {(type === "RDV" || type === "NO_SHOW") && (
+          <div>
+            <p className="mb-2 text-sm font-medium text-text-strong">Le prospect est-il venu ?</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => pick("RDV")} className={cn("flex h-11 items-center justify-center gap-2 rounded-card border text-sm font-semibold", type === "RDV" ? "border-green bg-green/15 text-green" : "border-border text-text-strong hover:border-text")}><CheckIcon size={16} aria-hidden /> Oui, RDV honoré</button>
+              <button type="button" onClick={() => pick("NO_SHOW")} className={cn("flex h-11 items-center justify-center gap-2 rounded-card border text-sm font-semibold", type === "NO_SHOW" ? "border-pink bg-pink/15 text-pink" : "border-border text-text-strong hover:border-text")}><UserXIcon size={16} aria-hidden /> No show</button>
+            </div>
+            {type === "NO_SHOW" && <p className="mt-2 text-xs text-text">Le RDV passe en « no show » : il ne compte plus dans les RDV pris des stats. Le prospect repart en « Poser RDV ».</p>}
+          </div>
+        )}
         {type && (
           <>
-            <Textarea name="notes" placeholder={type === "NRP" ? "Optionnel (messagerie, barrage…)" : "Ce qui s’est dit"} className="min-h-20" autoFocus={type !== "NRP"} />
+            <Textarea name="notes" placeholder={type === "NRP" ? "Optionnel (messagerie, barrage…)" : type === "NO_SHOW" ? "Optionnel (prévenu ou pas, à recaler…)" : "Ce qui s’est dit"} className="min-h-20" autoFocus={type !== "NRP" && type !== "NO_SHOW"} />
             {type === "PRISE_RDV" && (
               <div className="grid grid-cols-[1fr_auto] gap-2 sm:grid-cols-[1fr_auto_1fr]">
                 <Field label="Date du RDV"><Input type="date" name="rdvDay" required min={today} /></Field>
@@ -93,9 +106,9 @@ export function Historique({ items }: { items: Item[] }) {
         <ol className="relative space-y-3 border-l border-border pl-5">
           {items.map((e) => (
             <li key={e.id} className="group relative">
-              <span className={cn("absolute top-1.5 -left-[25px] size-2.5 rounded-full border-2 border-bg", e.type === "NRP" ? "bg-muted" : e.type === "PRISE_RDV" || e.type === "RDV" ? "bg-claude" : "bg-blue")} />
+              <span className={cn("absolute top-1.5 -left-[25px] size-2.5 rounded-full border-2 border-bg", e.type === "NRP" ? "bg-muted" : e.type === "NO_SHOW" ? "bg-pink" : e.type === "PRISE_RDV" || e.type === "RDV" ? "bg-claude" : "bg-blue")} />
               <div className="flex flex-wrap items-baseline gap-x-2 text-xs text-text">
-                <span className="font-semibold text-text-strong">{ECHANGE[e.type].short}</span>
+                <span className={cn("font-semibold", e.type === "NO_SHOW" ? "text-pink" : "text-text-strong")}>{ECHANGE[e.type].short}</span>
                 <span>{fmtDayTime(e.date)}</span>
                 {e.auteur && <span>· {e.auteur}</span>}
                 {e.client && <span className="text-green">· client</span>}
@@ -121,11 +134,11 @@ export function RdvList({ items }: { items: { id: string; debut: string; lieu: s
         {items.map((r) => (
           <li key={r.id} className="flex items-center gap-3 px-4 py-3 text-sm">
             <div className="min-w-0 flex-1">
-              <p className={cn("font-semibold", r.resultat === "ANNULE" ? "text-muted line-through" : "text-title")}>{fmtDayTime(r.debut)}</p>
+              <p className={cn("font-semibold", r.resultat === "ANNULE" ? "text-muted line-through" : r.resultat === "NO_SHOW" ? "text-pink" : "text-title")}>{fmtDayTime(r.debut)}</p>
               {r.lieu && <p className="truncate text-xs text-text">{r.lieu}</p>}
             </div>
-            <select value={r.resultat} onChange={(e) => start(() => setRdvResultat(r.id, e.target.value as "FAIT" | "ANNULE" | "PREVU"))} className="rounded-full border border-border bg-surface-2 px-2.5 py-1 text-xs text-text-strong" aria-label="Résultat du RDV">
-              <option value="PREVU">Prévu</option><option value="FAIT">Fait</option><option value="ANNULE">Annulé</option>
+            <select value={r.resultat} onChange={(e) => start(() => setRdvResultat(r.id, e.target.value as "FAIT" | "ANNULE" | "PREVU" | "NO_SHOW"))} className="rounded-full border border-border bg-surface-2 px-2.5 py-1 text-xs text-text-strong" aria-label="Résultat du RDV">
+              <option value="PREVU">Prévu</option><option value="FAIT">Honoré</option><option value="NO_SHOW">No show</option><option value="ANNULE">Annulé</option>
             </select>
           </li>
         ))}

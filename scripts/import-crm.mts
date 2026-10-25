@@ -160,7 +160,7 @@ try {
       });
       add("prospects");
       const rdv = date(p["Date de RDV"]);
-      if (rdv) { await tx.rendezVous.create({ data: { prospectId: prospect.id, commercialId, debut: rdv, resultat: rdv < new Date() ? "FAIT" : "PREVU" } }); add("rendez-vous"); }
+      if (rdv) { await tx.rendezVous.create({ data: { prospectId: prospect.id, commercialId, debut: rdv, createdAt: rdv, resultat: rdv < new Date() ? "FAIT" : "PREVU" } }); add("rendez-vous"); }
       for (const c of crmContacts.filter((c) => str(c.ID_Prospect) === legacyId)) {
         await tx.prospectContact.create({ data: { prospectId: prospect.id, prenom: str(c.Prenom), nom: str(c.Nom), fonction: str(c.Fonction), email: str(c.Email)?.toLowerCase() ?? null, telephone: phone(c.Telephone), principal: bool(c.Est_Principal) } });
         add("contacts");
