@@ -1092,6 +1092,8 @@ model LeadListe {
   secteur        String
   region         String
   demande        Int
+  mobileSeul     Boolean         @default(false) // numéros mobiles (06 / 07) uniquement
+  filtreSite     String? // SANS = sans site uniquement, AVEC = avec site uniquement, vide = peu importe
   obtenus        Int             @default(0)
   ecartes        Int             @default(0) // déjà dans le CRM, le portail ou le coffre
   estimationZone Int? // nombre d'entreprises de ce type estimé dans la zone

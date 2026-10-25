@@ -72,11 +72,18 @@ Termine par un unique bloc \`\`\`json contenant exactement :
 }
 "estimation_total_zone" = ton estimation du nombre TOTAL d'entreprises de ce secteur dans la zone (toutes, pas seulement celles de ta liste).`;
 
-function userPrompt(n: number, secteur: string, region: string, connues: string[]) {
+export type Filtres = { mobileSeul: boolean; filtreSite: string | null };
+
+function userPrompt(n: number, secteur: string, region: string, connues: string[], f: Filtres) {
+  const contraintes = [
+    f.mobileSeul ? "- Uniquement des entreprises joignables sur un numéro de MOBILE (06 ou 07), idéalement celui du gérant. Écarte celles qui n'ont qu'un fixe (01 à 05, 09)." : null,
+    f.filtreSite === "SANS" ? "- Uniquement des entreprises SANS site web propre (fiche Google, Planity, réseaux sociaux seulement). \"site_web\" doit être null." : null,
+    f.filtreSite === "AVEC" ? "- Uniquement des entreprises qui ONT un site web propre (de préférence faible ou vieillissant). \"site_web\" doit être renseigné." : null,
+  ].filter(Boolean);
   return `Trouve ${n} entreprises.
 Secteur d'activité : ${secteur}
 Zone : ${region}
-
+${contraintes.length ? `\nContraintes impératives :\n${contraintes.join("\n")}\n` : ""}
 Déjà connues (à exclure) : ${connues.length ? connues.join(" ; ") : "aucune"}`;
 }
 
@@ -92,12 +99,12 @@ function parseJson(text: string): Reponse {
 }
 
 /** Appel à Claude avec la recherche web (boucle tant que Claude met son tour en pause). */
-async function rechercher(n: number, secteur: string, region: string, connues: string[]) {
+async function rechercher(n: number, secteur: string, region: string, connues: string[], f: Filtres) {
   if (process.env.LEADS_MOCK) return { data: parseJson(readFileSync(process.env.LEADS_MOCK, "utf8")), recherches: 0, cout: 0 };
   const key = await anthropicKey();
   if (!key) throw new Error("Aucune clé Anthropic : ajoutez-la dans Admin → Paramètres.");
   const client = new Anthropic({ apiKey: key, timeout: 20 * 60_000 });
-  const messages: Anthropic.MessageParam[] = [{ role: "user", content: userPrompt(n, secteur, region, connues) }];
+  const messages: Anthropic.MessageParam[] = [{ role: "user", content: userPrompt(n, secteur, region, connues, f) }];
   const outil = (type: string) => [{ type, name: "web_search", max_uses: Math.min(60, 10 + n), user_location: { type: "approximate", country: "FR", timezone: "Europe/Paris" } }] as unknown as Anthropic.ToolUnion[];
   let tools = outil("web_search_20260318"); // recherche avec filtrage (moins de texte inutile, donc moins cher)
   let recherches = 0, inTok = 0, outTok = 0, text = "";
@@ -196,14 +203,19 @@ export async function generateLeadList(listeId: string) {
     const proches = known.noms.filter((n) => tokens.some((t) => norm(n.lieu).includes(t)) || (secteur && norm(n.nom).includes(secteur.split(" ")[0] ?? "")));
     const exclus = [...new Set(proches.map((n) => n.nom))].slice(0, 400);
 
-    const demandeIA = Math.min(60, Math.ceil(liste.demande * 1.3) + 2); // un peu plus, pour compenser les doublons écartés
-    const { data, recherches, cout } = await rechercher(demandeIA, liste.secteur, liste.region, exclus);
+    const filtres = { mobileSeul: liste.mobileSeul, filtreSite: liste.filtreSite };
+    const marge = 1.3 + (liste.mobileSeul ? 0.2 : 0) + (liste.filtreSite ? 0.1 : 0); // un peu plus, pour compenser doublons et filtres
+    const demandeIA = Math.min(60, Math.ceil(liste.demande * marge) + 2);
+    const { data, recherches, cout } = await rechercher(demandeIA, liste.secteur, liste.region, exclus, filtres);
+    const mobile = (tel: string | null | undefined) => /^0[67]/.test(normPhone(tel) ?? "");
+    let horsFiltre = 0;
 
     // Doublons : déjà connus, ou en double dans la réponse elle-même.
     const vus = new Set<string>();
     let ecartes = 0;
     const candidats = data.leads.filter((t) => {
       if (!t?.entreprise) return false;
+      if ((liste.mobileSeul && !mobile(t.telephone)) || (liste.filtreSite === "SANS" && t.site_web) || (liste.filtreSite === "AVEC" && !t.site_web)) { horsFiltre++; return false; }
       const phone = normPhone(t.telephone), host = hostOf(t.site_web), nom = norm(t.entreprise);
       const dejaConnu = (phone && known.phones.has(phone)) || (host && known.hosts.has(host)) || (nom && known.nomsNorm.has(nom))
         || known.noms.some((k) => similarity(k.nom, t.entreprise) >= 0.9 && (!k.lieu || !t.code_postal || k.lieu.includes(t.code_postal)));
@@ -230,14 +242,15 @@ export async function generateLeadList(listeId: string) {
       .slice(0, liste.demande);
 
     const obtenus = lignes.length;
+    const filtresTxt = [liste.mobileSeul ? "mobiles uniquement" : null, liste.filtreSite === "SANS" ? "sans site" : liste.filtreSite === "AVEC" ? "avec site" : null].filter(Boolean).join(", ");
     const estimation = typeof data.estimation_total_zone === "number" ? data.estimation_total_zone : null;
     const dejaDansZone = proches.length;
     const reste = estimation !== null ? Math.max(0, estimation - dejaDansZone - obtenus) : null;
-    const zone = `${liste.secteur} · ${liste.region}`;
+    const zone = `${liste.secteur} · ${liste.region}${filtresTxt ? ` (${filtresTxt})` : ""}`;
     const message = obtenus === 0
       ? `Aucun nouveau lead pour ${zone} : tout ce qui a été trouvé est déjà dans le CRM, le portail ou le coffre. Essayez une autre zone ou un autre secteur.`
       : obtenus < liste.demande
-        ? `Il ne reste que ${obtenus} nouveau${obtenus > 1 ? "x" : ""} lead${obtenus > 1 ? "s" : ""} pour ${zone} (demandé : ${liste.demande}${ecartes ? `, ${ecartes} déjà connu${ecartes > 1 ? "s" : ""} écarté${ecartes > 1 ? "s" : ""}` : ""}).${data.commentaire ? ` ${data.commentaire}` : ""}`
+        ? `Il ne reste que ${obtenus} nouveau${obtenus > 1 ? "x" : ""} lead${obtenus > 1 ? "s" : ""} pour ${zone} (demandé : ${liste.demande}${ecartes ? `, ${ecartes} déjà connu${ecartes > 1 ? "s" : ""} écarté${ecartes > 1 ? "s" : ""}` : ""}${horsFiltre ? `, ${horsFiltre} hors filtre` : ""}).${data.commentaire ? ` ${data.commentaire}` : ""}`
         : `${obtenus} leads générés pour ${zone}.${reste !== null ? ` Il en reste environ ${reste} dans cette zone : vous pouvez relancer une génération.` : data.commentaire ? ` ${data.commentaire}` : ""}`;
 
     await prisma.$transaction([
@@ -258,6 +271,6 @@ export async function generateLeadList(listeId: string) {
       : /model/i.test(msg) && /not.found|404/i.test(msg) ? `Modèle introuvable (${MODEL}) : réglez LEADS_MODEL dans le .env du serveur.`
       : /JSON|Réponse sans liste/i.test(msg) ? "La réponse de Claude était incomplète. Relancez la génération."
       : "La génération a échoué. Relancez-la ; si ça recommence, envoyez le détail ci-dessous.";
-    await prisma.leadListe.update({ where: { id: listeId }, data: { statut: "ERREUR", erreur: msg.slice(0, 800), message: lisible } });
+    await prisma.leadListe.updateMany({ where: { id: listeId }, data: { statut: "ERREUR", erreur: msg.slice(0, 800), message: lisible } }); // liste peut-être supprimée entre-temps
   }
 }

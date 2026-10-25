@@ -28,7 +28,9 @@ export async function createLeadList(_prev: LeadState, f: FormData): Promise<Lea
   const commercialId = me.role === "ADMIN" ? wanted || null : wanted === me.id ? me.id : null;
   const enCours = await prisma.leadListe.count({ where: { statut: "GENERATION", createdAt: { gte: new Date(Date.now() - 20 * 60_000) } } });
   if (enCours >= 3) return { error: "Trois listes sont déjà en cours de génération. Attendez qu’une se termine." };
-  const liste = await prisma.leadListe.create({ data: { secteur, region, demande, commercialId, auteurId: me.id } });
+  const filtreSite = ["SANS", "AVEC"].includes(String(f.get("site"))) ? String(f.get("site")) : null;
+  const mobileSeul = f.get("mobile") === "on";
+  const liste = await prisma.leadListe.create({ data: { secteur, region, demande, commercialId, auteurId: me.id, mobileSeul, filtreSite } });
   after(() => generateLeadList(liste.id));
   refresh();
   return { ok: `Génération lancée : ${demande} lead${demande > 1 ? "s" : ""} ${secteur} · ${region}. Comptez 2 à 5 minutes, la liste apparaît dans le coffre.` };

@@ -8,6 +8,8 @@ import { AutoRefresh } from "@/components/messages/auto-refresh";
 import { fmtDayTime, teamName } from "@/lib/crm";
 import { COLONNES, COLONNES_PRINCIPALES, LISTE_STATUT, type Colonne, type LeadRow } from "@/lib/leads/colonnes";
 import { DeleteLeadButton, ListActions } from "../forms";
+import { StatsPanel } from "../stats-panel";
+import { listeStats } from "@/lib/leads/stats";
 
 export const metadata = { title: "Liste de leads" };
 
@@ -22,6 +24,8 @@ export default async function LeadListePage({ params, searchParams }: { params: 
     prisma.user.findMany({ where: { role: { in: ["ADMIN", "COMMERCIAL"] } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true } }),
   ]);
   if (!liste) notFound();
+  const stats = (await listeStats([liste.id])).get(liste.id)!;
+  const filtres = [liste.mobileSeul ? "mobiles uniquement" : null, liste.filtreSite === "SANS" ? "sans site" : liste.filtreSite === "AVEC" ? "avec site" : null].filter(Boolean);
   const cols: Colonne[] = tout ? [...COLONNES] : COLONNES_PRINCIPALES;
   const restants = liste.leads.filter((l) => !l.prospectId).length;
   const st = LISTE_STATUT[liste.statut];
@@ -42,6 +46,7 @@ export default async function LeadListePage({ params, searchParams }: { params: 
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <h1 className="text-2xl capitalize">{liste.secteur} · <span className="normal-case">{liste.region}</span></h1>
         <span className={cn("rounded-full border px-2.5 py-1 text-xs font-semibold", st.cls)}>{st.label}</span>
+        {filtres.map((f) => <span key={f} className="rounded-full border border-border px-2.5 py-1 text-xs text-text-strong">{f}</span>)}
       </div>
       <p className="mt-1 text-sm text-text">
         {liste.obtenus} lead{liste.obtenus > 1 ? "s" : ""} sur {liste.demande} demandés · générée {fmtDayTime(liste.createdAt)}{liste.auteur ? ` par ${teamName(liste.auteur)}` : ""}
@@ -51,6 +56,8 @@ export default async function LeadListePage({ params, searchParams }: { params: 
       {liste.message && <p className={cn("mt-3 rounded-card border px-4 py-2.5 text-sm", liste.statut === "ERREUR" ? "border-pink/40 bg-pink/10 text-pink" : liste.obtenus < liste.demande ? "border-yellow/40 bg-yellow/10 text-yellow" : "border-green/40 bg-green/10 text-green")}>{liste.message}</p>}
       {liste.statut === "ERREUR" && liste.erreur && <p className="mt-2 rounded-card border border-border bg-surface px-4 py-2.5 font-mono text-xs break-all text-text">Détail : {liste.erreur}</p>}
       {liste.statut === "GENERATION" && <p className="mt-3 rounded-card border border-yellow/40 bg-yellow/10 px-4 py-2.5 text-sm text-yellow">Recherche en cours (2 à 5 minutes). La page se met à jour toute seule.</p>}
+
+      {liste.statut !== "GENERATION" && <div className="mt-4"><StatsPanel s={stats} /></div>}
 
       <div className="mt-4">
         <ListActions id={liste.id} statut={liste.statut} restants={restants} commercialId={liste.commercialId} team={team.map((u) => ({ id: u.id, name: teamName(u) }))} meId={me.id} isAdmin={me.role === "ADMIN"} canDelete={me.role === "ADMIN" || liste.auteurId === me.id} />

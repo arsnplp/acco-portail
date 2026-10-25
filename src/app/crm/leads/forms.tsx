@@ -21,6 +21,19 @@ export function GenerateForm({ team, meId, isAdmin }: { team: { id: string; name
         <Field label="Secteur d’activité"><Input name="secteur" required minLength={3} placeholder="esthéticienne, auto-école, coach sportif…" /></Field>
         <Field label="Région ou villes"><Input name="region" required minLength={3} placeholder="Aix-en-Provence et Marseille" /></Field>
       </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Site web">
+          <Select name="site" defaultValue="">
+            <option value="">Avec ou sans site</option>
+            <option value="SANS">Sans site uniquement</option>
+            <option value="AVEC">Avec site uniquement</option>
+          </Select>
+        </Field>
+        <label className="flex items-center gap-3 rounded-card border border-border px-4 py-3 sm:mt-7">
+          <input type="checkbox" name="mobile" className="size-4 accent-white" />
+          <span className="text-sm text-text-strong">Numéros mobiles uniquement <span className="text-text">(06 / 07)</span></span>
+        </label>
+      </div>
       <Field label="Attribuer la liste à">
         <Select name="commercialId" defaultValue="">
           <option value="">Personne pour l’instant</option>
@@ -65,4 +78,15 @@ export function ListActions({ id, statut, restants, commercialId, team, meId, is
 export function DeleteLeadButton({ id }: { id: string }) {
   const [pending, start] = useTransition();
   return <button type="button" disabled={pending} onClick={() => start(() => deleteLead(id))} aria-label="Retirer ce lead de la liste" className="text-muted hover:text-pink disabled:opacity-50"><Trash2Icon size={14} /></button>;
+}
+
+export function DeleteListButton({ id }: { id: string }) {
+  const [pending, start] = useTransition();
+  const router = useRouter();
+  return (
+    <button type="button" disabled={pending} onClick={() => confirm("Supprimer cette liste du coffre ? Les prospects déjà envoyés restent dans le CRM.") && start(async () => { await deleteLeadList(id); router.refresh(); })}
+      aria-label="Supprimer la liste" title="Supprimer la liste" className="flex size-10 shrink-0 items-center justify-center rounded-card border border-border text-text hover:border-pink hover:text-pink disabled:opacity-50">
+      <Trash2Icon size={15} />
+    </button>
+  );
 }
