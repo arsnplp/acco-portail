@@ -11,14 +11,14 @@ import Link from "next/link";
 import { PhoneIcon, PlayIcon, SearchIcon, TrophyIcon, XCircleIcon } from "lucide-react";
 import { NrpMeter } from "@/components/crm/nrp-meter";
 import { cn } from "@/lib/cn";
-import { MOTIFS_PERTE, PIPELINE, STATUT, initialsOf, logoUrl, relanceInfo } from "@/lib/crm";
+import { matchRecherche, MOTIFS_PERTE, PIPELINE, STATUT, initialsOf, logoUrl, relanceInfo } from "@/lib/crm";
 import { Dialog } from "@/components/ui/dialog";
 import { moveProspect } from "../actions";
 import { Logo } from "@/components/crm/logo";
 
 export type CardData = {
   id: string; societe: string; statut: ProspectStatut; relanceAt: string | null; contact: string | null;
-  telephone: string | null; siteWeb: string | null; cible: string | null; commercialId: string | null; nrp: number;
+  telephone: string | null; tels: string[]; siteWeb: string | null; cible: string | null; commercialId: string | null; nrp: number;
 };
 type Member = { id: string; name: string; avatarUrl: string | null };
 
@@ -44,7 +44,7 @@ export function Board({ initial, team, cibles, meId, initialFilter }: { initial:
   const visible = cards.filter((c) =>
     (who === "all" || (who === "none" ? !c.commercialId : c.commercialId === who)) &&
     (!cible || c.cible === cible) &&
-    (!q || `${c.societe} ${c.contact ?? ""} ${c.telephone ?? ""}`.toLowerCase().includes(q.toLowerCase())),
+    matchRecherche(q, [c.societe, c.contact], c.tels),
   );
 
   function move(id: string, statut: ProspectStatut, motif?: string) {

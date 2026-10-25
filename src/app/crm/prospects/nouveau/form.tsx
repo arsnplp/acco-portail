@@ -1,5 +1,6 @@
 "use client";
 
+import { TelInput } from "@/components/crm/tel-input";
 import Link from "next/link";
 import { useActionState } from "react";
 import type { ProspectSource } from "@prisma/client";
@@ -17,7 +18,7 @@ export function NewProspectForm({ meId, team, cibles, today, isAdmin }: { meId: 
         <div className="grid grid-cols-2 gap-3">
           <Field label="Prénom du contact"><Input name="prenom" /></Field>
           <Field label="Nom"><Input name="nom" /></Field>
-          <Field label="Téléphone"><Input name="telephone" inputMode="tel" /></Field>
+          <Field label="Téléphone"><TelInput name="telephone" /></Field>
           <Field label="Email"><Input name="email" type="email" /></Field>
         </div>
         <Field label="Fonction" hint="optionnel"><Input name="fonction" placeholder="Gérante" /></Field>

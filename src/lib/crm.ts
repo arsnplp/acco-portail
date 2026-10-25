@@ -167,6 +167,22 @@ export function formatTel(s: string | null | undefined) {
   return d.length === 10 && d.startsWith("0") ? d.replace(/(\d{2})(?=\d)/g, "$1 ").trim() : d;
 }
 export const normName = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/gi, " ").trim().toLowerCase();
+/**
+ * Recherche tolérante : sans accents ni majuscules, et pour un numéro, peu importe les espaces,
+ * points, tirets ou le +33 (« 0639981331 », « 06 39 98 13 31 » et « +33 6 39 98 13 31 » se valent).
+ */
+export function matchRecherche(q: string, textes: (string | null | undefined)[], tels: (string | null | undefined)[] = []) {
+  const query = q.trim();
+  if (!query) return true;
+  const txt = normName(textes.filter(Boolean).join(" "));
+  if (txt.includes(normName(query))) return true;
+  const chiffres = query.replace(/[^\d+]/g, "").replace(/^\+33/, "0").replace(/^0033/, "0").replace(/\D/g, "");
+  if (chiffres.length < 3 || /[a-z]/i.test(query)) return false;
+  return tels.some((t) => {
+    const d = (t ?? "").replace(/[^\d+]/g, "").replace(/^\+33/, "0").replace(/^0033/, "0").replace(/\D/g, "");
+    return d.includes(chiffres);
+  });
+}
 export function hostOf(url: string | null | undefined) {
   if (!url) return null;
   try { return new URL(/^https?:\/\//.test(url) ? url : `https://${url}`).hostname.replace(/^www\./, "").toLowerCase(); } catch { return null; }

@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireTeam } from "@/lib/auth";
-import { PIPELINE, contactName, teamName } from "@/lib/crm";
+import { PIPELINE, contactName, formatTel, teamName } from "@/lib/crm";
 import { Board, type CardData } from "./board";
 
 export const metadata = { title: "Pipeline" };
@@ -24,7 +24,7 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
   ]);
   const cards: CardData[] = prospects.map((p) => ({
     id: p.id, societe: p.societe, statut: p.statut, relanceAt: p.relanceAt?.toISOString() ?? null,
-    contact: contactName(p.contacts[0]), telephone: p.contacts[0]?.telephone ?? p.telephone, siteWeb: p.siteWeb,
+    contact: contactName(p.contacts[0]), telephone: formatTel(p.contacts[0]?.telephone ?? p.telephone), tels: [p.telephone, p.contacts[0]?.telephone].filter((t): t is string => !!t), siteWeb: p.siteWeb,
     cible: p.cible?.nom ?? null, commercialId: p.commercialId, nrp: p._count.echanges,
   }));
   return (

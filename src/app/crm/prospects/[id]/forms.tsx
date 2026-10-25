@@ -1,5 +1,6 @@
 "use client";
 
+import { TelInput } from "@/components/crm/tel-input";
 import { useActionState, useEffect, useState, useTransition } from "react";
 import type { EchangeType, ProspectSource, ProspectStatut, RdvResultat } from "@prisma/client";
 import { BellIcon, UserXIcon, CalendarClockIcon, CheckIcon, HistoryIcon, MessageSquarePlusIcon, PencilIcon, PlusIcon, StarIcon, Trash2Icon, UserRoundIcon, BuildingIcon } from "lucide-react";
@@ -212,7 +213,7 @@ function ContactForm({ prospectId, c, onDone }: { prospectId: string; c?: C; onD
       <div className="grid grid-cols-2 gap-2">
         <Input name="prenom" placeholder="Prénom" defaultValue={c?.prenom ?? ""} autoFocus />
         <Input name="nom" placeholder="Nom" defaultValue={c?.nom ?? ""} />
-        <Input name="telephone" placeholder="Téléphone" defaultValue={c?.telephone ?? ""} inputMode="tel" />
+        <TelInput name="telephone" placeholder="Téléphone" defaultValue={c?.telephone ?? ""} />
         <Input name="email" type="email" placeholder="Email" defaultValue={c?.email ?? ""} />
         <Input name="fonction" placeholder="Fonction (gérant…)" defaultValue={c?.fonction ?? ""} className="col-span-2" />
       </div>
@@ -268,7 +269,7 @@ export function ProspectForm({ p, team, cibles, canDelete, isAdmin }: { p: P; te
           <Field label="Source">
             <Select name="source" defaultValue={p.source ?? ""}><option value="">—</option>{(Object.keys(SOURCE) as ProspectSource[]).map((s) => <option key={s} value={s}>{SOURCE[s]}</option>)}</Select>
           </Field>
-          <Field label="Téléphone"><Input name="telephone" defaultValue={p.telephone ?? ""} inputMode="tel" /></Field>
+          <Field label="Téléphone"><TelInput name="telephone" defaultValue={p.telephone ?? ""} /></Field>
         </div>
         <Field label="Site web"><Input name="siteWeb" defaultValue={p.siteWeb ?? ""} placeholder="exemple.fr" /></Field>
         <Field label="Adresse"><Input name="adresse" defaultValue={p.adresse ?? ""} /></Field>
