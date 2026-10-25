@@ -1,3 +1,4 @@
+import { isGestionnaire, requireAdmin } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { AdminPage } from "@/components/admin/page";
@@ -36,10 +37,11 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
     },
   });
   if (!site) notFound();
-  const [googleOn, googleEmail, properties] = site.status === "EN_LIGNE" ? await Promise.all([searchConsoleConfigured(), connectedGoogleEmail(), listProperties()]) : [false, null, []];
+  const gestion = isGestionnaire(await requireAdmin());
+  const [googleOn, googleEmail, properties] = gestion && site.status === "EN_LIGNE" ? await Promise.all([searchConsoleConfigured(), connectedGoogleEmail(), listProperties()]) : [false, null, []];
   const avisActive = site.subscriptions.some((x) => x.module === "AVIS");
   const [bizApi, aiOn, turnstileSiteKey] = await Promise.all([businessApiEnabled(), aiConfigured(), getSecret("turnstile_site_key")]);
-  const locations = avisActive && bizApi ? await (await getReviewsProvider()).listLocations().catch(() => []) : [];
+  const locations = gestion && avisActive && bizApi ? await (await getReviewsProvider()).listLocations().catch(() => []) : [];
   const reviewCount = avisActive ? await prisma.review.count({ where: { siteId: site.id } }) : 0;
 
   return (
@@ -96,7 +98,7 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
         </>
       )}
 
-      {site.status === "EN_LIGNE" && (
+      {gestion && site.status === "EN_LIGNE" && (
         <>
           <SectionTitle icon={ChartColumnIcon}>Search Console et récap mensuel</SectionTitle>
           <Card className="space-y-3">
@@ -119,7 +121,7 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
         </>
       )}
 
-      {avisActive && (
+      {gestion && avisActive && (
         <>
           <SectionTitle icon={StarIcon}>Avis Google</SectionTitle>
           <Card className="space-y-2">
@@ -132,7 +134,7 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
         </>
       )}
 
-      <SiteForms properties={properties} locations={locations} site={{ id: site.id, name: site.name, url: site.url, previewUrl: site.previewUrl, screenshotUrl: site.screenshotUrl, status: site.status, projectStep: site.projectStep, searchConsoleProp: site.searchConsoleProp, googleLocationId: site.googleLocationId, repoUrl: site.repoUrl, repoBranch: site.repoBranch, repoRoot: site.repoRoot }} />
+      <SiteForms gestion={gestion} properties={properties} locations={locations} site={{ id: site.id, name: site.name, url: site.url, previewUrl: site.previewUrl, screenshotUrl: site.screenshotUrl, status: site.status, projectStep: site.projectStep, searchConsoleProp: site.searchConsoleProp, googleLocationId: site.googleLocationId, repoUrl: site.repoUrl, repoBranch: site.repoBranch, repoRoot: site.repoRoot }} />
 
       {site.status === "EN_CREATION" && (
         <>

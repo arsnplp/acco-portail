@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { isGestionnaire, requireAdmin, requireGestionnaire } from "@/lib/auth";
 import type { ProjectStep, SiteStatus } from "@prisma/client";
 import { maybeCreateReviewPrompt } from "@/lib/review-prompt";
 
@@ -20,7 +20,9 @@ export async function updateSite(siteId: string, _prev: ActionState, formData: F
   const url = d.url?.trim() || null;
 
   // Propriété Search Console : saisie, sinon devinée depuis le domaine du site (sc-domain:exemple.fr) si Google y a accès.
-  let searchConsoleProp = d.searchConsoleProp?.trim() || null;
+  // Search Console et fiche Google : réglés par le gestionnaire seulement ; pour les autres, on garde l'existant.
+  const gestion = isGestionnaire(admin);
+  let searchConsoleProp = gestion ? d.searchConsoleProp?.trim() || null : before.searchConsoleProp;
   if (!searchConsoleProp && url && status === "EN_LIGNE") {
     const { listProperties } = await import("@/lib/google-search");
     const host = new URL(url).hostname.replace(/^www\./, "");
@@ -39,7 +41,7 @@ export async function updateSite(siteId: string, _prev: ActionState, formData: F
         status,
         projectStep: goesLive ? "MISE_EN_LIGNE" : projectStep,
         searchConsoleProp,
-        googleLocationId: d.googleLocationId?.trim() || null,
+        googleLocationId: gestion ? d.googleLocationId?.trim() || null : before.googleLocationId,
         repoUrl: d.repoUrl?.trim() || null,
         repoBranch: d.repoBranch?.trim() || null,
         repoRoot: d.repoRoot?.trim().replace(/^\/+|\/+$/g, "") || null,
@@ -95,7 +97,7 @@ export async function addAssetRequest(siteId: string, formData: FormData) {
 export type SyncState = { error?: string; ok?: string };
 
 export async function syncSearchConsole(siteId: string, _prev: SyncState, formData: FormData): Promise<SyncState> {
-  await requireAdmin();
+  await requireGestionnaire();
   const months = Math.min(24, Math.max(1, parseInt(String(formData.get("months") ?? "12"), 10) || 12));
   const { syncSiteMonths } = await import("@/lib/recaps");
   const res = await syncSiteMonths(siteId, months);
@@ -108,7 +110,7 @@ export async function syncSearchConsole(siteId: string, _prev: SyncState, formDa
 
 /** Envoie l'email du récap du mois dernier à l'admin connecté (aperçu : le client ne reçoit rien). */
 export async function sendRecapPreview(siteId: string, _prev: SyncState): Promise<SyncState> {
-  const admin = await requireAdmin();
+  const admin = await requireGestionnaire();
   const { buildRecap, recapEmailFor, previousMonth } = await import("@/lib/recaps");
   const { sendEmail } = await import("@/lib/email");
   const t = previousMonth();
@@ -121,7 +123,7 @@ export async function sendRecapPreview(siteId: string, _prev: SyncState): Promis
 }
 
 export async function generateRecap(siteId: string, formData: FormData) {
-  await requireAdmin();
+  await requireGestionnaire();
   const { buildRecap, previousMonth } = await import("@/lib/recaps");
   const t = previousMonth();
   await buildRecap(siteId, t.year, t.month, { notify: formData.get("notify") === "on" });
@@ -130,7 +132,7 @@ export async function generateRecap(siteId: string, formData: FormData) {
 }
 
 export async function syncReviewsAction(siteId: string) {
-  await requireAdmin();
+  await requireGestionnaire();
   const { syncReviews } = await import("@/lib/reviews");
   await syncReviews(siteId, { notify: true });
   revalidatePath(`/admin/sites/${siteId}`);

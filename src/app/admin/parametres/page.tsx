@@ -10,7 +10,7 @@ import { listProperties } from "@/lib/google-search";
 import { saveSettings, disconnectGoogleAction } from "./actions";
 import { ServicesForm } from "./services-form";
 import { AdminNotifForm } from "./notif-form";
-import { requireAdmin } from "@/lib/auth";
+import { isGestionnaire, requireAdmin } from "@/lib/auth";
 import { secretsStatus, featureToggles } from "@/lib/settings";
 import { NewPasswordForm } from "@/app/nouveau-mot-de-passe/form";
 import { LogOut } from "lucide-react";
@@ -29,7 +29,23 @@ const GOOGLE_MSG: Record<string, string> = {
 export default async function ParametresPage({ searchParams }: { searchParams: Promise<{ google?: string }> }) {
   const { google } = await searchParams;
   const admin = await requireAdmin();
-  const [settings, email, secrets, toggles, notifPrefs] = await Promise.all([prisma.setting.findMany(), connectedGoogleEmail(), secretsStatus(), featureToggles(), prisma.notificationPreference.findUnique({ where: { userId: admin.id } })]);
+  const notifPrefs = await prisma.notificationPreference.findUnique({ where: { userId: admin.id } });
+  const moi = (
+    <>
+      <SectionTitle icon={BellIcon}>Mes notifications</SectionTitle>
+      <AdminNotifForm prefs={notifPrefs} />
+
+      <SectionTitle icon={LockIcon}>Mon accès</SectionTitle>
+      <div className="grid gap-3">
+        <details className="rounded-card border border-border bg-surface"><summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-title">Changer mon mot de passe</summary><div className="border-t border-border p-4"><NewPasswordForm compact next="/admin/parametres" /></div></details>
+        <form action="/auth/deconnexion" method="post"><Button variant="secondary" type="submit" className="w-full"><LogOut size={18} strokeWidth={1.75} /> Se déconnecter</Button></form>
+      </div>
+    </>
+  );
+  // Clés API, Google (Search Console, avis) et réglages de l'agence : réservés au gestionnaire (Arsène).
+  if (!isGestionnaire(admin)) return <AdminPage title="Paramètres">{moi}</AdminPage>;
+
+  const [settings, email, secrets, toggles] = await Promise.all([prisma.setting.findMany(), connectedGoogleEmail(), secretsStatus(), featureToggles()]);
   const get = (k: string) => settings.find((s) => s.key === k)?.value ?? "";
   const properties = email ? await listProperties() : [];
   const sites = email ? await prisma.site.findMany({ where: { status: "EN_LIGNE" }, select: { name: true, searchConsoleProp: true } }) : [];
@@ -66,14 +82,7 @@ export default async function ParametresPage({ searchParams }: { searchParams: P
       <SectionTitle icon={KeyRoundIcon}>Clés et services</SectionTitle>
       <ServicesForm secrets={secrets} toggles={toggles} googleConnected={Boolean(email)} />
 
-      <SectionTitle icon={BellIcon}>Mes notifications</SectionTitle>
-      <AdminNotifForm prefs={notifPrefs} />
-
-      <SectionTitle icon={LockIcon}>Mon accès</SectionTitle>
-      <div className="grid gap-3">
-        <details className="rounded-card border border-border bg-surface"><summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-title">Changer mon mot de passe</summary><div className="border-t border-border p-4"><NewPasswordForm compact next="/admin/parametres" /></div></details>
-        <form action="/auth/deconnexion" method="post"><Button variant="secondary" type="submit" className="w-full"><LogOut size={18} strokeWidth={1.75} /> Se déconnecter</Button></form>
-      </div>
+      {moi}
 
       <SectionTitle icon={SettingsIcon}>Agence</SectionTitle>
       <form action={saveSettings} className="space-y-3 rounded-card border border-border bg-surface p-4">

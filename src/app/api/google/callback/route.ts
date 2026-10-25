@@ -1,12 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isGestionnaire } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { oauthClient } from "@/lib/google-oauth";
 
 export async function GET(req: NextRequest) {
   const base = process.env.NEXT_PUBLIC_APP_URL!;
   const user = await getCurrentUser();
-  if (!user || user.role !== "ADMIN") return NextResponse.redirect(`${base}/`);
+  if (!isGestionnaire(user)) return NextResponse.redirect(`${base}/`);
   const code = req.nextUrl.searchParams.get("code");
   if (!code) return NextResponse.redirect(`${base}/admin/parametres?google=refuse`);
   try {

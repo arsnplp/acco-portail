@@ -11,7 +11,7 @@ import { PlusIcon, SettingsIcon } from "lucide-react";
 
 type SiteInfo = { id: string; name: string; url: string | null; previewUrl: string | null; screenshotUrl: string | null; status: SiteStatus; projectStep: ProjectStep; searchConsoleProp: string | null; googleLocationId: string | null; repoUrl: string | null; repoBranch: string | null; repoRoot: string | null };
 
-export function SiteForms({ site, properties = [], locations = [] }: { site: SiteInfo; properties?: string[]; locations?: { id: string; title: string; address?: string }[] }) {
+export function SiteForms({ site, gestion = false, properties = [], locations = [] }: { site: SiteInfo; gestion?: boolean; properties?: string[]; locations?: { id: string; title: string; address?: string }[] }) {
   const [s1, a1] = useActionState<ActionState, FormData>(updateSite.bind(null, site.id), {});
   const [s2, a2] = useActionState<ActionState, FormData>(addHistoryEntry.bind(null, site.id), {});
   return (
@@ -34,6 +34,7 @@ export function SiteForms({ site, properties = [], locations = [] }: { site: Sit
           </Field>
           <Field label="URL de production"><Input name="url" defaultValue={site.url ?? ""} placeholder="https://" /></Field>
           <Field label="Lien préprod"><Input name="previewUrl" defaultValue={site.previewUrl ?? ""} placeholder="https://" /></Field>
+          {gestion && <>
           <Field label="Propriété Search Console">
             <Input name="searchConsoleProp" list="sc-properties" defaultValue={site.searchConsoleProp ?? ""} placeholder="sc-domain:monsite.fr" />
             <datalist id="sc-properties">{properties.map((p) => <option key={p} value={p} />)}</datalist>
@@ -45,6 +46,7 @@ export function SiteForms({ site, properties = [], locations = [] }: { site: Sit
               <Input name="googleLocationId" defaultValue={site.googleLocationId ?? ""} placeholder="accounts/123/locations/456" />
             )}
           </Field>
+          </>}
         </div>
         <Field label="URL de la capture"><Input name="screenshotUrl" defaultValue={site.screenshotUrl ?? ""} placeholder="https://" /></Field>
         <div className="grid gap-3 sm:grid-cols-3">
@@ -52,7 +54,7 @@ export function SiteForms({ site, properties = [], locations = [] }: { site: Sit
           <Field label="Branche publiée"><Input name="repoBranch" defaultValue={site.repoBranch ?? ""} placeholder="main" /></Field>
           <Field label="Dossier servi en ligne"><Input name="repoRoot" defaultValue={site.repoRoot ?? ""} placeholder="vide = racine du dépôt" /></Field>
         </div>
-        <p className="text-xs text-muted">Passer en « En ligne » enregistre la mise en ligne dans l’historique et prévient le client. Si la propriété Search Console est vide, elle est retrouvée depuis le domaine de l’URL, puis 12 mois de chiffres sont récupérés automatiquement.</p>
+        <p className="text-xs text-muted">Passer en « En ligne » enregistre la mise en ligne dans l’historique et prévient le client.{gestion && " Si la propriété Search Console est vide, elle est retrouvée depuis le domaine de l’URL, puis 12 mois de chiffres sont récupérés automatiquement."}</p>
         <FormError message={s1.error} />
         <div className="flex items-center gap-3">
           <SubmitButton size="sm">Enregistrer</SubmitButton>

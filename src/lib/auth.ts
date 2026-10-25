@@ -48,6 +48,22 @@ export async function requireAdmin() {
   return user;
 }
 
+/**
+ * Gestionnaire technique (Arsène) : seul à voir et modifier les clés API, la connexion Google
+ * (Search Console, fiche et avis Google) et les réglages de l'agence.
+ * Emails dans GESTIONNAIRE_EMAILS (séparés par des virgules), par défaut arsene@acco-lab.fr.
+ */
+export function isGestionnaire(user: { email: string; role: string } | null | undefined) {
+  if (!user || user.role !== "ADMIN") return false;
+  const list = (process.env.GESTIONNAIRE_EMAILS ?? "arsene@acco-lab.fr").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+  return list.includes(user.email.toLowerCase());
+}
+export async function requireGestionnaire() {
+  const user = await requireAdmin();
+  if (!isGestionnaire(user)) redirect("/admin/parametres");
+  return user;
+}
+
 /** Équipe (admins + commerciaux / alternants) : accès à l'espace Commercial. */
 export async function requireTeam() {
   const user = await requireUser();

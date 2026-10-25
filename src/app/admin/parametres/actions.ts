@@ -2,11 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, requireGestionnaire } from "@/lib/auth";
 import { disconnectGoogle } from "@/lib/google-oauth";
 
 export async function saveSettings(formData: FormData) {
-  await requireAdmin();
+  await requireGestionnaire();
   for (const key of ["google_review_url", "referral_reward_label"]) {
     const value = String(formData.get(key) ?? "").trim();
     await prisma.setting.upsert({ where: { key }, create: { key, value }, update: { value } });
@@ -16,7 +16,7 @@ export async function saveSettings(formData: FormData) {
 }
 
 export async function disconnectGoogleAction() {
-  await requireAdmin();
+  await requireGestionnaire();
   await disconnectGoogle();
   revalidatePath("/admin/parametres");
   revalidatePath("/admin/sites", "layout");
@@ -44,7 +44,7 @@ export type ServicesState = { errors?: Record<string, string>; infos?: Record<st
 
 /** Enregistre les clés après vérification auprès de chaque service ; n'active une fonction que si ses clés sont valides. */
 export async function saveServices(_prev: ServicesState, formData: FormData): Promise<ServicesState> {
-  await requireAdmin();
+  await requireGestionnaire();
   const { SECRETS, FEATURES, getSecret } = await import("@/lib/settings");
   const { verifySecret } = await import("@/lib/verify-keys");
   const errors: Record<string, string> = {}, infos: Record<string, string> = {};
