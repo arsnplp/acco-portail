@@ -3,11 +3,13 @@ import { notFound } from "next/navigation";
 import { ExternalLinkIcon, MailIcon, MapPinIcon, PhoneIcon, SkipForwardIcon, SquareIcon, ZapIcon } from "lucide-react";
 import { readSession, sessionQuery, sessionWhere } from "@/lib/crm-session";
 import { NrpMeter } from "@/components/crm/nrp-meter";
+import { LeadInfoButton } from "@/components/crm/lead-info";
+import type { LeadRow } from "@/lib/leads/colonnes";
 import { prisma } from "@/lib/prisma";
 import { requireTeam } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { Logo } from "@/components/crm/logo";
-import { STATUT, contactName, fmtTime, logoUrl, relanceInfo, teamName, parisDay, todayBounds } from "@/lib/crm";
+import { STATUT, contactName, fmtDayTime, fmtTime, logoUrl, relanceInfo, teamName, parisDay, todayBounds } from "@/lib/crm";
 import { EchangeForm, ProspectForm, Contacts, Historique, AssignControl, RdvList } from "./forms";
 
 export const metadata = { title: "Fiche prospect" };
@@ -25,6 +27,7 @@ export default async function ProspectPage({ params, searchParams }: { params: P
         contacts: { orderBy: [{ principal: "desc" }, { createdAt: "asc" }] },
         echanges: { orderBy: { date: "desc" }, include: { auteur: { select: { firstName: true, email: true } } } },
         rendezVous: { orderBy: { debut: "desc" } },
+        lead: { select: { listeId: true, donnees: true, liste: { select: { secteur: true, region: true, createdAt: true } } } },
       },
     }),
     prisma.user.findMany({ where: { role: { in: ["ADMIN", "COMMERCIAL"] } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true } }),
@@ -74,6 +77,7 @@ export default async function ProspectPage({ params, searchParams }: { params: P
           </div>
         </div>
         <div className="flex w-full items-center gap-2 sm:w-auto">
+          <LeadInfoButton lead={p.lead ? { listeId: p.lead.listeId, liste: `${p.lead.liste.secteur} · ${p.lead.liste.region}`, generee: fmtDayTime(p.lead.liste.createdAt), donnees: p.lead.donnees as LeadRow } : null} />
           {phone && <a href={`tel:${phone.replace(/\s/g, "")}`} className="flex h-11 flex-1 items-center justify-center gap-2 rounded-card bg-title px-4 text-sm font-semibold text-bg sm:flex-none"><PhoneIcon size={16} aria-hidden /> {phone}</a>}
           {email && <a href={`mailto:${email}`} aria-label="Écrire un mail" className="flex size-11 items-center justify-center rounded-card border border-border text-text hover:text-title"><MailIcon size={17} /></a>}
           {p.siteWeb && <a href={p.siteWeb} target="_blank" rel="noreferrer" aria-label="Ouvrir le site" className="flex size-11 items-center justify-center rounded-card border border-border text-text hover:text-title"><ExternalLinkIcon size={17} /></a>}

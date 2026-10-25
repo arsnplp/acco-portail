@@ -96,6 +96,7 @@ export async function sendListToProspects(id: string): Promise<LeadState> {
   for (const lead of liste.leads) {
     const d = lead.donnees as LeadRow;
     const tel = normPhone(lead.telephone);
+    if (!tel) { sautes++; continue; } // sans numéro : inutilisable en prospection téléphonique
     if ((tel && phones.has(tel)) || (lead.siren && sirens.has(lead.siren)) || (hostOf(lead.siteWeb) && hosts.has(hostOf(lead.siteWeb))) || noms.has(normName(lead.entreprise))) { sautes++; continue; }
     const dir = splitDirigeant((d.Dirigeant as string) ?? null);
     const resume = [
@@ -121,5 +122,5 @@ export async function sendListToProspects(id: string): Promise<LeadState> {
   await prisma.leadListe.update({ where: { id }, data: { statut: "UTILISEE", utiliseeAt: new Date() } });
   refresh(id);
   revalidatePath("/crm/pipeline");
-  return { ok: `${crees} lead${crees > 1 ? "s" : ""} ajouté${crees > 1 ? "s" : ""} dans « À contacter »${sautes ? `, ${sautes} déjà présent${sautes > 1 ? "s" : ""} dans le CRM ignoré${sautes > 1 ? "s" : ""}` : ""}.` };
+  return { ok: `${crees} lead${crees > 1 ? "s" : ""} ajouté${crees > 1 ? "s" : ""} dans « À contacter »${sautes ? `, ${sautes} ignoré${sautes > 1 ? "s" : ""} (déjà dans le CRM ou sans numéro)` : ""}.` };
 }

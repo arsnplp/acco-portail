@@ -41,6 +41,8 @@ Accès : carte « Commercial » du tableau de bord admin, ou directement `/crm`.
   Message « il ne reste que X leads pour cette région » si la zone s'épuise, sinon une estimation de ce qui reste.
 - **Utiliser** : « Envoyer dans À contacter » crée les fiches (dirigeant en contact principal, note de synthèse),
   attribuées au commercial de la liste, et la liste passe en « Utilisée ». Export CSV pour Excel.
+- **Infos du lead** : bouton sur chaque fiche, fenêtre avec les 34 colonnes du lead (ou message clair si la fiche a été créée à la main).
+- Un lead sans numéro de téléphone n'entre jamais dans une liste.
 - **Résultats par liste** : envoyés, appelés, joints, RDV pris, signés (avec taux de passage), CA signé et répartition
   des fiches par statut ; résumé sur chaque carte du coffre. Suppression d'une liste (admin ou auteur) : les fiches
   déjà envoyées restent dans le CRM.

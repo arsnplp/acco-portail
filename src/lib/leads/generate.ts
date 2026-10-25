@@ -38,7 +38,7 @@ RÈGLES STRICTES
    c. écarte celles qui ont déjà un site professionnel et moderne.
 4. Parmi elles, privilégie les commerces qui tournent : beaucoup d'avis Google et une bonne note.
 5. N'inclus AUCUNE entreprise de la liste « déjà connues » fournie, même écrite différemment.
-6. Téléphone au format « 06 12 34 56 78 ». "site_web" = le site propre de l'entreprise uniquement (une page Planity, Treatwell, Facebook ou Instagram n'est pas un site : mets-la dans "source" ou dans "facebook"/"instagram").
+6. Téléphone OBLIGATOIRE : une entreprise sans numéro trouvable n'entre pas dans la liste. Format « 06 12 34 56 78 ». "site_web" = le site propre de l'entreprise uniquement (une page Planity, Treatwell, Facebook ou Instagram n'est pas un site : mets-la dans "source" ou dans "facebook"/"instagram").
 
 MÉTHODE
 - Varie les recherches : le métier et ses synonymes × chaque ville, arrondissement ou quartier de la zone, + « Pages Jaunes », « Planity », « avis ».
@@ -215,7 +215,7 @@ export async function generateLeadList(listeId: string) {
     let ecartes = 0;
     const candidats = data.leads.filter((t) => {
       if (!t?.entreprise) return false;
-      if ((liste.mobileSeul && !mobile(t.telephone)) || (liste.filtreSite === "SANS" && t.site_web) || (liste.filtreSite === "AVEC" && !t.site_web)) { horsFiltre++; return false; }
+      if (!normPhone(t.telephone) || (liste.mobileSeul && !mobile(t.telephone)) || (liste.filtreSite === "SANS" && t.site_web) || (liste.filtreSite === "AVEC" && !t.site_web)) { horsFiltre++; return false; }
       const phone = normPhone(t.telephone), host = hostOf(t.site_web), nom = norm(t.entreprise);
       const dejaConnu = (phone && known.phones.has(phone)) || (host && known.hosts.has(host)) || (nom && known.nomsNorm.has(nom))
         || known.noms.some((k) => similarity(k.nom, t.entreprise) >= 0.9 && (!k.lieu || !t.code_postal || k.lieu.includes(t.code_postal)));
@@ -250,7 +250,7 @@ export async function generateLeadList(listeId: string) {
     const message = obtenus === 0
       ? `Aucun nouveau lead pour ${zone} : tout ce qui a été trouvé est déjà dans le CRM, le portail ou le coffre. Essayez une autre zone ou un autre secteur.`
       : obtenus < liste.demande
-        ? `Il ne reste que ${obtenus} nouveau${obtenus > 1 ? "x" : ""} lead${obtenus > 1 ? "s" : ""} pour ${zone} (demandé : ${liste.demande}${ecartes ? `, ${ecartes} déjà connu${ecartes > 1 ? "s" : ""} écarté${ecartes > 1 ? "s" : ""}` : ""}${horsFiltre ? `, ${horsFiltre} hors filtre` : ""}).${data.commentaire ? ` ${data.commentaire}` : ""}`
+        ? `Il ne reste que ${obtenus} nouveau${obtenus > 1 ? "x" : ""} lead${obtenus > 1 ? "s" : ""} pour ${zone} (demandé : ${liste.demande}${ecartes ? `, ${ecartes} déjà connu${ecartes > 1 ? "s" : ""} écarté${ecartes > 1 ? "s" : ""}` : ""}${horsFiltre ? `, ${horsFiltre} sans numéro ou hors filtre` : ""}).${data.commentaire ? ` ${data.commentaire}` : ""}`
         : `${obtenus} leads générés pour ${zone}.${reste !== null ? ` Il en reste environ ${reste} dans cette zone : vous pouvez relancer une génération.` : data.commentaire ? ` ${data.commentaire}` : ""}`;
 
     await prisma.$transaction([
