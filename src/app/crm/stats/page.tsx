@@ -43,7 +43,7 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
     prisma.rendezVous.findMany({ where: { ...byCommercial, debut: { gte: since, lt: end }, resultat: { in: ["FAIT", "NO_SHOW"] } }, select: { debut: true, resultat: true, commercialId: true } }),
     prisma.prospect.findMany({ where: { ...byCommercial, statut: "GAGNE", gagneAt: { gte: since, lt: end } }, select: { commercialId: true, fraisCreationEuros: true, mensuelEuros: true } }),
     prisma.prospect.findMany({ where: { ...byCommercial, statut: "GAGNE", gagneAt: { gte: prevSince, lt: since } }, select: { fraisCreationEuros: true, mensuelEuros: true } }),
-    prisma.prospect.groupBy({ by: ["statut"], where: byCommercial, _count: true }),
+    prisma.prospect.findMany({ where: byCommercial, select: { statut: true, potentielEuros: true, fraisCreationEuros: true, mensuelEuros: true } }),
   ]);
 
   // ─── Chiffres clés ───
@@ -91,10 +91,18 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
   for (const r of pris) { const i = idx.get(bucketOf(r.createdAt) ?? ""); if (i !== undefined) rdvSerie[i].values.pris++; }
   for (const r of rdvTenus) if (r.resultat === "NO_SHOW") { const i = idx.get(bucketOf(r.debut) ?? ""); if (i !== undefined) rdvSerie[i].values.noshow++; }
 
+  const euros = (n: number) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
   const parType = TYPES_ACTIVITE.map((t) => ({ label: ECHANGE[t].short, value: echanges.filter((e) => e.type === t).length, color: ECHANGE_COULEUR[t] }));
   const statuts: ProspectStatut[] = [...PIPELINE, "GAGNE", "PERDU"];
-  const counts = new Map(pipeline.map((g) => [g.statut, g._count]));
-  const donut = statuts.map((s) => ({ label: STATUT[s].label, value: counts.get(s) ?? 0, color: STATUT_COULEUR[s] }));
+  // CA potentiel d'un prospect : création (si connue) + 12 mois d'abonnement (signé, sinon le potentiel €/mois).
+  const caPot = (p: (typeof pipeline)[number]) => (p.fraisCreationEuros ?? 0) + 12 * (p.mensuelEuros ?? p.potentielEuros ?? 0);
+  const donut = statuts.map((s) => {
+    const ps = pipeline.filter((p) => p.statut === s);
+    return { label: STATUT[s].label, value: ps.length, color: STATUT_COULEUR[s], montant: s === "PERDU" ? null : euros(ps.reduce((a, p) => a + caPot(p), 0)) };
+  });
+  const ouverts = pipeline.filter((p) => PIPELINE.includes(p.statut));
+  const caPotentiel = ouverts.reduce((a, p) => a + caPot(p), 0);
+  const sansPotentiel = ouverts.filter((p) => !caPot(p)).length;
 
   // ─── Classement ───
   const rows = team.map((u) => {
@@ -112,7 +120,6 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
   }).filter((r) => !who || r.u.id === who).sort((a, b) => b.ca - a.ca || b.rdv - a.rdv || b.activites - a.activites);
 
   const caTotal = (id: string) => wonAll.filter((p) => p.commercialId === id).reduce((a, p) => a + ca(p), 0);
-  const euros = (n: number) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
   const href = (q: Record<string, string>) => `/crm/stats?${new URLSearchParams({ p: String(jours), c: who ?? "all", ...q })}`;
   const unitLabel = unit === "jour" ? "par jour" : unit === "semaine" ? "par semaine" : "par mois";
 
@@ -162,8 +169,8 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
         <Panel title="Rendez-vous" subtitle={`RDV pris ${unitLabel} (sans les no show ni leurs reports) et no show`} className="lg:col-span-2">
           <GroupedBars buckets={rdvSerie} series={[{ key: "pris", label: "RDV pris", color: VIZ.orange }, { key: "noshow", label: "No show", color: VIZ.red }]} />
         </Panel>
-        <Panel title="Pipeline" subtitle="Prospects par statut, aujourd’hui">
-          <Donut items={donut} />
+        <Panel title="Pipeline" subtitle={`CA potentiel des prospects en cours (création + 12 mois)${sansPotentiel ? ` · ${sansPotentiel} sans potentiel renseigné` : ""}`}>
+          <Donut items={donut} center={{ value: euros(caPotentiel), label: "CA potentiel" }} />
         </Panel>
         <Panel title="Du premier appel à la signature" subtitle="Sur la période" className="lg:col-span-3">
           <Funnel steps={[

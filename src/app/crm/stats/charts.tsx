@@ -161,16 +161,19 @@ export function HBars({ items }: { items: { label: string; value: number; color:
 }
 
 /** Anneau du pipeline, total au centre, légende avec les valeurs. */
-export function Donut({ items }: { items: { label: string; value: number; color: string }[] }) {
+export function Donut({ items, center }: { items: { label: string; value: number; color: string; montant?: string | null }[]; center?: { value: string; label: string } }) {
   const [hover, setHover] = useState<number | null>(null);
   const total = items.reduce((a, i) => a + i.value, 0);
   const R = 70, C = 2 * Math.PI * R, gap = total ? 2 : 0;
   const lens = items.map((it) => (total ? (it.value / total) * C : 0));
   const offsets = lens.map((_, i) => lens.slice(0, i).reduce((a, b) => a + b, 0));
   const shown = hover !== null ? items[hover] : null;
+  // Au centre : le total (ou le montant du statut survolé), sinon le nombre de prospects.
+  const big = (shown ? (center && shown.montant ? shown.montant : String(shown.value)) : center ? center.value : String(total)).replace(/\u202f/g, "\u00a0");
+  const small = shown ? (center && shown.montant ? `${shown.label} · ${shown.value}` : shown.label) : center ? center.label : "prospects";
   return (
     <div className="flex flex-col items-center gap-4 sm:flex-row lg:flex-col">
-      <svg viewBox="0 0 180 180" className="size-44 shrink-0" role="img" aria-label={`Pipeline : ${total} prospects`}>
+      <svg viewBox="0 0 180 180" className="size-44 shrink-0" role="img" aria-label={`Pipeline : ${center ? `${center.value} de ${center.label}, ` : ""}${total} prospects`}>
         <circle cx="90" cy="90" r={R} fill="none" stroke="var(--surface-2)" strokeWidth="22" />
         {items.map((it, i) => {
           const len = lens[i];
@@ -179,16 +182,21 @@ export function Donut({ items }: { items: { label: string; value: number; color:
             className="cursor-pointer transition-all" opacity={hover !== null && hover !== i ? 0.35 : 1}
             onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} />;
         })}
-        <text x="90" y="88" textAnchor="middle" className="fill-[var(--title)] font-title" fontSize="30" fontWeight="800">{shown ? shown.value : total}</text>
-        <text x="90" y="108" textAnchor="middle" className="fill-[var(--text)]" fontSize="11">{shown ? shown.label : "prospects"}</text>
+        <text x="90" y="88" textAnchor="middle" className="fill-[var(--title)] font-title" fontSize={big.length > 7 ? 20 : big.length > 5 ? 24 : 30} fontWeight="800">{big}</text>
+        <text x="90" y="108" textAnchor="middle" className="fill-[var(--text)]" fontSize="11">{small}</text>
       </svg>
       <ul className="w-full space-y-1.5 text-sm">
         {items.map((it, i) => (
           <li key={it.label} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} className={cn("flex items-center gap-2 rounded px-1 transition-opacity", hover !== null && hover !== i && "opacity-40")}>
             <span className="size-2.5 shrink-0 rounded-sm" style={{ background: it.color }} />
             <span className="flex-1 truncate text-text-strong">{it.label}</span>
-            <span className="tabular-nums text-title">{it.value}</span>
-            <span className="w-9 text-right text-xs tabular-nums text-muted">{total ? Math.round((it.value / total) * 100) : 0} %</span>
+            {center ? <>
+              <span className="tabular-nums text-title">{it.montant ?? ""}</span>
+              <span className="w-9 text-right text-xs tabular-nums text-muted">{it.value}</span>
+            </> : <>
+              <span className="tabular-nums text-title">{it.value}</span>
+              <span className="w-9 text-right text-xs tabular-nums text-muted">{total ? Math.round((it.value / total) * 100) : 0} %</span>
+            </>}
           </li>
         ))}
       </ul>
