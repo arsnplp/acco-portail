@@ -9,10 +9,11 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { CHANGE_STATUS, SITE_STATUS } from "@/lib/labels";
 import { fmtDateShort, daysUntil } from "@/lib/format";
 import { SiteForms } from "./forms";
-import { addAssetRequest, syncSearchConsole, generateRecap, syncReviewsAction, checkSiteNow } from "../actions";
+import { addAssetRequest, generateRecap, syncReviewsAction, checkSiteNow } from "../actions";
 import { Dot } from "@/components/ui/badge";
 import { businessApiEnabled, getReviewsProvider } from "@/lib/reviews-provider";
 import { searchConsoleConfigured, listProperties } from "@/lib/google-search";
+import { SyncSearchConsoleForm } from "./sync-form";
 import { connectedGoogleEmail } from "@/lib/google-oauth";
 import { aiConfigured } from "@/lib/ai";
 import { getSecret } from "@/lib/settings";
@@ -100,17 +101,14 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
           <SectionTitle icon={ChartColumnIcon}>Search Console et récap mensuel</SectionTitle>
           <Card className="space-y-3">
             <p className="text-xs text-text">
-              {googleOn ? <>Google connecté{googleEmail ? ` (${googleEmail})` : ""}. {site.searchConsoleProp ? `Propriété : ${site.searchConsoleProp}` : <span className="text-yellow">Choisissez la propriété Search Console dans les paramètres ci-dessous.</span>}</> : <>Mode démo : Google n’est pas connecté (Paramètres → Connecter Google), les chiffres sont simulés.</>}
+              {googleOn ? <>Google connecté{googleEmail ? ` (${googleEmail})` : ""}. {site.searchConsoleProp ? `Propriété : ${site.searchConsoleProp}` : <span className="text-yellow">Propriété Search Console vide : les chiffres affichés sont une démo. Choisissez-la dans « Paramètres du site » ci-dessous puis Enregistrer.</span>}</> : <>Mode démo : Google n’est pas connecté (Paramètres → Connecter Google), les chiffres sont simulés.</>}
               {" "}{aiOn ? "Résumés rédigés par Claude." : "Résumés rédigés par gabarit (activez Claude dans Paramètres → Clés et services)."}
             </p>
             <p className="text-xs text-text">
               Dernier mois synchronisé : {site.searchStats[0] ? monthLabel(site.searchStats[0].year, site.searchStats[0].month) : "aucun"} · Dernier récap : {site.recaps[0] ? `${monthLabel(site.recaps[0].year, site.recaps[0].month)}${site.recaps[0].sentAt ? " (envoyé)" : " (non envoyé)"}` : "aucun"}
             </p>
             <div className="flex flex-wrap items-end gap-2">
-              <form action={syncSearchConsole.bind(null, site.id)} className="flex items-end gap-2">
-                <label className="text-xs text-text">Mois à récupérer<Input name="months" inputMode="numeric" defaultValue={12} className="mt-1 w-20 py-2 text-sm" /></label>
-                <SubmitButton size="sm" variant="secondary" pendingLabel="Synchro…">Synchroniser</SubmitButton>
-              </form>
+              <SyncSearchConsoleForm siteId={site.id} />
               <form action={generateRecap.bind(null, site.id)} className="flex items-end gap-2">
                 <label className="flex h-11 items-center gap-2 text-xs text-text"><input type="checkbox" name="notify" className="accent-white" /> Envoyer au client</label>
                 <SubmitButton size="sm" pendingLabel="Génération…">Générer le récap du mois dernier</SubmitButton>

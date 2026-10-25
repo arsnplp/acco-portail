@@ -56,9 +56,8 @@ export async function updateSite(siteId: string, _prev: ActionState, formData: F
   if (goesLive) await maybeCreateReviewPrompt(before.clientId, "SITE_EN_LIGNE");
   // Première liaison à une propriété (ou propriété changée) : on récupère 12 mois et on prépare le récap du mois dernier.
   if (status === "EN_LIGNE" && searchConsoleProp && searchConsoleProp !== before.searchConsoleProp) {
-    const { syncSiteMonth, buildRecap, previousMonth } = await import("@/lib/recaps");
-    let { year, month } = previousMonth();
-    for (let i = 0; i < 12; i++) { await syncSiteMonth(siteId, year, month); month -= 1; if (month === 0) { month = 12; year -= 1; } }
+    const { syncSiteMonths, buildRecap, previousMonth } = await import("@/lib/recaps");
+    await syncSiteMonths(siteId, 12);
     const t = previousMonth();
     await buildRecap(siteId, t.year, t.month);
   }
@@ -93,17 +92,18 @@ export async function addAssetRequest(siteId: string, formData: FormData) {
   revalidatePath(`/sites/${siteId}`);
 }
 
-export async function syncSearchConsole(siteId: string, formData: FormData) {
+export type SyncState = { error?: string; ok?: string };
+
+export async function syncSearchConsole(siteId: string, _prev: SyncState, formData: FormData): Promise<SyncState> {
   await requireAdmin();
   const months = Math.min(24, Math.max(1, parseInt(String(formData.get("months") ?? "12"), 10) || 12));
-  const { syncSiteMonth, previousMonth } = await import("@/lib/recaps");
-  let { year, month } = previousMonth();
-  for (let i = 0; i < months; i++) {
-    await syncSiteMonth(siteId, year, month);
-    month -= 1; if (month === 0) { month = 12; year -= 1; }
-  }
+  const { syncSiteMonths } = await import("@/lib/recaps");
+  const res = await syncSiteMonths(siteId, months);
   revalidatePath(`/admin/sites/${siteId}`);
   revalidatePath(`/sites/${siteId}/resultats`);
+  if (res.error) return { error: `Google a refusé : ${res.error}` };
+  if (!res.real) return { error: "Chiffres de démo : Google n’est pas connecté ou la propriété Search Console du site est vide." };
+  return { ok: `${res.months} mois récupérés depuis Google.` };
 }
 
 export async function generateRecap(siteId: string, formData: FormData) {

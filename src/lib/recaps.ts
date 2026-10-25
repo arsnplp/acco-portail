@@ -37,6 +37,43 @@ export async function syncSiteMonth(siteId: string, year: number, month: number)
   });
 }
 
+export type SyncResult = { real: boolean; months: number; error?: string };
+
+/**
+ * Synchronise les N derniers mois complets d'un site.
+ * Vrai Google : si le premier mois échoue, on s'arrête avec le message de Google ; sinon on remplace
+ * toutes les anciennes lignes du site (dont les mois de démo) par les vrais chiffres.
+ */
+export async function syncSiteMonths(siteId: string, count = 12): Promise<SyncResult> {
+  const site = await prisma.site.findUniqueOrThrow({ where: { id: siteId } });
+  let { year, month } = previousMonth();
+  const list: { year: number; month: number }[] = [];
+  for (let i = 0; i < count; i++) { list.push({ year, month }); month -= 1; if (month === 0) { month = 12; year -= 1; } }
+
+  const real = Boolean(site.searchConsoleProp && (await searchConsoleConfigured()));
+  if (!real) {
+    for (const m of list) await syncSiteMonth(siteId, m.year, m.month);
+    return { real: false, months: list.length };
+  }
+  const rows = [];
+  for (const m of list) {
+    try {
+      const stats = await fetchMonthStats(site.searchConsoleProp!, m.year, m.month);
+      if (stats) rows.push({ ...m, ...stats });
+    } catch (e) {
+      const msg = (e as { response?: { data?: { error?: { message?: string } } } }).response?.data?.error?.message ?? (e as Error).message;
+      console.warn(`[search-console] ${site.name} (${site.searchConsoleProp}) : ${msg}`);
+      if (rows.length === 0) return { real: true, months: 0, error: msg };
+      break;
+    }
+  }
+  await prisma.$transaction([
+    prisma.searchStatsMonthly.deleteMany({ where: { siteId } }),
+    ...rows.map((r) => prisma.searchStatsMonthly.create({ data: { siteId, ...r } })),
+  ]);
+  return { real: true, months: rows.length };
+}
+
 /** Génère (ou régénère) le récap d'un mois : chiffres + résumé + notification + email. */
 export async function buildRecap(siteId: string, year: number, month: number, opts: { notify?: boolean } = {}) {
   const site = await prisma.site.findUniqueOrThrow({ where: { id: siteId } });
