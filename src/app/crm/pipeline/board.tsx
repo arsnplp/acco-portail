@@ -94,7 +94,7 @@ export function Board({ initial, team, cibles, meId, initialFilter }: { initial:
       </div>
 
       <DndContext sensors={sensors} onDragStart={(e: DragStartEvent) => setDragging(cards.find((c) => c.id === e.active.id) ?? null)} onDragEnd={onEnd} onDragCancel={() => setDragging(null)}>
-        <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-4 lg:mx-0 lg:grid lg:grid-cols-5 lg:overflow-visible lg:px-0">
+        <div className="relative -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-4 lg:mx-0 lg:grid lg:grid-cols-5 lg:overflow-visible lg:px-0">
           {PIPELINE.map((s) => (
             <Column key={s} statut={s} cards={visible.filter((c) => c.statut === s)} members={members} onOpen={(id) => router.push(`/crm/prospects/${id}`)}
               sessionHref={`/crm/session?${new URLSearchParams({ statut: s, c: who === meId ? "me" : who, ...(cible ? { cible } : {}) })}`} />
@@ -127,7 +127,7 @@ function Column({ statut, cards, members, onOpen, sessionHref }: { statut: Prosp
   const { setNodeRef, isOver } = useDroppable({ id: statut });
   const late = cards.filter((c) => relanceInfo(c.relanceAt).state === "late").length;
   return (
-    <section ref={setNodeRef} id={`col-${statut}`} className={cn("flex w-[84vw] max-w-sm shrink-0 snap-start flex-col rounded-card border bg-surface/60 lg:w-auto lg:max-w-none", isOver ? "border-text" : "border-border")}>
+    <section ref={setNodeRef} id={`col-${statut}`} className={cn("relative flex w-[84vw] max-w-sm shrink-0 snap-start flex-col rounded-card border bg-surface/60 lg:w-auto lg:max-w-none", isOver ? "border-text" : "border-border")}>
       <header className="flex items-center gap-2 px-3 pt-3 pb-2">
         <span className={cn("size-2 rounded-full", DOT[STATUT[statut].tone])} />
         <h2 className="text-sm font-semibold text-title">{STATUT[statut].label}</h2>
@@ -162,7 +162,7 @@ function Card({ card, member, overlay }: { card: CardData; member?: Member; over
   const r = relanceInfo(card.relanceAt);
   const logo = logoUrl(card.siteWeb);
   return (
-    <article className={cn("cursor-grab rounded-card border border-border bg-surface p-3 transition-colors hover:border-text active:cursor-grabbing", overlay && "rotate-1 border-text shadow-2xl shadow-black/60")}>
+    <article className={cn("relative cursor-grab rounded-card border border-border bg-surface p-3 transition-colors hover:border-text active:cursor-grabbing", overlay && "rotate-1 border-text shadow-2xl shadow-black/60")}>
       <div className="flex items-start gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-2 text-xs font-semibold text-text-strong">
           <Logo src={logo} name={card.societe} />
