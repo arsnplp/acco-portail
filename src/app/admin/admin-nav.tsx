@@ -16,8 +16,9 @@ const ITEMS = [
   ["/admin/messages", "Messages"],
   ["/admin/recommandations", "Recommandations"],
   ["/admin/documents", "Documents"],
-  ["/admin/parametres", "Paramètres"],
 ] as const;
+/** Paramètres de l'app : ouverts depuis l'avatar, hors des onglets du Suivi client. */
+const PARAMETRES = [["/admin", "← Accueil"], ["/admin/parametres", "Paramètres"]] as const;
 
 export function AdminNav() {
   const pathname = usePathname();
@@ -48,7 +49,7 @@ export function AdminNav() {
   return (
     <nav className="sticky top-14 z-20 border-b border-border bg-bg/95 backdrop-blur">
       <ul ref={listRef} className="mx-auto flex max-w-3xl gap-1 overflow-x-auto overscroll-x-contain px-4 [scrollbar-width:none] [touch-action:pan-x] [&::-webkit-scrollbar]:hidden">
-        {ITEMS.map(([href, label]) => {
+        {(pathname.startsWith("/admin/parametres") ? PARAMETRES : ITEMS).map(([href, label]) => {
           const active = href !== "/admin" && pathname.startsWith(href);
           return (
             <li key={href} className="shrink-0">

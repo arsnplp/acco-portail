@@ -12,7 +12,7 @@ export function Header({ initials, avatarUrl, accountHref = "/compte", right, wi
         <Image src="/brand/acco-wordmark-600.png" alt="Acco" width={600} height={134} priority className="h-[22px] w-auto select-none" draggable={false} />
         <div className="flex items-center justify-end gap-2">
           {right}
-          <Link href={accountHref} aria-label="Mon compte">
+          <Link href={accountHref} aria-label={accountHref.startsWith("/admin") ? "Paramètres" : "Mon compte"} title={accountHref.startsWith("/admin") ? "Paramètres" : undefined}>
             <Avatar initials={initials} src={avatarUrl} />
           </Link>
         </div>
