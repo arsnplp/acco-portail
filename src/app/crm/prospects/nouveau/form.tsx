@@ -8,7 +8,7 @@ import { Field, FormError, Input, Select } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { createProspect, type CrmState } from "../../actions";
 
-export function NewProspectForm({ meId, team, cibles, today }: { meId: string; team: { id: string; name: string }[]; cibles: string[]; today: string }) {
+export function NewProspectForm({ meId, team, cibles, today, isAdmin }: { meId: string; team: { id: string; name: string }[]; cibles: string[]; today: string; isAdmin: boolean }) {
   const [state, action] = useActionState<CrmState, FormData>(createProspect, {});
   return (
     <form action={action} className="mt-6 space-y-4">
@@ -32,9 +32,12 @@ export function NewProspectForm({ meId, team, cibles, today }: { meId: string; t
             <Select name="source" defaultValue="COLD_CALL">{(Object.keys(SOURCE) as ProspectSource[]).map((s) => <option key={s} value={s}>{SOURCE[s]}</option>)}</Select>
           </Field>
           <Field label="Commercial">
-            <Select name="commercialId" defaultValue={meId}>{team.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}<option value="">Personne</option></Select>
+            {isAdmin ? <Select name="commercialId" defaultValue={meId}>{team.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}<option value="">Personne</option></Select>
+              : <><input type="hidden" name="commercialId" value={meId} /><Input value="Moi" disabled /></>}
           </Field>
-          <Field label="Première relance"><Input type="date" name="relance" defaultValue={today} /></Field>
+          <Field label="Première relance" hint="heure facultative">
+            <div className="grid grid-cols-[minmax(0,1fr)_92px] gap-2"><Input type="date" name="relance" defaultValue={today} className="px-3" /><Input type="time" name="relanceHeure" step={300} aria-label="Heure de rappel" className="px-2" /></div>
+          </Field>
         </div>
         <Field label="Site web" hint="optionnel"><Input name="siteWeb" placeholder="exemple.fr" /></Field>
         <Field label="Adresse" hint="optionnel"><Input name="adresse" /></Field>

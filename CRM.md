@@ -4,7 +4,13 @@ Accès : carte « Commercial » du tableau de bord admin, ou directement `/crm`.
 (alternants, commerciaux) arrivent directement ici et ne voient pas le reste de l'admin.
 
 ## Mode Prospection
-- **Ma journée** (`/crm`) : relances du jour et en retard, RDV de la semaine.
+- **Ma journée** (`/crm`) : relances du jour et en retard des fiches À relancer, Poser RDV et À signer (pas les leads
+  « À contacter », travaillés en session depuis le pipeline), RDV de la semaine, bouton pour activer les notifications.
+- **Heure de relance (facultative)** : dans « Noter un échange » ou la fiche. À cette heure, le commercial associé
+  reçoit un push sur son téléphone et un bandeau en haut de l'app (même en session). Le serveur vérifie chaque minute
+  (`src/instrumentation.ts`) ; secours possible par cron : `/api/cron/rappels` avec `CRON_SECRET`.
+- **Attribution** : « Je reprends » pour tous ; « Attribuer à… » (n'importe quel membre) pour les admins seulement.
+- **Historique** (admins, `/crm/historique`) : tous les échanges de l'équipe par jour, filtrables par personne, type, période.
 - **Sessions d'appels** : bouton « Lancer la session » en haut de chaque colonne du pipeline (avec les filtres en
   cours). Noter l'échange ouvre la fiche suivante de la colonne, « Passer » saute une fiche, « Arrêter » revient au pipeline.
 - **À contacter** = jamais eu au téléphone (aucun échange ou que des NRP). Un NRP laisse la fiche où elle est ;

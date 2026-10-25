@@ -3,6 +3,7 @@ import Link from "next/link";
 import { requireTeam, initials } from "@/lib/auth";
 import { Avatar } from "@/components/ui/avatar";
 import { CrmBottomNav, CrmNav } from "./crm-nav";
+import { Rappels } from "./rappels";
 
 /** Espace Commercial (CRM) : séparé du reste de l'admin, ouvert à l'équipe (admins et commerciaux). */
 export default async function CrmLayout({ children }: { children: React.ReactNode }) {
@@ -18,13 +19,14 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
           </Link>
           <CrmNav admin={admin} />
           <div className="ml-auto flex items-center gap-2">
-            {admin && <Link href="/admin" className="hidden text-xs text-text hover:text-title sm:inline">Tableau de bord</Link>}
+            {admin && <Link href="/admin" className="hidden whitespace-nowrap text-xs text-text hover:text-title xl:inline">Tableau de bord</Link>}
             <Avatar initials={initials(user)} src={user.avatarUrl} size={32} />
           </div>
         </div>
       </header>
       {children}
       <CrmBottomNav admin={admin} />
+      <Rappels />
     </div>
   );
 }

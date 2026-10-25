@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChartColumnIcon, FolderKanbanIcon, KanbanSquareIcon, PlusIcon, SunIcon, UsersIcon, type LucideIcon } from "lucide-react";
+import { ChartColumnIcon, FolderKanbanIcon, HistoryIcon, KanbanSquareIcon, PlusIcon, SunIcon, UsersIcon, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 type Item = { href: string; label: string; icon: LucideIcon; exact?: boolean };
@@ -19,7 +19,7 @@ function useItems(admin: boolean) {
   const production = pathname.startsWith("/crm/production");
   const items: Item[] = production
     ? [{ href: "/crm/production", label: "Production", icon: FolderKanbanIcon }]
-    : [...PROSPECTION, ...(admin ? [{ href: "/crm/equipe", label: "Équipe", icon: UsersIcon }] : [])];
+    : [...PROSPECTION, ...(admin ? [{ href: "/crm/historique", label: "Historique", icon: HistoryIcon }, { href: "/crm/equipe", label: "Équipe", icon: UsersIcon }] : [])];
   const active = (i: Item) => (i.exact ? pathname === i.href : pathname.startsWith(i.href)) || (i.href === "/crm/pipeline" && pathname.startsWith("/crm/prospects/") && !pathname.endsWith("/nouveau"));
   return { production, items, active };
 }
@@ -35,7 +35,7 @@ export function CrmNav({ admin }: { admin: boolean }) {
       </div>
       <nav className="ml-3 hidden items-center gap-1 sm:flex" aria-label="Espace Commercial">
         {items.map((i) => (
-          <Link key={i.href} href={i.href} className={cn("flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm", active(i) ? "bg-surface-2 text-title" : "text-text hover:text-title")}>
+          <Link key={i.href} href={i.href} className={cn("flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-sm", active(i) ? "bg-surface-2 text-title" : "text-text hover:text-title")}>
             <i.icon size={15} strokeWidth={1.75} aria-hidden /> {i.label}
           </Link>
         ))}

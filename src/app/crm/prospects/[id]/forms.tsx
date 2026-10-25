@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState, useTransition } from "react";
 import type { EchangeType, ProspectSource, ProspectStatut, RdvResultat } from "@prisma/client";
-import { UserXIcon, CalendarClockIcon, CheckIcon, HistoryIcon, MessageSquarePlusIcon, PencilIcon, PlusIcon, StarIcon, Trash2Icon, UserRoundIcon, BuildingIcon } from "lucide-react";
+import { BellIcon, UserXIcon, CalendarClockIcon, CheckIcon, HistoryIcon, MessageSquarePlusIcon, PencilIcon, PlusIcon, StarIcon, Trash2Icon, UserRoundIcon, BuildingIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { ECHANGE, ECHANGE_SAISIE, NOTE_OBLIGATOIRE, MOTIFS_PERTE, PIPELINE, REGLES, SOURCE, STATUT, fmtDayTime, statutApres } from "@/lib/crm";
 import { Field, FormError, Input, Select, Textarea } from "@/components/ui/field";
@@ -103,7 +103,12 @@ export function EchangeForm({ prospectId, statut, session, today }: { prospectId
                     return <button key={label} type="button" onClick={() => setRelance(v)} className={cn("rounded-full border px-3 py-1.5 text-xs", relance === v ? "border-title bg-title font-semibold text-bg" : "border-border text-text hover:text-title")}>{label}</button>;
                   })}
                   <Input type="date" name="relance" value={relance} onChange={(e) => setRelance(e.target.value)} className="h-9 w-auto px-3 py-1 text-sm" />
+                  <label className="flex items-center gap-1.5 text-xs text-text">
+                    <BellIcon size={14} aria-hidden />
+                    <Input type="time" name="relanceHeure" step={300} aria-label="Heure de rappel (facultative)" className="h-9 w-auto px-3 py-1 text-sm" />
+                  </label>
                 </div>
+                <p className="mt-1.5 text-xs text-muted">Heure facultative : le commercial reçoit un rappel sur son téléphone et dans l’app à cette heure-là.</p>
               </div>
             )}
             <Field label="Statut après l’échange">
@@ -222,9 +227,9 @@ function ContactForm({ prospectId, c, onDone }: { prospectId: string; c?: C; onD
 type P = {
   id: string; societe: string; siren: string | null; siret: string | null; dirigeant: string | null; adresse: string | null; siteWeb: string | null; telephone: string | null;
   cible: string | null; source: ProspectSource | null; statut: ProspectStatut; motifPerte: string | null; potentielEuros: number | null; fraisCreationEuros: number | null;
-  mensuelEuros: number | null; commercialId: string | null; relance: string; isClient: boolean;
+  mensuelEuros: number | null; commercialId: string | null; relance: string; relanceHeure: string; isClient: boolean;
 };
-export function ProspectForm({ p, team, cibles, canDelete }: { p: P; team: { id: string; name: string }[]; cibles: string[]; canDelete: boolean }) {
+export function ProspectForm({ p, team, cibles, canDelete, isAdmin }: { p: P; team: { id: string; name: string }[]; cibles: string[]; canDelete: boolean; isAdmin: boolean }) {
   const [state, action] = useActionState<CrmState, FormData>(updateProspect.bind(null, p.id), {});
   const [statut, setStatut] = useState(p.statut);
   const [, start] = useTransition();
@@ -240,7 +245,12 @@ export function ProspectForm({ p, team, cibles, canDelete }: { p: P; team: { id:
               {[...PIPELINE, "GAGNE" as const, "PERDU" as const].map((s) => <option key={s} value={s}>{STATUT[s].label}</option>)}
             </Select>
           </Field>
-          <Field label="Prochaine relance"><Input type="date" name="relance" defaultValue={p.relance} /></Field>
+          <Field label="Prochaine relance">
+            <div className="grid grid-cols-[minmax(0,1fr)_92px] gap-2">
+              <Input type="date" name="relance" defaultValue={p.relance} className="px-3" />
+              <Input type="time" name="relanceHeure" defaultValue={p.relanceHeure} step={300} aria-label="Heure de rappel (facultative)" className="px-2" />
+            </div>
+          </Field>
         </div>
         {statut === "PERDU" && (
           <Field label="Motif de perte">
@@ -249,7 +259,7 @@ export function ProspectForm({ p, team, cibles, canDelete }: { p: P; team: { id:
         )}
         <div className="grid grid-cols-2 gap-3">
           <Field label="Commercial">
-            <Select name="commercialId" defaultValue={p.commercialId ?? ""}><option value="">Personne</option>{team.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</Select>
+            <Select name="commercialId" defaultValue={p.commercialId ?? ""} disabled={!isAdmin} title={isAdmin ? undefined : "Seuls les admins attribuent un prospect"}><option value="">Personne</option>{team.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</Select>
           </Field>
           <Field label="Cible">
             <Input name="cible" list="cibles" defaultValue={p.cible ?? ""} placeholder="Esthéticienne…" />
@@ -283,11 +293,22 @@ export function ProspectForm({ p, team, cibles, canDelete }: { p: P; team: { id:
   );
 }
 
-export function AssignButton({ id }: { id: string }) {
+/** Reprendre un prospect (tout le monde) ; l'attribuer à quelqu'un d'autre : admins seulement. */
+export function AssignControl({ id, current, meId, isAdmin, team }: { id: string; current: string | null; meId: string; isAdmin: boolean; team: { id: string; name: string }[] }) {
   const [pending, start] = useTransition();
   return (
-    <button type="button" disabled={pending} onClick={() => start(() => assignProspect(id, "me"))} className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-title hover:border-text disabled:opacity-50">
-      {pending ? "…" : "Je reprends"}
-    </button>
+    <span className="flex items-center gap-2">
+      {current !== meId && (
+        <button type="button" disabled={pending} onClick={() => start(() => assignProspect(id, "me"))} className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-title hover:border-text disabled:opacity-50">
+          {pending ? "…" : "Je reprends"}
+        </button>
+      )}
+      {isAdmin && (
+        <select value={current ?? ""} disabled={pending} onChange={(e) => start(() => assignProspect(id, e.target.value || null))} aria-label="Attribuer à" className="rounded-full border border-border bg-surface px-2.5 py-1 text-xs text-text-strong disabled:opacity-50">
+          <option value="">Attribuer à…</option>
+          {team.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+        </select>
+      )}
+    </span>
   );
 }

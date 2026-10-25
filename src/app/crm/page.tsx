@@ -4,7 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { requireTeam } from "@/lib/auth";
 import { cn } from "@/lib/cn";
 import { Card, SectionTitle } from "@/components/ui/card";
-import { PIPELINE, contactName, fmtDay, fmtTime, relanceInfo, teamName, todayBounds } from "@/lib/crm";
+import { STATUT, contactName, fmtDay, fmtTime, relanceInfo, teamName, todayBounds } from "@/lib/crm";
+import type { ProspectStatut } from "@prisma/client";
+import { EnablePush } from "@/components/push/enable-push";
+
+const JOURNEE: ProspectStatut[] = ["A_RELANCER", "POSER_RDV", "A_SIGNER"];
 
 export const metadata = { title: "Ma journée" };
 
@@ -17,10 +21,11 @@ export default async function MaJournee({ searchParams }: { searchParams: Promis
 
   const [due, rdvs, callsToday, doneToday] = await Promise.all([
     prisma.prospect.findMany({
-      where: { ...mine, statut: { in: PIPELINE }, relanceAt: { lt: end } },
+      // « À contacter » = la base de leads (travaillée en session depuis le pipeline) ; ici seulement les relances.
+      where: { ...mine, statut: { in: JOURNEE }, relanceAt: { lt: end } },
       orderBy: { relanceAt: "asc" },
       select: {
-        id: true, societe: true, relanceAt: true, telephone: true, commercial: { select: { firstName: true, email: true } },
+        id: true, societe: true, relanceAt: true, rappelAt: true, statut: true, telephone: true, commercial: { select: { firstName: true, email: true } },
         contacts: { orderBy: [{ principal: "desc" }, { createdAt: "asc" }], take: 1, select: { prenom: true, nom: true, telephone: true } },
         echanges: { where: { date: { gte: start } }, take: 1, select: { id: true } },
       },
@@ -63,10 +68,11 @@ export default async function MaJournee({ searchParams }: { searchParams: Promis
         ))}
       </div>
 
+      {!equipe && <div className="mt-4"><EnablePush compact /></div>}
       {doneToday > 0 && <p className="mt-2 text-center text-xs text-text">{doneToday} échange{doneToday > 1 ? "s" : ""} noté{doneToday > 1 ? "s" : ""} aujourd’hui</p>}
 
       <SectionTitle icon={PhoneCallIcon}>À appeler</SectionTitle>
-      {todo.length === 0 ? <p className="text-sm text-text">Rien en attente. Le pipeline vous attend pour de nouveaux contacts.</p> : (
+      {todo.length === 0 ? <p className="text-sm text-text">Aucune relance (À relancer, Poser RDV, À signer) prévue aujourd’hui. Les leads « À contacter » se travaillent en session depuis le pipeline.</p> : (
         <ul className="divide-y divide-border rounded-card border border-border bg-surface">
           {todo.slice(0, 30).map((p) => {
             const c = p.contacts[0], r = relanceInfo(p.relanceAt), phone = c?.telephone ?? p.telephone;
@@ -74,9 +80,9 @@ export default async function MaJournee({ searchParams }: { searchParams: Promis
               <li key={p.id} className="flex items-center gap-3 px-4 py-3">
                 <Link href={`/crm/prospects/${p.id}`} className="min-w-0 flex-1">
                   <p className="truncate font-title text-[15px] font-semibold text-title">{contactName(c) ?? p.societe}</p>
-                  <p className="truncate text-xs text-text">{contactName(c) ? p.societe : ""}{equipe && p.commercial ? ` · ${teamName(p.commercial)}` : ""}</p>
+                  <p className="truncate text-xs text-text">{[contactName(c) ? p.societe : null, STATUT[p.statut].label, equipe && p.commercial ? teamName(p.commercial) : null].filter(Boolean).join(" · ")}</p>
                 </Link>
-                <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium", r.state === "late" ? "bg-pink/15 text-pink" : "bg-yellow/15 text-yellow")}>{r.label}</span>
+                <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium", r.state === "late" ? "bg-pink/15 text-pink" : "bg-yellow/15 text-yellow")}>{p.rappelAt ? `${r.state === "today" ? "" : r.label + " "}${fmtTime(p.rappelAt)}` : r.label}</span>
                 {phone && <a href={`tel:${phone.replace(/\s/g, "")}`} aria-label="Appeler" className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border text-text hover:border-green hover:text-green"><PhoneIcon size={15} /></a>}
               </li>
             );

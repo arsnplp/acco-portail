@@ -882,6 +882,8 @@ model Prospect {
   mensuelEuros       Int? // signé : abonnement mensuel
   commercialId       String?
   relanceAt          DateTime?
+  rappelAt           DateTime? // heure de relance précise : notification au commercial à cette heure
+  rappelEnvoyeAt     DateTime? // push envoyé
   clientId           String?         @unique // rempli quand le prospect devient client du portail
   gagneAt            DateTime?
   perduAt            DateTime?
@@ -896,6 +898,7 @@ model Prospect {
   rendezVous RendezVous[]
 
   @@index([statut, relanceAt])
+  @@index([rappelAt])
   @@index([commercialId])
   @@index([siren])
   @@index([telephone])

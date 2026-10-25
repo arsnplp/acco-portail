@@ -46,7 +46,9 @@ export async function moveProspect(id: string, statut: ProspectStatut, motifPert
 /** « Je reprends » ou réattribution à un autre commercial. */
 export async function assignProspect(id: string, commercialId: string | null) {
   const me = await requireTeam();
-  await prisma.prospect.update({ where: { id }, data: { commercialId: commercialId === "me" ? me.id : commercialId || null } });
+  const target = commercialId === "me" ? me.id : commercialId || null;
+  if (target !== me.id && me.role !== "ADMIN") return; // attribuer à un autre (ou retirer) : admins seulement
+  await prisma.prospect.update({ where: { id }, data: { commercialId: target } });
   refresh(id);
 }
 
@@ -67,8 +69,10 @@ export async function logEchange(prospectId: string, _prev: CrmState, f: FormDat
   const reportDay = type === "NO_SHOW" && f.get("report") === "1" ? txt(f, "reportDay") : null;
   if (type === "NO_SHOW" && f.get("report") === "1" && !reportDay) return { error: "Indiquez la nouvelle date du rendez-vous." };
   const reportAt = reportDay ? parisDateTime(reportDay, txt(f, "reportTime") ?? "10:00") : null;
-  const relanceDay = txt(f, "relance");
-  const relanceAt = relanceDay ? parisMidnight(relanceDay) : rdvAt ?? reportAt ?? (REGLES[type].relanceJours !== null ? addDaysParis(REGLES[type].relanceJours!) : prospect.relanceAt);
+  const relanceDay = txt(f, "relance"), relanceHeure = txt(f, "relanceHeure");
+  // Heure facultative : la relance devient un rappel (push + bandeau) au commercial à cette heure-là.
+  const rappelAt = relanceDay && relanceHeure ? parisDateTime(relanceDay, relanceHeure) : null;
+  const relanceAt = rappelAt ?? (relanceDay ? parisMidnight(relanceDay) : rdvAt ?? reportAt ?? (REGLES[type].relanceJours !== null ? addDaysParis(REGLES[type].relanceJours!) : prospect.relanceAt));
   const wanted = txt(f, "statut") as ProspectStatut | null;
   const statut = wanted && STATUTS.includes(wanted) ? wanted : statutApres(type, prospect.statut);
 
@@ -86,7 +90,7 @@ export async function logEchange(prospectId: string, _prev: CrmState, f: FormDat
     }
     await tx.prospect.update({
       where: { id: prospectId },
-      data: { statut, relanceAt, commercialId: prospect.commercialId ?? me.id, perduAt: statut === "PERDU" ? new Date() : null, gagneAt: statut === "GAGNE" ? prospect.gagneAt ?? new Date() : prospect.gagneAt },
+      data: { statut, relanceAt, rappelAt, rappelEnvoyeAt: null, commercialId: prospect.commercialId ?? me.id, perduAt: statut === "PERDU" ? new Date() : null, gagneAt: statut === "GAGNE" ? prospect.gagneAt ?? new Date() : prospect.gagneAt },
     });
   });
   refresh(prospectId);
@@ -138,8 +142,9 @@ export async function createProspect(_prev: CrmState, f: FormData): Promise<CrmS
       adresse: txt(f, "adresse"),
       cibleId: await cibleIdFrom(txt(f, "cible")),
       source: source && SOURCES.includes(source) ? source : null,
-      commercialId: commercial === "" ? null : commercial ?? me.id,
-      relanceAt: parisMidnight(txt(f, "relance") ?? parisDay()),
+      commercialId: me.role !== "ADMIN" ? me.id : commercial === "" ? null : commercial ?? me.id,
+      relanceAt: txt(f, "relanceHeure") ? parisDateTime(txt(f, "relance") ?? parisDay(), txt(f, "relanceHeure")!) : parisMidnight(txt(f, "relance") ?? parisDay()),
+      rappelAt: txt(f, "relanceHeure") ? parisDateTime(txt(f, "relance") ?? parisDay(), txt(f, "relanceHeure")!) : null,
       contacts: (txt(f, "prenom") || txt(f, "nom") || txt(f, "email"))
         ? { create: { prenom: txt(f, "prenom"), nom: txt(f, "nom"), fonction: txt(f, "fonction"), email: txt(f, "email")?.toLowerCase(), telephone: d.telephone, principal: true } }
         : undefined,
@@ -150,12 +155,14 @@ export async function createProspect(_prev: CrmState, f: FormData): Promise<CrmS
 }
 
 export async function updateProspect(id: string, _prev: CrmState, f: FormData): Promise<CrmState> {
-  await requireTeam();
+  const me = await requireTeam();
   const societe = txt(f, "societe");
   if (!societe) return { error: "Nom de la société requis." };
   const source = txt(f, "source") as ProspectSource | null;
   const statut = txt(f, "statut") as ProspectStatut | null;
-  const relance = txt(f, "relance");
+  const relance = txt(f, "relance"), relanceHeure = txt(f, "relanceHeure");
+  const rappelAt = relance && relanceHeure ? parisDateTime(relance, relanceHeure) : null;
+  const before = await prisma.prospect.findUnique({ where: { id }, select: { rappelAt: true, commercialId: true } });
   const num = (k: string) => { const v = txt(f, k); return v ? Math.round(Number(v.replace(",", "."))) || null : null; };
   const site = txt(f, "siteWeb");
   await prisma.prospect.update({
@@ -166,7 +173,9 @@ export async function updateProspect(id: string, _prev: CrmState, f: FormData): 
       cibleId: await cibleIdFrom(txt(f, "cible")), source: source && SOURCES.includes(source) ? source : null,
       statut: statut && STATUTS.includes(statut) ? statut : undefined, motifPerte: txt(f, "motifPerte"),
       potentielEuros: num("potentielEuros"), fraisCreationEuros: num("fraisCreationEuros"), mensuelEuros: num("mensuelEuros"),
-      commercialId: txt(f, "commercialId"), relanceAt: relance ? parisMidnight(relance) : null,
+      commercialId: me.role === "ADMIN" ? txt(f, "commercialId") : before?.commercialId ?? null,
+      relanceAt: rappelAt ?? (relance ? parisMidnight(relance) : null), rappelAt,
+      rappelEnvoyeAt: rappelAt && before?.rappelAt?.getTime() === rappelAt.getTime() ? undefined : null,
     },
   });
   refresh(id);

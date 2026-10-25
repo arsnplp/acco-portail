@@ -7,8 +7,8 @@ import { prisma } from "@/lib/prisma";
 import { requireTeam } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { Logo } from "@/components/crm/logo";
-import { STATUT, contactName, logoUrl, relanceInfo, teamName, parisDay, todayBounds } from "@/lib/crm";
-import { EchangeForm, ProspectForm, Contacts, Historique, AssignButton, RdvList } from "./forms";
+import { STATUT, contactName, fmtTime, logoUrl, relanceInfo, teamName, parisDay, todayBounds } from "@/lib/crm";
+import { EchangeForm, ProspectForm, Contacts, Historique, AssignControl, RdvList } from "./forms";
 
 export const metadata = { title: "Fiche prospect" };
 
@@ -67,7 +67,7 @@ export default async function ProspectPage({ params, searchParams }: { params: P
           {name && <p className="truncate text-sm text-text">{p.societe}{principal?.fonction ? ` · ${principal.fonction}` : ""}</p>}
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <Badge tone={STATUT[p.statut].tone}>{STATUT[p.statut].label}</Badge>
-            <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${r.state === "late" ? "bg-pink/15 text-pink" : r.state === "today" ? "bg-yellow/15 text-yellow" : "bg-surface-2 text-text"}`}>Relance : {r.label}</span>
+            <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${r.state === "late" ? "bg-pink/15 text-pink" : r.state === "today" ? "bg-yellow/15 text-yellow" : "bg-surface-2 text-text"}`}>Relance : {r.label}{p.rappelAt ? ` à ${fmtTime(p.rappelAt)}` : ""}</span>
             <NrpMeter n={nrp} className="rounded-full bg-surface-2 px-2.5 py-1" />
             {p.cible && <span className="text-xs text-text">{p.cible.nom}</span>}
             {p.client && <Link href={`/admin/clients/${p.client.id}`} className="text-xs text-green hover:underline">Client du portail</Link>}
@@ -83,7 +83,7 @@ export default async function ProspectPage({ params, searchParams }: { params: P
 
       <div className="mt-3 flex items-center gap-2 text-sm text-text">
         Suivi par <span className="font-semibold text-text-strong">{p.commercial ? teamName(p.commercial) : "personne"}</span>
-        {p.commercialId !== me.id && <AssignButton id={p.id} />}
+        <AssignControl id={p.id} current={p.commercialId} meId={me.id} isAdmin={me.role === "ADMIN"} team={team.map((u) => ({ id: u.id, name: teamName(u) }))} />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
@@ -98,11 +98,12 @@ export default async function ProspectPage({ params, searchParams }: { params: P
             p={{
               id: p.id, societe: p.societe, siren: p.siren, siret: p.siret, dirigeant: p.dirigeant, adresse: p.adresse, siteWeb: p.siteWeb, telephone: p.telephone,
               cible: p.cible?.nom ?? null, source: p.source, statut: p.statut, motifPerte: p.motifPerte, potentielEuros: p.potentielEuros, fraisCreationEuros: p.fraisCreationEuros,
-              mensuelEuros: p.mensuelEuros, commercialId: p.commercialId, relance: p.relanceAt ? parisDay(p.relanceAt) : "", isClient: !!p.clientId,
+              mensuelEuros: p.mensuelEuros, commercialId: p.commercialId, relance: p.relanceAt ? parisDay(p.relanceAt) : "", relanceHeure: p.rappelAt ? fmtTime(p.rappelAt) : "", isClient: !!p.clientId,
             }}
             team={team.map((u) => ({ id: u.id, name: teamName(u) }))}
             cibles={cibles.map((c) => c.nom)}
             canDelete={me.role === "ADMIN" && !p.clientId}
+            isAdmin={me.role === "ADMIN"}
           />
         </div>
       </div>

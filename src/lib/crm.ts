@@ -92,8 +92,12 @@ export function parisMidnight(day: string) {
 }
 /** Date + heure locale (« 2026-10-25 », « 14:30 ») → Date UTC. */
 export function parisDateTime(day: string, time: string) {
+  const [y, m, d] = day.split("-").map(Number);
   const [h, mi] = time.split(":").map(Number);
-  return new Date(parisMidnight(day).getTime() + (h * 60 + (mi || 0)) * 60_000);
+  const wall = Date.UTC(y, m - 1, d, h, mi || 0);
+  // Décalage de Paris à cette heure-là (pas à minuit : les jours de changement d'heure, il diffère).
+  const first = wall - parisOffsetMs(wall);
+  return new Date(wall - parisOffsetMs(first));
 }
 export function todayBounds(now = new Date()) {
   const start = parisMidnight(parisDay(now));
