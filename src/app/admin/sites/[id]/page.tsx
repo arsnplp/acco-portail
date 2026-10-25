@@ -13,7 +13,7 @@ import { addAssetRequest, generateRecap, syncReviewsAction, checkSiteNow } from 
 import { Dot } from "@/components/ui/badge";
 import { businessApiEnabled, getReviewsProvider } from "@/lib/reviews-provider";
 import { searchConsoleConfigured, listProperties } from "@/lib/google-search";
-import { SyncSearchConsoleForm } from "./sync-form";
+import { SyncSearchConsoleForm, RecapPreviewForm } from "./sync-form";
 import { connectedGoogleEmail } from "@/lib/google-oauth";
 import { aiConfigured } from "@/lib/ai";
 import { getSecret } from "@/lib/settings";
@@ -113,6 +113,7 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
                 <label className="flex h-11 items-center gap-2 text-xs text-text"><input type="checkbox" name="notify" className="accent-white" /> Envoyer au client</label>
                 <SubmitButton size="sm" pendingLabel="Génération…">Générer le récap du mois dernier</SubmitButton>
               </form>
+              <RecapPreviewForm siteId={site.id} />
             </div>
           </Card>
         </>

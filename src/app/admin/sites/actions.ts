@@ -106,6 +106,20 @@ export async function syncSearchConsole(siteId: string, _prev: SyncState, formDa
   return { ok: `${res.months} mois récupérés depuis Google.` };
 }
 
+/** Envoie l'email du récap du mois dernier à l'admin connecté (aperçu : le client ne reçoit rien). */
+export async function sendRecapPreview(siteId: string, _prev: SyncState): Promise<SyncState> {
+  const admin = await requireAdmin();
+  const { buildRecap, recapEmailFor, previousMonth } = await import("@/lib/recaps");
+  const { sendEmail } = await import("@/lib/email");
+  const t = previousMonth();
+  if (!(await buildRecap(siteId, t.year, t.month))) return { error: "Pas de chiffres pour le mois dernier : cliquez d’abord sur Synchroniser." };
+  const mail = await recapEmailFor(siteId, t.year, t.month);
+  if (!mail) return { error: "Récap introuvable." };
+  const res = await sendEmail({ to: admin.email, subject: `[Aperçu] ${mail.subject}`, html: mail.html, text: mail.text });
+  revalidatePath(`/admin/sites/${siteId}`);
+  return res.sent ? { ok: `Aperçu envoyé à ${admin.email}.` } : { error: `Email non envoyé : ${"error" in res && res.error ? res.error : "clé Resend absente (Paramètres)"}` };
+}
+
 export async function generateRecap(siteId: string, formData: FormData) {
   await requireAdmin();
   const { buildRecap, previousMonth } = await import("@/lib/recaps");

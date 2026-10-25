@@ -19,6 +19,7 @@ export async function notifyClient(opts: {
   pref: Pref;
   emailHtml?: string;
   emailSubject?: string;
+  emailText?: string;
 }) {
   await prisma.notification.create({
     data: { clientId: opts.clientId, siteId: opts.siteId ?? null, kind: opts.kind, title: opts.title, body: opts.body, href: opts.href },
@@ -33,6 +34,7 @@ export async function notifyClient(opts: {
       await sendEmail({
         to: user.email,
         subject: opts.emailSubject ?? opts.title,
+        text: opts.emailText,
         html: opts.emailHtml ?? layout(opts.title, `<p>${opts.body ?? ""}</p>`, opts.href ? { label: "Ouvrir mon espace", href: appUrl(opts.href) } : undefined),
       });
     }),

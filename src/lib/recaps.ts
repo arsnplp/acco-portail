@@ -2,7 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { fetchMonthStats, demoMonthStats, searchConsoleConfigured } from "@/lib/google-search";
 import { summarizeMonth } from "@/lib/ai";
 import { notifyClient } from "@/lib/notify";
-import { layout, appUrl } from "@/lib/email";
+import { appUrl } from "@/lib/email";
+import { recapEmail } from "@/lib/emails/recap";
 import { maybeCreateReviewPrompt } from "@/lib/review-prompt";
 
 export const MONTHS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
@@ -106,12 +107,7 @@ export async function buildRecap(siteId: string, year: number, month: number, op
     await notifyClient({
       clientId: site.clientId, siteId, kind: "RECAP_MENSUEL", pref: "recaps",
       title: `Votre récap de ${label} est prêt`, body: summary.split(". ")[0] + ".", href,
-      emailSubject: `${site.name} : votre mois de ${label} en 3 chiffres`,
-      emailHtml: layout(`Votre mois de ${label}`, `
-        <table role="presentation" width="100%" style="margin:8px 0 16px;border-collapse:separate;border-spacing:8px 0"><tr>
-          ${tile(stats.clicks, "visites depuis Google")}${tile(contactCount, "demandes de clients")}${tile(reviewCount, "nouveaux avis")}
-        </tr></table>
-        <p>${summary}</p>`, { label: "Voir mes résultats", href: appUrl(href) }),
+      ...emailFields(await recapEmailFor(siteId, year, month)),
     });
     await prisma.monthlyRecap.update({ where: { id: recap.id }, data: { sentAt: new Date() } });
     if (isPositive) await maybeCreateReviewPrompt(site.clientId, "RECAP_POSITIF");
@@ -119,8 +115,27 @@ export async function buildRecap(siteId: string, year: number, month: number, op
   return recap;
 }
 
-function tile(n: number, label: string) {
-  return `<td style="width:33%;background:#f4f4f5;border-radius:10px;padding:12px;text-align:center"><div style="font-size:26px;font-weight:800;color:#0e0e0f">${n}</div><div style="font-size:12px;color:#71717a">${label}</div></td>`;
+const emailFields = (e: { subject: string; html: string; text: string } | null) => (e ? { emailSubject: e.subject, emailHtml: e.html, emailText: e.text } : {});
+
+/** Email du récap d'un mois (objet, HTML, texte), à partir des chiffres et du récap déjà enregistrés. */
+export async function recapEmailFor(siteId: string, year: number, month: number) {
+  const prevYm = month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 };
+  const [site, stats, prev, recap] = await Promise.all([
+    prisma.site.findUniqueOrThrow({ where: { id: siteId } }),
+    prisma.searchStatsMonthly.findUnique({ where: { siteId_year_month: { siteId, year, month } } }),
+    prisma.searchStatsMonthly.findUnique({ where: { siteId_year_month: { siteId, ...prevYm } } }),
+    prisma.monthlyRecap.findUnique({ where: { siteId_year_month: { siteId, year, month } } }),
+  ]);
+  if (!stats || !recap) return null;
+  return recapEmail({
+    siteName: site.name, monthLabel: monthLabel(year, month), prevMonthLabel: MONTHS[prevYm.month - 1],
+    clicks: stats.clicks, prevClicks: prev?.clicks ?? null,
+    impressions: stats.impressions, prevImpressions: prev?.impressions ?? null,
+    position: stats.position, prevPosition: prev?.position ?? null,
+    contactCount: recap.contactCount, reviewCount: recap.reviewCount,
+    topQueries: (stats.topQueries as { query: string; clicks: number }[]) ?? [],
+    summary: recap.summary, href: appUrl(`/sites/${siteId}/resultats`),
+  });
 }
 
 /** Tâche du 4 du mois : tous les sites en ligne. */
