@@ -1,3 +1,4 @@
+import { UrlSelect } from "@/components/crm/url-select";
 import Link from "next/link";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
@@ -83,7 +84,7 @@ export default async function CalendrierPage({ searchParams }: { searchParams: P
         </div>
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
-        {chips.map((c) => <Link key={c.id} href={href({ c: c.id })} className={cn("rounded-full border px-3 py-1 text-xs", who === c.id ? "border-title bg-title font-semibold text-bg" : "border-border text-text hover:text-title")}>{c.label}</Link>)}
+        <UrlSelect className="w-full sm:w-56" label="Agenda de" value={chips.some((c) => c.id === who) ? who : "me"} options={chips.map((c) => ({ value: c.id, label: c.label, href: href({ c: c.id }) }))} />
         <Link href={`/crm/calendrier?${new URLSearchParams({ vue, d, c: who, ...(avecRappels ? { rappels: "0" } : {}) })}`} className={cn("ml-auto flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs", avecRappels ? "border-blue/50 text-blue" : "border-border text-text")}>
           <span className={cn("size-2 rounded-full border border-blue", avecRappels && "bg-blue")} /> Rappels à heure fixe
         </Link>

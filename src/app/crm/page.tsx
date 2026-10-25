@@ -7,20 +7,30 @@ import { cn } from "@/lib/cn";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { STATUT, contactName, fmtDay, fmtTime, relanceInfo, teamName, todayBounds } from "@/lib/crm";
 import { EnablePush } from "@/components/push/enable-push";
+import { UrlSelect } from "@/components/crm/url-select";
 
 /** Relances sans heure : seulement les fiches en cours de suivi (« À contacter » se travaille en session depuis le pipeline). */
 const JOURNEE: ProspectStatut[] = ["A_RELANCER", "POSER_RDV", "A_SIGNER"];
 
 export const metadata = { title: "Ma journée" };
 
+/** « Journée de Lucas », « Journée d’Arsène ». */
+const journeeDe = (n: string) => (/^[aeiouyhàâéèêëîïôöûüœ]/i.test(n) ? `Journée d’${n}` : `Journée de ${n}`);
+
 type Slot = { id: string; at: Date; kind: "rappel" | "rdv"; prospectId: string; nom: string; detail: string; phone: string | null; fait: boolean; qui: string | null };
 
 export default async function MaJournee({ searchParams }: { searchParams: Promise<{ vue?: string }> }) {
   const me = await requireTeam();
-  const equipe = (await searchParams).vue === "equipe";
+  const admin = me.role === "ADMIN";
+  const vue = (await searchParams).vue;
+  const equipe = vue === "equipe";
+  // Les admins peuvent ouvrir la journée d'un autre membre de l'équipe (?vue=<id>).
+  const team = await prisma.user.findMany({ where: { role: { in: ["ADMIN", "COMMERCIAL"] } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true } });
+  const autre = admin && vue && !equipe && vue !== me.id ? team.find((u) => u.id === vue) ?? null : null;
+  const cibleId = autre?.id ?? me.id;
   const { start, end } = todayBounds();
   const now = new Date();
-  const mine = equipe ? {} : { commercialId: me.id };
+  const mine = equipe ? {} : { commercialId: cibleId };
   const in7 = new Date(end.getTime() + 6 * 86400_000);
   const contactSel = { orderBy: [{ principal: "desc" as const }, { createdAt: "asc" as const }], take: 1, select: { prenom: true, nom: true, telephone: true } };
 
@@ -37,11 +47,11 @@ export default async function MaJournee({ searchParams }: { searchParams: Promis
       select: { id: true, societe: true, relanceAt: true, statut: true, telephone: true, commercial: { select: { firstName: true, email: true } }, contacts: contactSel, echanges: { where: { date: { gte: start } }, take: 1, select: { id: true } } },
     }),
     prisma.rendezVous.findMany({
-      where: { ...(equipe ? {} : { commercialId: me.id }), resultat: "PREVU", debut: { gte: start, lt: in7 } },
+      where: { ...(equipe ? {} : { commercialId: cibleId }), resultat: "PREVU", debut: { gte: start, lt: in7 } },
       orderBy: { debut: "asc" },
       include: { commercial: { select: { firstName: true, email: true } }, prospect: { select: { id: true, societe: true, telephone: true, contacts: contactSel } } },
     }),
-    prisma.echange.count({ where: { ...(equipe ? { auteurId: { not: null } } : { auteurId: me.id }), date: { gte: start }, type: { in: ["NRP", "APPEL", "PRISE_RDV"] } } }),
+    prisma.echange.count({ where: { ...(equipe ? { auteurId: { not: null } } : { auteurId: cibleId }), date: { gte: start }, type: { in: ["NRP", "APPEL", "PRISE_RDV"] } } }),
   ]);
 
   // Planning du jour : rappels à heure fixe + RDV du jour, dans l'ordre chronologique.
@@ -82,14 +92,20 @@ export default async function MaJournee({ searchParams }: { searchParams: Promis
   return (
     <main className="mx-auto max-w-3xl px-4 py-6">
       <p className="text-sm text-text capitalize">{fmtDay(now)}</p>
-      <h1 className="text-2xl">{hour < 18 ? "Bonjour" : "Bonsoir"} {me.firstName ?? ""}</h1>
+      <h1 className="text-2xl">{autre ? journeeDe(teamName(autre)) : `${hour < 18 ? "Bonjour" : "Bonsoir"} ${me.firstName ?? ""}`}</h1>
       <p className="mt-1 text-sm text-text">
         {prochain ? <>Prochain : <span className="font-semibold text-title">{fmtTime(prochain.at)}</span> · {prochain.nom}{aVenir > 1 ? ` (puis ${aVenir - 1} autre${aVenir > 2 ? "s" : ""})` : ""}</> : planning.length ? "Plus rien à heure fixe aujourd’hui." : "Aucun rappel à heure fixe aujourd’hui."}
       </p>
-      <div className="mt-3 flex gap-1.5">
-        <Link href="/crm" className={cn("rounded-full border px-3 py-1.5 text-sm", !equipe ? "border-title bg-title font-semibold text-bg" : "border-border text-text hover:text-title")}>Moi</Link>
-        <Link href="/crm?vue=equipe" className={cn("rounded-full border px-3 py-1.5 text-sm", equipe ? "border-title bg-title font-semibold text-bg" : "border-border text-text hover:text-title")}>Toute l’équipe</Link>
-      </div>
+      <UrlSelect
+        className="mt-3 w-full sm:w-64"
+        label="Vue"
+        value={equipe ? "equipe" : autre ? autre.id : "me"}
+        options={[
+          { value: "me", label: "Ma journée", href: "/crm" },
+          { value: "equipe", label: "Toute l’équipe", href: "/crm?vue=equipe" },
+          ...(admin ? team.filter((u) => u.id !== me.id).map((u) => ({ value: u.id, label: journeeDe(teamName(u)), href: `/crm?vue=${u.id}` })) : []),
+        ]}
+      />
 
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {tiles.map((t) => (
@@ -99,7 +115,7 @@ export default async function MaJournee({ searchParams }: { searchParams: Promis
           </Card>
         ))}
       </div>
-      {!equipe && <div className="mt-4"><EnablePush compact /></div>}
+      {!equipe && !autre && <div className="mt-4"><EnablePush compact /></div>}
 
       {/* 1. Planning à heure fixe, en premier, dans l'ordre de la journée */}
       <SectionTitle icon={AlarmClockIcon}>À heure fixe</SectionTitle>
