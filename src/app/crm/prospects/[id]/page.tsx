@@ -50,8 +50,10 @@ export default async function ProspectPage({ params, searchParams }: { params: P
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-4">
-      {/* Téléphone uniquement : bandeau de l'étape où en est le prospect. */}
+      {/* Bandeau de l’étape où en est le prospect (téléphone : pleine largeur). */}
       {ETAPE_IMAGE[p.statut] && <EtapeBanner statut={p.statut} className="-mx-4 -mt-4 mb-4 h-28 sm:hidden" />}
+      {/* Ordinateur : grand bandeau de l'étape. */}
+      {ETAPE_IMAGE[p.statut] && <EtapeBanner grand statut={p.statut} className="mb-6 hidden h-44 rounded-2xl sm:flex lg:h-52" />}
       {sess && (
         <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-card border border-yellow/40 bg-yellow/10 px-4 py-2.5 text-sm text-yellow">
           <ZapIcon size={16} aria-hidden />

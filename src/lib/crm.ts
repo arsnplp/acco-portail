@@ -48,6 +48,11 @@ export const ETAPE_IMAGE: Partial<Record<ProspectStatut, string>> = {
   A_CONTACTER: "/etapes/traineau.webp", A_RELANCER: "/etapes/trail.webp", POSER_RDV: "/etapes/arc.webp",
   RDV_POSE: "/etapes/boxe.webp", A_SIGNER: "/etapes/sommet.webp",
 };
+/** Mêmes bandeaux en grand format, pour la fiche prospect sur ordinateur. */
+export const ETAPE_IMAGE_PC: Partial<Record<ProspectStatut, string>> = {
+  A_CONTACTER: "/etapes/traineau-pc.webp", A_RELANCER: "/etapes/trail-pc.webp", POSER_RDV: "/etapes/arc-pc.webp",
+  RDV_POSE: "/etapes/boxe-pc.webp", A_SIGNER: "/etapes/sommet-pc.webp",
+};
 export const STATUT_COULEUR: Record<ProspectStatut, string> = {
   A_CONTACTER: VIZ.blue, A_RELANCER: VIZ.violet, POSER_RDV: VIZ.yellow, RDV_POSE: VIZ.orange, A_SIGNER: VIZ.magenta, GAGNE: VIZ.aqua, PERDU: "#4b4e55",
 };
