@@ -23,6 +23,14 @@ npx tsx --env-file=.env scripts/import-crm.mts --crm ~/Downloads/CRM_APP.xlsx --
 L'import n'envoie **aucun** mail, push ni invitation. Il recrée les vrais clients dans le portail (client, site,
 abonnement) sans compte de connexion ; leurs contacts sont rangés dans leur fiche CRM. Relançable sans doublon.
 
+## Données de test
+```bash
+npx tsx --env-file=.env scripts/donnees-test-crm.mts --creer      # ~43 prospects « (test) », échanges, RDV, 2 projets
+npx tsx --env-file=.env scripts/donnees-test-crm.mts --supprimer  # retire tout ce qui est marqué test
+```
+Uniquement dans les tables du CRM : aucun client, site, abonnement ou compte du portail, aucun mail. Les numéros
+utilisent la plage 06 39 98 réservée à la fiction (ARCEP) et les emails @example.com.
+
 ## À venir
 Mode Production (projets, modèles, to-do, récurrence, brief), calendrier, cockpit stats, passage client depuis
 « Gagné », contrat Google Docs.
