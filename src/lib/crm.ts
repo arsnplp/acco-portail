@@ -12,7 +12,12 @@ export const STATUT: Record<ProspectStatut, { label: string; tone: Tone }> = {
   A_SIGNER: { label: "À signer", tone: "pink" },
   GAGNE: { label: "Gagné", tone: "green" },
   PERDU: { label: "Perdu", tone: "neutral" },
+  ABANDON: { label: "Abandon", tone: "neutral" },
 };
+/** Fiches closes : hors pipeline, hors journée et calendrier. « Abandon » est distinct de « Perdu » (écartée, repêchable). */
+export const CLOS: ProspectStatut[] = ["GAGNE", "PERDU", "ABANDON"];
+/** Tous les statuts, dans l'ordre des menus déroulants. */
+export const TOUS_STATUTS: ProspectStatut[] = [...PIPELINE, "GAGNE", "PERDU", "ABANDON"];
 
 export const ECHANGE: Record<EchangeType, { label: string; short: string }> = {
   NRP: { label: "NRP (ne répond pas)", short: "NRP" },
@@ -54,10 +59,14 @@ export const ETAPE_IMAGE_PC: Partial<Record<ProspectStatut, string>> = {
   RDV_POSE: "/etapes/boxe-pc.webp", A_SIGNER: "/etapes/sommet-pc.webp",
 };
 export const STATUT_COULEUR: Record<ProspectStatut, string> = {
-  A_CONTACTER: VIZ.blue, A_RELANCER: VIZ.violet, POSER_RDV: VIZ.yellow, RDV_POSE: VIZ.orange, A_SIGNER: VIZ.magenta, GAGNE: VIZ.aqua, PERDU: "#4b4e55",
+  A_CONTACTER: VIZ.blue, A_RELANCER: VIZ.violet, POSER_RDV: VIZ.yellow, RDV_POSE: VIZ.orange, A_SIGNER: VIZ.magenta, GAGNE: VIZ.aqua, PERDU: "#4b4e55", ABANDON: "#7a7d85",
 };
 
 export const MOTIFS_PERTE = ["Pas intéressé", "A déjà un site", "Trop cher", "Injoignable", "Pas le bon moment", "Autre"];
+/** Motifs d'abandon (fiche écartée sans être perdue : hors cible, doublon, fermée…). */
+export const MOTIFS_ABANDON = ["Hors cible", "Entreprise fermée", "Doublon", "Numéro invalide", "Injoignable", "Autre"];
+/** Nombre d'appels (NRP ou appels) attendus avant de considérer la séquence faite. */
+export const SEQUENCE_APPELS = 5;
 
 /**
  * Ce que propose « Noter un échange » selon le type : nouveau statut (null = inchangé) et relance dans N jours.
@@ -68,7 +77,7 @@ export const REGLES: Record<EchangeType, { statut: ProspectStatut | null; relanc
   APPEL: { statut: null, relanceJours: 7 },
   MAIL: { statut: null, relanceJours: 3 },
   PP: { statut: null, relanceJours: 7 },
-  PRISE_RDV: { statut: "RDV_POSE", relanceJours: null }, // relance = jour du RDV
+  PRISE_RDV: { statut: "RDV_POSE", relanceJours: null }, // RDV posé : la date de relance est effacée (le RDV suffit)
   RDV: { statut: "A_SIGNER", relanceJours: 2 },
   NO_SHOW: { statut: "POSER_RDV", relanceJours: 1 }, // on recale un RDV dès demain
   NOTE: { statut: null, relanceJours: null },

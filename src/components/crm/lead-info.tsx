@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
-import { ExternalLinkIcon, FileSearchIcon, InfoIcon, MapPinIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ExternalLinkIcon, FileSearchIcon, InfoIcon, MapPinIcon, SparklesIcon } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 import { COLONNES, ficheGoogle, type Colonne, type LeadRow } from "@/lib/leads/colonnes";
+import { enrichProspect } from "@/app/crm/actions";
 
-type LeadInfo = { listeId: string; liste: string; generee: string; donnees: LeadRow } | null;
+/** Infos d'un lead du coffre (listeId renseigné) ou infos générées depuis la fiche (« Générer les infos »). */
+type LeadInfo = { listeId: string | null; liste: string | null; generee: string; donnees: LeadRow } | null;
 
 /** Groupes de colonnes pour la fenêtre « Infos du lead ». */
 const GROUPES: { titre: string; cols: Colonne[] }[] = [
@@ -31,24 +34,42 @@ function valeur(c: Colonne, v: unknown, d: LeadRow) {
   return s;
 }
 
-export function LeadInfoButton({ lead }: { lead: LeadInfo }) {
+export function LeadInfoButton({ prospectId, lead }: { prospectId: string; lead: LeadInfo }) {
   const [open, setOpen] = useState(false);
+  const [pending, start] = useTransition();
+  const [msg, setMsg] = useState<string | null>(null);
+  const router = useRouter();
+  const generer = () => start(async () => {
+    setMsg(null);
+    const r = await enrichProspect(prospectId);
+    setMsg(r.error ?? (r.web ? "Infos générées (registre officiel, audit du site, recherche web)." : "Infos générées (registre officiel et audit du site ; ajoutez une clé Anthropic dans Paramètres pour la recherche web : fiche Google, avis, réseaux)."));
+    router.refresh();
+  });
+  const bouton = (
+    <button type="button" onClick={generer} disabled={pending} className="flex h-10 items-center gap-2 rounded-card bg-title px-3 text-sm font-semibold text-bg disabled:opacity-60">
+      <SparklesIcon size={15} aria-hidden /> {pending ? "Génération… (jusqu’à 1 min)" : lead ? "Regénérer les infos" : "Générer les infos"}
+    </button>
+  );
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} className="flex h-11 items-center gap-2 rounded-card border border-border px-3 text-sm text-text-strong hover:border-text hover:text-title">
         <FileSearchIcon size={16} aria-hidden /> <span className="hidden sm:inline">Infos du lead</span>
       </button>
       {open && (
-        <Dialog title="Infos du lead" size="lg" onClose={() => setOpen(false)}>
+        <Dialog title="Infos du lead" size="lg" onClose={() => setOpen(false)} header={lead?.listeId ? undefined : bouton}>
+          {msg && <p className={`mb-3 text-sm ${/Impossible|introuvable|erreur/i.test(msg) ? "text-pink" : "text-green"}`}>{msg}</p>}
           {!lead ? (
             <div className="flex gap-3 rounded-card border border-border bg-surface p-4 text-sm text-text-strong">
               <InfoIcon size={18} className="mt-0.5 shrink-0 text-text" aria-hidden />
-              <p>Pas d’infos de lead pour cette fiche : elle a été créée à la main (ou importée de l’ancien CRM), elle ne vient pas d’une liste du coffre à leads. Les informations disponibles sont celles de la fiche (bloc Société et contacts).</p>
+              <div className="space-y-2">
+                <p>Pas d’infos de lead pour cette fiche : elle a été créée à la main (ou importée de l’ancien CRM), elle ne vient pas d’une liste du coffre à leads.</p>
+                <p>« Générer les infos » remplit les mêmes {COLONNES.length} colonnes qu’un lead du coffre à partir du nom, de l’adresse et du site : registre officiel (SIREN, dirigeant, forme juridique…), audit du site, et recherche web (fiche Google, note et avis, réseaux). Les champs vides de la fiche sont complétés ; ce qui est déjà saisi n’est pas écrasé.</p>
+              </div>
             </div>
           ) : (
             <div className="space-y-5">
               <p className="text-sm text-text">
-                Issu de la liste <Link href={`/crm/leads/${lead.listeId}`} className="font-semibold text-title hover:underline">{lead.liste}</Link>, générée {lead.generee}.
+                {lead.listeId ? <>Issu de la liste <Link href={`/crm/leads/${lead.listeId}`} className="font-semibold text-title hover:underline">{lead.liste}</Link>, générée {lead.generee}.</> : <>Infos générées depuis la fiche {lead.generee}.</>}
               </p>
               {GROUPES.map((g) => (
                 <section key={g.titre}>

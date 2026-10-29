@@ -4,13 +4,14 @@ import { DateInput, TimeInput } from "@/components/ui/date-time";
 import { TelInput } from "@/components/crm/tel-input";
 import { useActionState, useEffect, useState, useTransition } from "react";
 import type { EchangeType, ProspectSource, ProspectStatut, RdvResultat } from "@prisma/client";
-import { BellIcon, UserXIcon, CalendarClockIcon, CheckIcon, HistoryIcon, MessageSquarePlusIcon, PencilIcon, PlusIcon, StarIcon, Trash2Icon, UserRoundIcon, BuildingIcon } from "lucide-react";
+import { BellIcon, UserXIcon, CalendarClockIcon, CheckIcon, HistoryIcon, MessageSquarePlusIcon, PencilIcon, PlusIcon, RefreshCwIcon, StarIcon, Trash2Icon, UserRoundIcon, BuildingIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { ECHANGE, ECHANGE_SAISIE, NOTE_OBLIGATOIRE, MOTIFS_PERTE, PIPELINE, REGLES, SOURCE, STATUT, fmtDayTime, statutApres } from "@/lib/crm";
+import { ECHANGE, ECHANGE_SAISIE, NOTE_OBLIGATOIRE, MOTIFS_ABANDON, MOTIFS_PERTE, REGLES, SOURCE, STATUT, TOUS_STATUTS, fmtDayTime, statutApres } from "@/lib/crm";
 import { Field, FormError, Input, Select, Textarea } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { SectionTitle } from "@/components/ui/card";
-import { assignProspect, deleteContact, deleteEchange, deleteProspect, logEchange, saveContact, setRdvResultat, updateProspect, type CrmState } from "../../actions";
+import { AircallBloc, AircallTitre, GmailBloc, isAircallMeta, isGmailMeta } from "@/components/crm/echange-detail";
+import { assignProspect, deleteContact, deleteEchange, deleteProspect, logEchange, saveContact, setRdvResultat, syncProspectNow, updateProspect, type CrmState } from "../../actions";
 
 const box = "rounded-card border border-border bg-surface p-4";
 const plusDays = (today: string, n: number) => { const d = new Date(`${today}T12:00:00`); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
@@ -114,9 +115,11 @@ export function EchangeForm({ prospectId, statut, session, today }: { prospectId
             )}
             <Field label="Statut après l’échange">
               <Select name="statut" value={next} onChange={(e) => setNext(e.target.value as ProspectStatut)}>
-                {[...PIPELINE, "GAGNE" as const, "PERDU" as const].map((s) => <option key={s} value={s}>{STATUT[s].label}</option>)}
+                {TOUS_STATUTS.map((s) => <option key={s} value={s}>{STATUT[s].label}</option>)}
               </Select>
             </Field>
+            {next === "RDV_POSE" && type !== "PRISE_RDV" && !report && <p className="text-xs text-muted">RDV posé : la date de relance est effacée, le rendez-vous suffit.</p>}
+            {(next === "PERDU" || next === "ABANDON") && <MotifField statut={next} />}
             <FormError message={state.error} />
             <SubmitButton className="w-full" pendingLabel="Enregistrement…">{session ? "Enregistrer et passer au suivant" : "Enregistrer"}</SubmitButton>
           </>
@@ -126,28 +129,55 @@ export function EchangeForm({ prospectId, statut, session, today }: { prospectId
   );
 }
 
+/** Motif de perte ou d'abandon (listes différentes : un abandon n'est pas une vente perdue). */
+function MotifField({ statut, defaultValue }: { statut: "PERDU" | "ABANDON"; defaultValue?: string | null }) {
+  const motifs = statut === "ABANDON" ? MOTIFS_ABANDON : MOTIFS_PERTE;
+  return (
+    <Field label={statut === "ABANDON" ? "Motif d’abandon" : "Motif de perte"} hint={statut === "ABANDON" ? "la fiche reste consultable et repêchable" : undefined}>
+      <Select name="motifPerte" defaultValue={defaultValue && motifs.includes(defaultValue) ? defaultValue : ""}><option value="">—</option>{motifs.map((m) => <option key={m}>{m}</option>)}</Select>
+    </Field>
+  );
+}
+
 // ─── Historique ──────────────────────────────────────────────
-type Item = { id: string; type: EchangeType; notes: string | null; date: string; auteur: string | null; client: boolean };
-export function Historique({ items }: { items: Item[] }) {
-  const [, start] = useTransition();
+type Item = { id: string; type: EchangeType; notes: string | null; date: string; auteur: string | null; auteurId: string | null; client: boolean; origine: string; meta: unknown };
+export function Historique({ prospectId, items, meId, isAdmin, syncInfo }: { prospectId: string; items: Item[]; meId: string; isAdmin: boolean; syncInfo: string | null }) {
+  const [pending, start] = useTransition();
+  const [msg, setMsg] = useState<string | null>(null);
+  const actualiser = () => start(async () => {
+    const r = await syncProspectNow(prospectId);
+    setMsg(r.errors.length ? r.errors.join(" ") : r.calls + r.emails === 0 ? "Rien de nouveau (Aircall et emails)." : `${r.calls} appel${r.calls > 1 ? "s" : ""} et ${r.emails} mail${r.emails > 1 ? "s" : ""} ajoutés ou mis à jour.`);
+  });
+  const canDelete = (e: Item) => !e.client && (isAdmin || e.auteurId === meId) && e.origine !== "aircall" && e.origine !== "gmail";
   return (
     <section>
-      <SectionTitle icon={HistoryIcon}>Historique <span className="text-sm font-normal text-text">{items.length}</span></SectionTitle>
+      <SectionTitle icon={HistoryIcon} action={
+        <button type="button" onClick={actualiser} disabled={pending} title="Récupérer les appels Aircall et les emails de cette fiche" className="flex items-center gap-1.5 text-sm text-text hover:text-title disabled:opacity-50">
+          <RefreshCwIcon size={14} className={pending ? "animate-spin" : undefined} aria-hidden /> {pending ? "Synchronisation…" : "Actualiser"}
+        </button>
+      }>Historique <span className="text-sm font-normal text-text">{items.length}</span></SectionTitle>
+      {(msg || syncInfo) && <p className={cn("mb-3 text-xs", msg && /reconnectez|refuse|manquantes|Gmail :|Aircall :/.test(msg) ? "text-pink" : "text-muted")}>{msg ?? syncInfo}</p>}
       {items.length === 0 ? <p className="text-sm text-text">Aucun échange pour l’instant.</p> : (
         <ol className="relative space-y-3 border-l border-border pl-5">
-          {items.map((e) => (
-            <li key={e.id} className="group relative">
-              <span className={cn("absolute top-1.5 -left-[25px] size-2.5 rounded-full border-2 border-bg", e.type === "NRP" ? "bg-muted" : e.type === "NO_SHOW" ? "bg-pink" : e.type === "PRISE_RDV" || e.type === "RDV" ? "bg-claude" : "bg-blue")} />
-              <div className="flex flex-wrap items-baseline gap-x-2 text-xs text-text">
-                <span className={cn("font-semibold", e.type === "NO_SHOW" ? "text-pink" : "text-text-strong")}>{ECHANGE[e.type].short}</span>
-                <span>{fmtDayTime(e.date)}</span>
-                {e.auteur && <span>· {e.auteur}</span>}
-                {e.client && <span className="text-green">· client</span>}
-                {!e.client && <button type="button" onClick={() => confirm("Supprimer cet échange ?") && start(() => deleteEchange(e.id))} className="ml-auto hidden text-muted hover:text-pink group-hover:inline" aria-label="Supprimer"><Trash2Icon size={13} /></button>}
-              </div>
-              {e.notes && <p className="mt-1 text-sm whitespace-pre-line text-text-strong">{e.notes.length > 600 ? e.notes.slice(0, 600) + "…" : e.notes}</p>}
-            </li>
-          ))}
+          {items.map((e) => {
+            const call = isAircallMeta(e.meta) ? e.meta : null, mail = isGmailMeta(e.meta) ? e.meta : null;
+            return (
+              <li key={e.id} className="group relative">
+                <span className={cn("absolute top-1.5 -left-[25px] size-2.5 rounded-full border-2 border-bg", e.type === "NRP" ? "bg-muted" : e.type === "NO_SHOW" ? "bg-pink" : e.type === "PRISE_RDV" || e.type === "RDV" ? "bg-claude" : e.type === "MAIL" ? "bg-green" : "bg-blue")} />
+                <div className="flex flex-wrap items-baseline gap-x-2 text-xs text-text">
+                  <span className={cn("font-semibold", e.type === "NO_SHOW" ? "text-pink" : "text-text-strong")}>{call && e.origine === "aircall" ? "Appel Aircall" : mail ? (mail.direction === "recu" ? "Mail reçu" : "Mail envoyé") : ECHANGE[e.type].short}</span>
+                  {call && <AircallTitre m={call} />}
+                  <span>{fmtDayTime(e.date)}</span>
+                  {e.auteur && !(call && e.origine === "aircall") && <span>· {e.auteur}</span>}
+                  {e.client && <span className="text-green">· client</span>}
+                  {canDelete(e) && <button type="button" onClick={() => confirm("Supprimer cet échange ?") && start(() => deleteEchange(e.id))} className="ml-auto hidden text-muted hover:text-pink group-hover:inline" aria-label="Supprimer"><Trash2Icon size={13} /></button>}
+                </div>
+                {e.notes && e.origine !== "aircall" && !mail && <p className="mt-1 text-sm whitespace-pre-line text-text-strong">{e.notes.length > 600 ? e.notes.slice(0, 600) + "…" : e.notes}</p>}
+                {call && <AircallBloc echangeId={e.id} m={call} />}
+                {mail && <GmailBloc m={mail} />}
+              </li>
+            );
+          })}
         </ol>
       )}
     </section>
@@ -240,10 +270,11 @@ export function ProspectForm({ p, team, cibles, canDelete, isAdmin }: { p: P; te
       <SectionTitle icon={BuildingIcon}>Société</SectionTitle>
       <form action={action} className={cn(box, "space-y-3")}>
         <Field label="Société"><Input name="societe" defaultValue={p.societe} required /></Field>
+        <Field label="Site web"><Input name="siteWeb" defaultValue={p.siteWeb ?? ""} placeholder="exemple.fr" /></Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Statut">
             <Select name="statut" value={statut} onChange={(e) => setStatut(e.target.value as ProspectStatut)}>
-              {[...PIPELINE, "GAGNE" as const, "PERDU" as const].map((s) => <option key={s} value={s}>{STATUT[s].label}</option>)}
+              {TOUS_STATUTS.map((s) => <option key={s} value={s}>{STATUT[s].label}</option>)}
             </Select>
           </Field>
           <Field label="Prochaine relance">
@@ -253,11 +284,8 @@ export function ProspectForm({ p, team, cibles, canDelete, isAdmin }: { p: P; te
             </div>
           </Field>
         </div>
-        {statut === "PERDU" && (
-          <Field label="Motif de perte">
-            <Select name="motifPerte" defaultValue={p.motifPerte ?? ""}><option value="">—</option>{MOTIFS_PERTE.map((m) => <option key={m}>{m}</option>)}</Select>
-          </Field>
-        )}
+        {(statut === "PERDU" || statut === "ABANDON") && <MotifField statut={statut} defaultValue={p.motifPerte} />}
+        {statut === "RDV_POSE" && p.statut !== "RDV_POSE" && <p className="text-xs text-muted">RDV posé : la date de relance sera effacée à l’enregistrement.</p>}
         <div className="grid grid-cols-2 gap-3">
           <Field label="Commercial">
             <Select name="commercialId" defaultValue={p.commercialId ?? ""} disabled={!isAdmin} title={isAdmin ? undefined : "Seuls les admins attribuent un prospect"}><option value="">Personne</option>{team.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</Select>
@@ -271,7 +299,6 @@ export function ProspectForm({ p, team, cibles, canDelete, isAdmin }: { p: P; te
           </Field>
           <Field label="Téléphone"><TelInput name="telephone" defaultValue={p.telephone ?? ""} /></Field>
         </div>
-        <Field label="Site web"><Input name="siteWeb" defaultValue={p.siteWeb ?? ""} placeholder="exemple.fr" /></Field>
         <Field label="Adresse"><Input name="adresse" defaultValue={p.adresse ?? ""} /></Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Dirigeant"><Input name="dirigeant" defaultValue={p.dirigeant ?? ""} /></Field>
@@ -287,7 +314,8 @@ export function ProspectForm({ p, team, cibles, canDelete, isAdmin }: { p: P; te
         <div className="flex items-center gap-3">
           <SubmitButton pendingLabel="Enregistrement…">Enregistrer</SubmitButton>
           {saved && <span className="flex items-center gap-1 text-sm text-green"><CheckIcon size={15} /> Enregistré</span>}
-          {canDelete && <button type="button" onClick={() => confirm("Supprimer définitivement cette fiche et son historique ?") && start(() => deleteProspect(p.id))} className="ml-auto text-sm text-text hover:text-pink">Supprimer la fiche</button>}
+          {canDelete ? <button type="button" onClick={() => confirm("Supprimer définitivement cette fiche et son historique ?") && start(() => deleteProspect(p.id))} className="ml-auto text-sm text-text hover:text-pink">Supprimer la fiche</button>
+            : !isAdmin && <span className="ml-auto text-xs text-muted" title="La suppression est réservée aux admins">Pour écarter la fiche : statut « Abandon »</span>}
         </div>
       </form>
     </section>

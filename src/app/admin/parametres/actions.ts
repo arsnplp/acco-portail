@@ -48,12 +48,13 @@ export async function saveServices(_prev: ServicesState, formData: FormData): Pr
   const { SECRETS, FEATURES, getSecret } = await import("@/lib/settings");
   const { verifySecret } = await import("@/lib/verify-keys");
   const errors: Record<string, string> = {}, infos: Record<string, string> = {};
+  const typed = Object.fromEntries((Object.keys(SECRETS) as Array<keyof typeof SECRETS>).map((k) => [k, String(formData.get(k) ?? "").trim()])) as Partial<Record<keyof typeof SECRETS, string>>;
 
   for (const key of Object.keys(SECRETS) as Array<keyof typeof SECRETS>) {
     if (formData.get(`${key}__clear`) === "on") { await prisma.setting.deleteMany({ where: { key } }); infos[key] = "Clé effacée."; continue; }
     const value = String(formData.get(key) ?? "").trim();
     if (!value) continue;
-    const v = await verifySecret(key, value);
+    const v = await verifySecret(key, value, typed);
     if (!v.ok) { errors[key] = v.error; continue; }
     await prisma.setting.upsert({ where: { key }, create: { key, value }, update: { value } });
     infos[key] = v.detail ?? "Clé enregistrée.";

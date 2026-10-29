@@ -8,11 +8,11 @@ import {
 } from "@dnd-kit/core";
 import type { ProspectStatut } from "@prisma/client";
 import Link from "next/link";
-import { ChevronDownIcon, PhoneIcon, UsersIcon, PlayIcon, SearchIcon, TrophyIcon, XCircleIcon } from "lucide-react";
+import { ArchiveIcon, ChevronDownIcon, PhoneIcon, UsersIcon, PlayIcon, SearchIcon, TrophyIcon, XCircleIcon } from "lucide-react";
 import { NrpMeter } from "@/components/crm/nrp-meter";
 import { cn } from "@/lib/cn";
 import { EtapeBanner } from "@/components/crm/etape-banner";
-import { matchRecherche, MOTIFS_PERTE, PIPELINE, initialsOf, logoUrl, relanceInfo } from "@/lib/crm";
+import { CLOS, matchRecherche, MOTIFS_ABANDON, MOTIFS_PERTE, PIPELINE, initialsOf, logoUrl, relanceInfo } from "@/lib/crm";
 import { Dialog } from "@/components/ui/dialog";
 import { moveProspect } from "../actions";
 import { Logo } from "@/components/crm/logo";
@@ -31,7 +31,7 @@ export function Board({ initial, team, cibles, meId, initialFilter }: { initial:
   const [q, setQ] = useState("");
   const [cible, setCible] = useState("");
   const [dragging, setDragging] = useState<CardData | null>(null);
-  const [lost, setLost] = useState<CardData | null>(null);
+  const [lost, setLost] = useState<{ card: CardData; statut: "PERDU" | "ABANDON" } | null>(null);
   const [, start] = useTransition();
   const members = useMemo(() => new Map(team.map((m) => [m.id, m])), [team]);
 
@@ -48,7 +48,7 @@ export function Board({ initial, team, cibles, meId, initialFilter }: { initial:
   );
 
   function move(id: string, statut: ProspectStatut, motif?: string) {
-    setCards((cs) => (statut === "GAGNE" || statut === "PERDU" ? cs.filter((c) => c.id !== id) : cs.map((c) => (c.id === id ? { ...c, statut } : c))));
+    setCards((cs) => (CLOS.includes(statut) ? cs.filter((c) => c.id !== id) : cs.map((c) => (c.id === id ? { ...c, statut } : c))));
     start(async () => { await moveProspect(id, statut, motif); router.refresh(); });
   }
 
@@ -57,7 +57,7 @@ export function Board({ initial, team, cibles, meId, initialFilter }: { initial:
     const card = cards.find((c) => c.id === e.active.id);
     const to = e.over?.id as ProspectStatut | undefined;
     if (!card || !to || to === card.statut) return;
-    if (to === "PERDU") return setLost(card);
+    if (to === "PERDU" || to === "ABANDON") return setLost({ card, statut: to });
     move(card.id, to);
   }
 
@@ -93,20 +93,21 @@ export function Board({ initial, team, cibles, meId, initialFilter }: { initial:
           ))}
         </div>
         {dragging && (
-          <div className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-2 gap-3 border-t border-border bg-bg/95 p-3 backdrop-blur" style={{ paddingBottom: "calc(12px + env(safe-area-inset-bottom))" }}>
+          <div className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-3 gap-3 border-t border-border bg-bg/95 p-3 backdrop-blur" style={{ paddingBottom: "calc(12px + env(safe-area-inset-bottom))" }}>
             <EndZone statut="GAGNE" />
             <EndZone statut="PERDU" />
+            <EndZone statut="ABANDON" />
           </div>
         )}
         <DragOverlay dropAnimation={null}>{dragging ? <Card card={dragging} member={dragging.commercialId ? members.get(dragging.commercialId) : undefined} overlay /> : null}</DragOverlay>
       </DndContext>
 
       {lost && (
-        <Dialog title={`Perdu : ${lost.societe}`} onClose={() => setLost(null)}>
-          <p className="mb-3 text-sm text-text">Pourquoi ? La fiche sort du pipeline et reste dans les archives.</p>
+        <Dialog title={`${lost.statut === "PERDU" ? "Perdu" : "Abandon"} : ${lost.card.societe}`} onClose={() => setLost(null)}>
+          <p className="mb-3 text-sm text-text">{lost.statut === "PERDU" ? "Pourquoi ? La fiche sort du pipeline et reste dans les archives." : "Pourquoi ? La fiche est écartée sans être supprimée : on la retrouve (et on la repêche) dans « Tous les prospects »."}</p>
           <div className="grid grid-cols-2 gap-2">
-            {MOTIFS_PERTE.map((m) => (
-              <button key={m} type="button" onClick={() => { move(lost.id, "PERDU", m); setLost(null); }} className="rounded-card border border-border px-3 py-3 text-sm text-title hover:border-text">{m}</button>
+            {(lost.statut === "PERDU" ? MOTIFS_PERTE : MOTIFS_ABANDON).map((m) => (
+              <button key={m} type="button" onClick={() => { move(lost.card.id, lost.statut, m); setLost(null); }} className="rounded-card border border-border px-3 py-3 text-sm text-title hover:border-text">{m}</button>
             ))}
           </div>
         </Dialog>
@@ -176,13 +177,16 @@ function Card({ card, member, overlay }: { card: CardData; member?: Member; over
   );
 }
 
-function EndZone({ statut }: { statut: "GAGNE" | "PERDU" }) {
+function EndZone({ statut }: { statut: "GAGNE" | "PERDU" | "ABANDON" }) {
   const { setNodeRef, isOver } = useDroppable({ id: statut });
-  const won = statut === "GAGNE";
-  const Icon = won ? TrophyIcon : XCircleIcon;
+  const styles = {
+    GAGNE: { Icon: TrophyIcon, label: "Gagné", on: "border-green bg-green/15 text-green", off: "border-green/40 text-green" },
+    PERDU: { Icon: XCircleIcon, label: "Perdu", on: "border-pink bg-pink/15 text-pink", off: "border-pink/40 text-pink" },
+    ABANDON: { Icon: ArchiveIcon, label: "Abandon", on: "border-text bg-surface-2 text-title", off: "border-border text-text" },
+  }[statut];
   return (
-    <div ref={setNodeRef} className={cn("flex h-16 items-center justify-center gap-2 rounded-card border-2 border-dashed text-sm font-semibold", won ? (isOver ? "border-green bg-green/15 text-green" : "border-green/40 text-green") : isOver ? "border-pink bg-pink/15 text-pink" : "border-pink/40 text-pink")}>
-      <Icon size={18} aria-hidden /> {won ? "Gagné" : "Perdu"}
+    <div ref={setNodeRef} className={cn("flex h-16 items-center justify-center gap-2 rounded-card border-2 border-dashed text-sm font-semibold", isOver ? styles.on : styles.off)}>
+      <styles.Icon size={18} aria-hidden /> {styles.label}
     </div>
   );
 }

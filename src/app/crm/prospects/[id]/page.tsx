@@ -11,6 +11,7 @@ import { requireTeam } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { Logo } from "@/components/crm/logo";
 import { ETAPE_IMAGE, STATUT, contactName, fmtDayTime, fmtTime, logoUrl, relanceInfo, teamName, parisDay, todayBounds } from "@/lib/crm";
+import { syncProspect } from "@/lib/crm-sync";
 import { EchangeForm, ProspectForm, Contacts, Historique, AssignControl, RdvList } from "./forms";
 
 export const metadata = { title: "Fiche prospect" };
@@ -20,6 +21,8 @@ export default async function ProspectPage({ params, searchParams }: { params: P
   const { id } = await params;
   const sp = await searchParams;
   const sess = sp.session === "1" ? readSession(sp) : null;
+  // Appels Aircall et emails de la fiche : au plus une fois toutes les 10 minutes (bouton « Actualiser » pour forcer).
+  const sync = await syncProspect(id).catch((e) => ({ calls: 0, emails: 0, errors: [(e as Error).message] }));
   const [p, team, cibles] = await Promise.all([
     prisma.prospect.findUnique({
       where: { id },
@@ -82,7 +85,7 @@ export default async function ProspectPage({ params, searchParams }: { params: P
           </div>
         </div>
         <div className="flex w-full items-center gap-2 sm:w-auto">
-          <LeadInfoButton lead={p.lead ? { listeId: p.lead.listeId, liste: `${p.lead.liste.secteur} · ${p.lead.liste.region}`, generee: fmtDayTime(p.lead.liste.createdAt), donnees: p.lead.donnees as LeadRow } : null} />
+          <LeadInfoButton prospectId={p.id} lead={p.lead ? { listeId: p.lead.listeId, liste: `${p.lead.liste.secteur} · ${p.lead.liste.region}`, generee: fmtDayTime(p.lead.liste.createdAt), donnees: p.lead.donnees as LeadRow } : p.infos ? { listeId: null, liste: null, generee: p.infosAt ? fmtDayTime(p.infosAt) : "", donnees: p.infos as LeadRow } : null} />
           {phone && <a href={`tel:${phone.replace(/\s/g, "")}`} className="flex h-11 flex-1 items-center justify-center gap-2 rounded-card bg-title px-4 text-sm font-semibold text-bg sm:flex-none"><PhoneIcon size={16} aria-hidden /> {phone}</a>}
           {email && <a href={`mailto:${email}`} aria-label="Écrire un mail" className="flex size-11 items-center justify-center rounded-card border border-border text-text hover:text-title"><MailIcon size={17} /></a>}
           {p.siteWeb && <a href={p.siteWeb} target="_blank" rel="noreferrer" aria-label="Ouvrir le site" className="flex size-11 items-center justify-center rounded-card border border-border text-text hover:text-title"><ExternalLinkIcon size={17} /></a>}
@@ -98,7 +101,11 @@ export default async function ProspectPage({ params, searchParams }: { params: P
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         <div className="space-y-6">
           <EchangeForm prospectId={p.id} statut={p.statut} session={sess ? sessionQuery(sess) : ""} today={parisDay()} />
-          <Historique items={echanges.map((e) => ({ id: e.id, type: e.type, notes: e.notes, date: e.date.toISOString(), auteur: e.auteur ? teamName(e.auteur) : e.auteurNom, client: !e.prospectId }))} />
+          <Historique
+            prospectId={p.id} meId={me.id} isAdmin={me.role === "ADMIN"}
+            syncInfo={sync?.errors.length ? sync.errors.join(" ") : null}
+            items={echanges.map((e) => ({ id: e.id, type: e.type, notes: e.notes, date: e.date.toISOString(), auteur: e.auteur ? teamName(e.auteur) : e.auteurNom, auteurId: e.auteurId, client: !e.prospectId, origine: e.origine, meta: e.meta }))}
+          />
         </div>
         <div className="space-y-6">
           <RdvList items={p.rendezVous.map((x) => ({ id: x.id, debut: x.debut.toISOString(), lieu: x.lieu, resultat: x.resultat, report: !!x.reportDeId }))} />

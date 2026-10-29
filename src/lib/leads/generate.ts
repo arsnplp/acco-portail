@@ -14,7 +14,7 @@ import { auditSite, type Audit } from "./audit";
 import { fmtPhone, hostOf, norm, normPhone, similarity } from "./texte";
 import type { LeadRow } from "./colonnes";
 
-type Trouve = {
+export type Trouve = {
   entreprise: string; secteur?: string | null; code_postal?: string | null; ville?: string | null; adresse?: string | null; telephone?: string | null;
   email?: string | null; site_web?: string | null; note_google?: number | string | null; avis_google?: number | string | null; facebook?: string | null;
   instagram?: string | null; fiche_google?: string | null; google_ads?: boolean | string | null; presence?: string | null; source?: string | null;
@@ -89,7 +89,7 @@ ${contraintes.length ? `\nContraintes impératives :\n${contraintes.join("\n")}\
 Déjà connues (à exclure) : ${connues.length ? connues.join(" ; ") : "aucune"}`;
 }
 
-async function anthropicKey() {
+export async function anthropicKey() {
   return (await getSecret("anthropic_api_key")) ?? (await getSecret("claude_code_api_key"));
 }
 
@@ -159,7 +159,7 @@ function scoreLead(t: Trouve, audit: Audit, reg: Registre | null) {
   return Math.max(1, Math.min(100, Math.round(s)));
 }
 
-function row(t: Trouve, reg: Registre | null, audit: Audit): LeadRow {
+export function row(t: Trouve, reg: Registre | null, audit: Audit): LeadRow {
   const ville = [t.code_postal, t.ville].filter(Boolean).join(" ") || null;
   const faiblesses = [...audit.faiblesses, ...(!t.facebook && !t.instagram ? ["Aucune présence réseaux"] : [])];
   return {

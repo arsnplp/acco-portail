@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 export const GOOGLE_SCOPES = [
   "https://www.googleapis.com/auth/webmasters.readonly", // Search Console (lecture)
   "https://www.googleapis.com/auth/business.manage", // Fiche Google : avis et réponses (étape 7)
+  "https://www.googleapis.com/auth/gmail.readonly", // CRM : historique des emails échangés avec un prospect (lecture seule)
   "openid", "email",
 ];
 

@@ -805,6 +805,7 @@ enum ProspectStatut {
   A_SIGNER
   GAGNE
   PERDU
+  ABANDON // écarté proprement (sans supprimer), distinct de Perdu : repêchable depuis « Tous les prospects »
 }
 
 enum ProspectSource {
@@ -890,6 +891,10 @@ model Prospect {
   clientId           String?         @unique // rempli quand le prospect devient client du portail
   gagneAt            DateTime?
   perduAt            DateTime?
+  abandonAt          DateTime?
+  infos              Json? // « Générer les infos » : enrichissement d'une fiche créée à la main (mêmes colonnes qu'un lead du coffre)
+  infosAt            DateTime?
+  syncAt             DateTime? // dernière synchronisation Aircall + emails de la fiche
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
 
@@ -934,7 +939,9 @@ model Echange {
   date       DateTime    @default(now())
   auteurId   String?
   auteurNom  String? // auteur externe (mail entrant)
-  origine    String      @default("saisie") // saisie, import, gmail
+  origine    String      @default("saisie") // saisie, import, lead, aircall, gmail
+  externalId String?     @unique // aircall:<id d'appel>, gmail:<id de message> : évite les doublons à la synchronisation
+  meta       Json? // Aircall : durée, enregistrement, résumé IA, sujets, sentiment, transcription ; Gmail : objet, expéditeur, extrait
   createdAt  DateTime    @default(now())
 
   prospect Prospect? @relation(fields: [prospectId], references: [id], onDelete: Cascade)

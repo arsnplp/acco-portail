@@ -14,7 +14,7 @@ export function StatsPanel({ s }: { s: ListeStats }) {
     { label: "RDV pris", n: s.rdv, color: VIZ.orange, rate: pct(s.rdv, s.joints) },
     { label: "Signés", n: s.signes, color: VIZ.green, rate: pct(s.signes, s.rdv) },
   ];
-  const statuts = [...PIPELINE, "GAGNE" as const, "PERDU" as const].filter((k) => s.statuts[k]);
+  const statuts = [...PIPELINE, "GAGNE" as const, "PERDU" as const, "ABANDON" as const].filter((k) => s.statuts[k]);
   return (
     <section className="rounded-card border border-border bg-surface p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">

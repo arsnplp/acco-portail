@@ -11,6 +11,8 @@ export const SECRETS = {
   turnstile_site_key: "TURNSTILE_SITE_KEY",
   turnstile_secret_key: "TURNSTILE_SECRET_KEY",
   resend_api_key: "RESEND_API_KEY",
+  aircall_api_id: "AIRCALL_API_ID",
+  aircall_api_token: "AIRCALL_API_TOKEN",
 } as const;
 export type SecretKey = keyof typeof SECRETS;
 
@@ -19,6 +21,7 @@ export const FEATURES = {
   feature_claude_code: { label: "Claude Code sur les demandes de modification", needs: ["claude_code_api_key"] as SecretKey[] },
   feature_turnstile: { label: "Anti-spam Cloudflare Turnstile sur les formulaires", needs: ["turnstile_site_key", "turnstile_secret_key"] as SecretKey[] },
   feature_business_api: { label: "Vrais avis Google (API Business Profile validée)", needs: [] as SecretKey[] },
+  feature_aircall: { label: "Aircall : appels, enregistrements et analyses IA dans l’historique des fiches", needs: ["aircall_api_id", "aircall_api_token"] as SecretKey[] },
 } as const;
 export type FeatureKey = keyof typeof FEATURES;
 

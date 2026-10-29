@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireTeam } from "@/lib/auth";
 import { cn } from "@/lib/cn";
 import { Card, SectionTitle } from "@/components/ui/card";
-import { STATUT, contactName, fmtDay, fmtTime, relanceInfo, teamName, todayBounds } from "@/lib/crm";
+import { CLOS, STATUT, contactName, fmtDay, fmtTime, relanceInfo, teamName, todayBounds } from "@/lib/crm";
 import { EnablePush } from "@/components/push/enable-push";
 import { UrlSelect } from "@/components/crm/url-select";
 
@@ -37,7 +37,7 @@ export default async function MaJournee({ searchParams }: { searchParams: Promis
   const [rappels, due, rdvs, callsToday] = await Promise.all([
     // Rappels à heure fixe du jour (toutes étapes sauf fiches closes), du plus tôt au plus tard.
     prisma.prospect.findMany({
-      where: { ...mine, rappelAt: { gte: start, lt: end }, statut: { notIn: ["GAGNE", "PERDU"] } },
+      where: { ...mine, rappelAt: { gte: start, lt: end }, statut: { notIn: CLOS } },
       orderBy: { rappelAt: "asc" },
       select: { id: true, societe: true, rappelAt: true, statut: true, telephone: true, commercial: { select: { firstName: true, email: true } }, contacts: contactSel, echanges: { orderBy: { date: "desc" }, take: 1, select: { date: true } } },
     }),

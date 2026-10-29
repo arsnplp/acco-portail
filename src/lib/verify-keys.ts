@@ -6,6 +6,19 @@ export type Verification = { ok: true; detail?: string } | { ok: false; error: s
 export async function verifySecret(key: SecretKey, value: string, extra?: Partial<Record<SecretKey, string>>): Promise<Verification> {
   try {
     switch (key) {
+      case "aircall_api_id":
+      case "aircall_api_token": {
+        // Les deux clés vont ensemble : on teste la paire (l'autre moitié vient du formulaire, sinon de ce qui est déjà enregistré).
+        const { getSecret } = await import("@/lib/settings");
+        const other: SecretKey = key === "aircall_api_id" ? "aircall_api_token" : "aircall_api_id";
+        const otherValue = extra?.[other]?.trim() || (await getSecret(other));
+        if (!otherValue) return { ok: true, detail: "Enregistrée. Renseignez aussi l’autre clé Aircall pour vérifier la paire." };
+        const id = key === "aircall_api_id" ? value : otherValue, token = key === "aircall_api_token" ? value : otherValue;
+        const res = await fetch("https://api.aircall.io/v1/ping", { headers: { Authorization: `Basic ${Buffer.from(`${id}:${token}`).toString("base64")}` }, signal: AbortSignal.timeout(10_000) });
+        if (res.status === 401 || res.status === 403) return { ok: false, error: "Aircall refuse cette paire API ID / API token." };
+        if (!res.ok) return { ok: false, error: `Aircall répond ${res.status}.` };
+        return { ok: true, detail: "Accès Aircall vérifié." };
+      }
       case "anthropic_api_key":
       case "claude_code_api_key": {
         const res = await fetch("https://api.anthropic.com/v1/models?limit=1", { headers: { "x-api-key": value, "anthropic-version": "2023-06-01" }, signal: AbortSignal.timeout(10_000) });

@@ -57,6 +57,7 @@ const PARCOURS: Record<ProspectStatut, { n: number; relance: () => number; echan
   A_SIGNER: { n: 4, relance: () => pick([-1, 0, 1, 2]), echanges: [["APPEL", "PRISE_RDV", "RDV"], ["PP", "PRISE_RDV", "RDV", "MAIL"]] },
   GAGNE: { n: 6, relance: () => 0, echanges: [["APPEL", "PRISE_RDV", "RDV", "MAIL"], ["PP", "PRISE_RDV", "NO_SHOW", "PRISE_RDV", "RDV"]] },
   PERDU: { n: 4, relance: () => 0, echanges: [["NRP", "NRP", "APPEL"], ["APPEL", "PRISE_RDV", "RDV"], ["APPEL", "PRISE_RDV", "NO_SHOW"]] },
+  ABANDON: { n: 3, relance: () => 0, echanges: [["NRP", "NRP", "NRP", "NRP", "NRP"], ["APPEL"], []] },
 };
 
 async function creer() {
@@ -87,9 +88,10 @@ async function creer() {
           legacyId: `${TAG}${i}`, societe, telephone: tel, adresse: `${1 + Math.floor(rnd() * 80)} ${pick(RUES)}, ${pick(VILLES)}`,
           cibleId: cibleIds.get(cible.nom), source: pick<ProspectSource>(["COLD_CALL", "COLD_CALL", "COLD_CALL", "PROSPECTION_PHYSIQUE", "RECOMMANDATION"]),
           statut, commercialId: commercial?.id ?? null, potentielEuros: pick([50, 80, 99, 100, 150]),
-          relanceAt: rappel ?? (statut === "GAGNE" || statut === "PERDU" ? null : day(cfg.relance(), 0)),
+          relanceAt: rappel ?? (statut === "GAGNE" || statut === "PERDU" || statut === "ABANDON" ? null : day(cfg.relance(), 0)),
           rappelAt: rappel,
-          motifPerte: statut === "PERDU" ? pick(["Trop cher", "A déjà un site", "Pas intéressé"]) : null,
+          motifPerte: statut === "PERDU" ? pick(["Trop cher", "A déjà un site", "Pas intéressé"]) : statut === "ABANDON" ? pick(["Hors cible", "Numéro invalide", "Entreprise fermée"]) : null,
+          abandonAt: statut === "ABANDON" ? day(start + parcours.length * 4) : null,
           perduAt: statut === "PERDU" ? day(start + parcours.length * 4) : null, gagneAt: statut === "GAGNE" ? day(start + parcours.length * 4) : null,
           fraisCreationEuros: statut === "GAGNE" ? pick([490, 790, 990]) : null, mensuelEuros: statut === "GAGNE" ? pick([50, 99, 150]) : null,
           createdAt: day(start - 2),

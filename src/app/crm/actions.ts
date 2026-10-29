@@ -2,14 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import type { EchangeType, ProspectSource, ProspectStatut } from "@prisma/client";
+import type { EchangeType, Prisma, ProspectSource, ProspectStatut } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireTeam } from "@/lib/auth";
-import { NOTE_OBLIGATOIRE, REGLES, formatTel, nettoyerNom, fmtDayTime, statutApres, addDaysParis, hostOf, normName, normPhone, parisDateTime, parisDay, parisMidnight } from "@/lib/crm";
+import { NOTE_OBLIGATOIRE, REGLES, TOUS_STATUTS, formatTel, nettoyerNom, fmtDayTime, statutApres, addDaysParis, hostOf, normName, normPhone, parisDateTime, parisDay, parisMidnight } from "@/lib/crm";
 
 export type CrmState = { error?: string; ok?: boolean; doublon?: { id: string; label: string; client: boolean } };
 
-const STATUTS: ProspectStatut[] = ["A_CONTACTER", "A_RELANCER", "POSER_RDV", "RDV_POSE", "A_SIGNER", "GAGNE", "PERDU"];
+const STATUTS: ProspectStatut[] = TOUS_STATUTS;
 const TYPES: EchangeType[] = ["NRP", "APPEL", "MAIL", "PP", "RDV", "PRISE_RDV", "NO_SHOW", "NOTE"];
 const SOURCES: ProspectSource[] = ["COLD_CALL", "PROSPECTION_PHYSIQUE", "RECOMMANDATION", "SITE_WEB", "AUTRE"];
 const txt = (f: FormData, k: string) => String(f.get(k) ?? "").trim() || null;
@@ -26,21 +26,53 @@ async function cibleIdFrom(name: string | null) {
   return existing?.id ?? (await prisma.cible.create({ data: { nom } })).id;
 }
 
-/** Glisser-déposer d'une carte dans une autre colonne. */
+/** Champs à mettre à jour quand le statut change : dates de clôture, motif, et relance effacée dès qu'un RDV est posé. */
+function statutData(statut: ProspectStatut, motif: string | null | undefined, now = new Date()): Prisma.ProspectUpdateManyMutationInput {
+  return {
+    statut,
+    gagneAt: statut === "GAGNE" ? now : undefined,
+    perduAt: statut === "PERDU" ? now : statut !== "GAGNE" ? null : undefined,
+    abandonAt: statut === "ABANDON" ? now : statut !== "GAGNE" ? null : undefined,
+    motifPerte: statut === "PERDU" || statut === "ABANDON" ? motif ?? null : null,
+    ...(statut === "RDV_POSE" ? { relanceAt: null, rappelAt: null, rappelEnvoyeAt: null } : {}),
+  };
+}
+
+/** Glisser-déposer d'une carte dans une autre colonne (ou vers Gagné, Perdu, Abandon). */
 export async function moveProspect(id: string, statut: ProspectStatut, motifPerte?: string) {
   await requireTeam();
   if (!STATUTS.includes(statut)) return;
-  const now = new Date();
-  await prisma.prospect.update({
-    where: { id },
-    data: {
-      statut,
-      gagneAt: statut === "GAGNE" ? now : undefined,
-      perduAt: statut === "PERDU" ? now : statut !== "GAGNE" ? null : undefined,
-      motifPerte: statut === "PERDU" ? motifPerte ?? null : null,
-    },
-  });
+  await prisma.prospect.update({ where: { id }, data: statutData(statut, motifPerte) });
   refresh(id);
+}
+
+export type BulkInput = { statut?: ProspectStatut; motif?: string | null; relance?: string | null; relanceHeure?: string | null; commercialId?: string | null };
+/** Actions en masse depuis « Tous les prospects » : statut, date de relance, réattribution (admins). */
+export async function bulkProspects(ids: string[], input: BulkInput): Promise<{ ok?: number; error?: string }> {
+  const me = await requireTeam();
+  const list = [...new Set(ids)].filter(Boolean).slice(0, 500);
+  if (!list.length) return { error: "Sélectionnez au moins une fiche." };
+  const data: Prisma.ProspectUpdateManyMutationInput = {};
+  if (input.statut) {
+    if (!STATUTS.includes(input.statut)) return { error: "Statut inconnu." };
+    Object.assign(data, statutData(input.statut, input.motif));
+    if (input.statut === "GAGNE") delete (data as { gagneAt?: unknown }).gagneAt; // une signature se note depuis la fiche (montants)
+  }
+  if (input.relance !== undefined) {
+    if (input.relance) {
+      const at = input.relanceHeure ? parisDateTime(input.relance, input.relanceHeure) : parisMidnight(input.relance);
+      Object.assign(data, { relanceAt: at, rappelAt: input.relanceHeure ? at : null, rappelEnvoyeAt: null });
+    } else Object.assign(data, { relanceAt: null, rappelAt: null });
+  }
+  if (input.commercialId !== undefined) {
+    if (me.role !== "ADMIN") return { error: "Seuls les admins réattribuent des fiches." };
+    Object.assign(data, { commercialId: input.commercialId || null });
+  }
+  if (!Object.keys(data).length) return { error: "Choisissez une action." };
+  const r = await prisma.prospect.updateMany({ where: { id: { in: list }, clientId: input.statut ? null : undefined }, data });
+  refresh();
+  revalidatePath("/crm/prospects");
+  return { ok: r.count };
 }
 
 /** « Je reprends » ou réattribution à un autre commercial. */
@@ -72,9 +104,10 @@ export async function logEchange(prospectId: string, _prev: CrmState, f: FormDat
   const relanceDay = txt(f, "relance"), relanceHeure = txt(f, "relanceHeure");
   // Heure facultative : la relance devient un rappel (push + bandeau) au commercial à cette heure-là.
   const rappelAt = relanceDay && relanceHeure ? parisDateTime(relanceDay, relanceHeure) : null;
-  const relanceAt = rappelAt ?? (relanceDay ? parisMidnight(relanceDay) : rdvAt ?? reportAt ?? (REGLES[type].relanceJours !== null ? addDaysParis(REGLES[type].relanceJours!) : prospect.relanceAt));
   const wanted = txt(f, "statut") as ProspectStatut | null;
   const statut = wanted && STATUTS.includes(wanted) ? wanted : statutApres(type, prospect.statut);
+  // RDV posé (prise de RDV ou report) : la date de relance est effacée, le rendez-vous suffit.
+  const relanceAt = statut === "RDV_POSE" || rdvAt || reportAt ? null : rappelAt ?? (relanceDay ? parisMidnight(relanceDay) : REGLES[type].relanceJours !== null ? addDaysParis(REGLES[type].relanceJours!) : prospect.relanceAt);
 
   await prisma.$transaction(async (tx) => {
     await tx.echange.create({ data: { prospectId, type, notes: reportAt ? `${notes ? notes + "\n" : ""}RDV reporté au ${fmtDayTime(reportAt)}` : notes, auteurId: me.id } });
@@ -90,7 +123,11 @@ export async function logEchange(prospectId: string, _prev: CrmState, f: FormDat
     }
     await tx.prospect.update({
       where: { id: prospectId },
-      data: { statut, relanceAt, rappelAt, rappelEnvoyeAt: null, commercialId: prospect.commercialId ?? me.id, perduAt: statut === "PERDU" ? new Date() : null, gagneAt: statut === "GAGNE" ? prospect.gagneAt ?? new Date() : prospect.gagneAt },
+      data: {
+        statut, relanceAt, rappelAt: relanceAt ? rappelAt : null, rappelEnvoyeAt: null, commercialId: prospect.commercialId ?? me.id,
+        perduAt: statut === "PERDU" ? new Date() : null, abandonAt: statut === "ABANDON" ? new Date() : null, gagneAt: statut === "GAGNE" ? prospect.gagneAt ?? new Date() : prospect.gagneAt,
+        motifPerte: statut === "PERDU" || statut === "ABANDON" ? txt(f, "motifPerte") ?? prospect.motifPerte : null,
+      },
     });
   });
   refresh(prospectId);
@@ -99,10 +136,13 @@ export async function logEchange(prospectId: string, _prev: CrmState, f: FormDat
   return { ok: true };
 }
 
+/** Supprimer un échange : admins, ou l'auteur de sa propre note (jamais un appel Aircall ou un mail synchronisé : ils reviendraient). */
 export async function deleteEchange(id: string) {
-  await requireTeam();
-  const e = await prisma.echange.delete({ where: { id } });
-  refresh(e.prospectId ?? undefined);
+  const me = await requireTeam();
+  const e = await prisma.echange.findUnique({ where: { id }, select: { auteurId: true, externalId: true } });
+  if (!e || e.externalId || (me.role !== "ADMIN" && e.auteurId !== me.id)) return;
+  const d = await prisma.echange.delete({ where: { id } });
+  refresh(d.prospectId ?? undefined);
 }
 
 /** Recherche de doublons : même SIREN, même téléphone, même site ou même nom (prospects et clients du portail). */
@@ -162,20 +202,22 @@ export async function updateProspect(id: string, _prev: CrmState, f: FormData): 
   const statut = txt(f, "statut") as ProspectStatut | null;
   const relance = txt(f, "relance"), relanceHeure = txt(f, "relanceHeure");
   const rappelAt = relance && relanceHeure ? parisDateTime(relance, relanceHeure) : null;
-  const before = await prisma.prospect.findUnique({ where: { id }, select: { rappelAt: true, commercialId: true } });
+  const before = await prisma.prospect.findUnique({ where: { id }, select: { rappelAt: true, commercialId: true, statut: true } });
   const num = (k: string) => { const v = txt(f, k); return v ? Math.round(Number(v.replace(",", "."))) || null : null; };
   const site = txt(f, "siteWeb");
+  const nouveau = statut && STATUTS.includes(statut) && statut !== before?.statut ? statut : null;
   await prisma.prospect.update({
     where: { id },
     data: {
       societe, siren: txt(f, "siren"), siret: txt(f, "siret"), dirigeant: txt(f, "dirigeant"), adresse: txt(f, "adresse"),
       siteWeb: site ? (/^https?:\/\//.test(site) ? site : `https://${site}`) : null, telephone: formatTel(txt(f, "telephone")),
       cibleId: await cibleIdFrom(txt(f, "cible")), source: source && SOURCES.includes(source) ? source : null,
-      statut: statut && STATUTS.includes(statut) ? statut : undefined, motifPerte: txt(f, "motifPerte"),
+      motifPerte: txt(f, "motifPerte"),
       potentielEuros: num("potentielEuros"), fraisCreationEuros: num("fraisCreationEuros"), mensuelEuros: num("mensuelEuros"),
       commercialId: me.role === "ADMIN" ? txt(f, "commercialId") : before?.commercialId ?? null,
       relanceAt: rappelAt ?? (relance ? parisMidnight(relance) : null), rappelAt,
       rappelEnvoyeAt: rappelAt && before?.rappelAt?.getTime() === rappelAt.getTime() ? undefined : null,
+      ...(nouveau ? statutData(nouveau, txt(f, "motifPerte")) : {}), // changement de statut : dates de clôture, et relance effacée si RDV posé
     },
   });
   refresh(id);
@@ -204,6 +246,7 @@ export async function deleteContact(id: string) {
   refresh(c.prospectId);
 }
 
+/** Supprimer une fiche : admins uniquement (les commerciaux passent la fiche en « Abandon »). */
 export async function deleteProspect(id: string) {
   const me = await requireTeam();
   if (me.role !== "ADMIN") return;
@@ -218,4 +261,23 @@ export async function setRdvResultat(id: string, resultat: "FAIT" | "ANNULE" | "
   await requireTeam();
   const r = await prisma.rendezVous.update({ where: { id }, data: { resultat } });
   refresh(r.prospectId);
+}
+
+/** « Générer les infos » : enrichit la fiche (registre officiel, audit du site, recherche web si clé Anthropic). */
+export async function enrichProspect(id: string): Promise<{ ok?: boolean; error?: string; web?: boolean }> {
+  await requireTeam();
+  const { enrichirProspect } = await import("@/lib/enrichir");
+  const r = await enrichirProspect(id);
+  if (!r.ok) return { error: r.error };
+  refresh(id);
+  return { ok: true, web: r.web };
+}
+
+/** Bouton « Actualiser » de l'historique : appels Aircall et emails de la fiche, tout de suite. */
+export async function syncProspectNow(id: string): Promise<{ calls: number; emails: number; errors: string[] }> {
+  await requireTeam();
+  const { syncProspect } = await import("@/lib/crm-sync");
+  const r = (await syncProspect(id, true)) ?? { calls: 0, emails: 0, errors: [] };
+  refresh(id);
+  return r;
 }

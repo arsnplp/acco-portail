@@ -4,7 +4,7 @@ import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireTeam } from "@/lib/auth";
 import { cn } from "@/lib/cn";
-import { contactName, initialsOf, parisDay, parisMidnight, teamName } from "@/lib/crm";
+import { contactName, initialsOf, parisDay, parisMidnight, teamName, CLOS } from "@/lib/crm";
 import { Calendar, type CalEvent, type Vue } from "./calendar";
 
 export const metadata = { title: "Calendrier" };
@@ -39,7 +39,7 @@ export default async function CalendrierPage({ searchParams }: { searchParams: P
       include: { commercial: { select: { firstName: true, email: true } }, prospect: { select: { id: true, societe: true, contacts: { orderBy: [{ principal: "desc" }, { createdAt: "asc" }], take: 1, select: { prenom: true, nom: true } } } } },
     }),
     avecRappels ? prisma.prospect.findMany({
-      where: { ...byCommercial, rappelAt: { gte: from, lt: to }, statut: { notIn: ["GAGNE", "PERDU"] } },
+      where: { ...byCommercial, rappelAt: { gte: from, lt: to }, statut: { notIn: CLOS } },
       select: { id: true, societe: true, rappelAt: true, commercial: { select: { firstName: true, email: true } }, contacts: { orderBy: [{ principal: "desc" }, { createdAt: "asc" }], take: 1, select: { prenom: true, nom: true } } },
     }) : Promise.resolve([]),
     prisma.user.findMany({ where: { role: { in: ["ADMIN", "COMMERCIAL"] } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true } }),

@@ -17,10 +17,33 @@ Accès : carte « Commercial » du tableau de bord admin, ou directement `/crm`.
   un appel, mail ou PP la fait passer en « À relancer ». Pour remettre les fiches existantes d'aplomb :
   `npx tsx --env-file=.env scripts/recaler-a-contacter.mts` (aperçu) puis `--confirmer`.
 - **Jauge NRP** sur chaque carte et fiche : 0 à 5+ appels sans réponse (jaune, orange, rouge).
-- **Pipeline** (`/crm/pipeline`) : 5 colonnes, glisser-déposer les cartes ; en glissant, zones Gagné / Perdu en bas
-  (Perdu demande le motif). Filtres : Tous, Moi, chaque commercial, Sans commercial, recherche, cible.
+- **Pipeline** (`/crm/pipeline`) : 5 colonnes, glisser-déposer les cartes ; en glissant, zones Gagné / Perdu / Abandon en bas
+  (Perdu et Abandon demandent le motif). Filtres : Tous, Moi, chaque commercial, Sans commercial, recherche, cible.
+- **Abandon** : statut distinct de Perdu pour écarter proprement une fiche (hors cible, doublon, numéro invalide…) sans la
+  supprimer. Elle sort du pipeline, de la journée et du calendrier ; on la retrouve et on la repêche dans « Tous les prospects ».
+  La **suppression d'une fiche est réservée aux admins** (les commerciaux passent la fiche en Abandon). Un échange ne se supprime
+  que par un admin ou par son auteur (jamais un appel Aircall ou un mail synchronisé).
+- **RDV posé = plus de relance** : dès qu'un RDV est pris (prise de RDV, report après no show, passage manuel ou en masse en
+  « RDV posé »), la date et l'heure de relance sont effacées : le rendez-vous suffit.
+- **Tous les prospects** (`/crm/prospects`, menu Plus) : toutes les fiches, ouvertes ou closes, avec filtres avancés
+  (statut dont Abandon, commercial, cible, séquence d'appels jamais / incomplète / faite = 5 appels, motif, période, avec
+  enregistrement Aircall, avec notes) et raccourcis (Abandons à repêcher, Séquence incomplète, Pas intéressés, Avec enregistrement).
+  Chaque ligne se déplie : dernières notes, résumés et enregistrements Aircall à réécouter sans ouvrir la fiche (débrief des alternants).
+  **Actions en masse** : cocher des fiches → changer le statut (avec motif), la date/heure de relance, ou réattribuer (admins).
 - **Fiche** : noter un échange (NRP, Appel, Mail, PP = prospection physique, Prise de RDV, RDV) ; le statut et la
-  relance proposés se remplissent seuls et restent modifiables. « Je reprends » s'attribue le prospect.
+  relance proposés se remplissent seuls et restent modifiables. « Je reprends » s'attribue le prospect. Le site web est juste sous le nom de la société.
+- **Aircall sur la fiche** : les appels passés et reçus avec les numéros de la fiche arrivent dans l'historique avec le lecteur
+  de l'enregistrement, le résumé IA, les sujets, le sentiment et la transcription (licence AI Assist côté Aircall). Synchro
+  générale toutes les 5 min (serveur) ou `/api/cron/aircall` avec `CRON_SECRET` ; synchro de la fiche à l'ouverture (10 min
+  au plus) et bouton « Actualiser ». Un appel déjà noté à la main dans les 20 min autour est enrichi, pas dupliqué ; un appel
+  sortant sans réponse devient un NRP, un appel répondu un Appel, un appel entrant manqué une simple note. Clés : Admin →
+  Paramètres → Aircall (ou `AIRCALL_API_ID` / `AIRCALL_API_TOKEN` dans le .env).
+- **Emails sur la fiche** : les mails envoyés et reçus avec les adresses des contacts (boîte Gmail du compte Google connecté
+  dans Paramètres, lecture seule) apparaissent dans l'historique (objet, extrait, lien Gmail). Nouvelle permission Gmail :
+  déconnecter puis reconnecter Google dans Paramètres une fois.
+- **Générer les infos** (bouton « Infos du lead » d'une fiche créée à la main) : remplit les 34 colonnes d'un lead du coffre
+  (registre officiel, audit du site, recherche web si clé Anthropic) et complète les champs vides de la fiche (SIREN, SIRET,
+  dirigeant, site, adresse, email du contact) sans écraser ce qui est saisi.
 - **Nouveau** : contrôle des doublons (SIREN, téléphone, site, nom) sur les prospects et les clients du portail.
 - **No show** : dans « Noter un échange », RDV → « No show ». Le RDV passe en no show (exclu des RDV pris).
   « À recaler plus tard » : le prospect repart en « Poser RDV ». « Reporter le RDV » : nouvelle date, le prospect

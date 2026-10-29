@@ -16,6 +16,7 @@ export function NewProspectForm({ meId, team, cibles, today, isAdmin }: { meId: 
     <form action={action} className="mt-6 space-y-4">
       <div className="space-y-3 rounded-card border border-border bg-surface p-4">
         <Field label="Société"><Input name="societe" required autoFocus placeholder="Institut Belle Peau" /></Field>
+        <Field label="Site web" hint="optionnel"><Input name="siteWeb" placeholder="exemple.fr" /></Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Prénom du contact"><Input name="prenom" /></Field>
           <Field label="Nom"><Input name="nom" /></Field>
@@ -41,7 +42,6 @@ export function NewProspectForm({ meId, team, cibles, today, isAdmin }: { meId: 
             <div className="grid grid-cols-2 gap-2"><DateInput name="relance" defaultValue={today} label="Date de relance" /><TimeInput name="relanceHeure" optional label="Heure de rappel (facultative)" /></div>
           </Field>
         </div>
-        <Field label="Site web" hint="optionnel"><Input name="siteWeb" placeholder="exemple.fr" /></Field>
         <Field label="Adresse" hint="optionnel"><Input name="adresse" /></Field>
         <Field label="SIREN" hint="optionnel"><Input name="siren" inputMode="numeric" /></Field>
       </div>

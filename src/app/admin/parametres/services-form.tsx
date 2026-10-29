@@ -6,7 +6,7 @@ import { saveServices, type ServicesState } from "./actions";
 import { Input } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import type { SecretKey, FeatureKey } from "@/lib/settings";
-import { BotIcon, WrenchIcon, ShieldCheckIcon, MailIcon, StarIcon, type LucideIcon } from "lucide-react";
+import { BotIcon, WrenchIcon, ShieldCheckIcon, MailIcon, PhoneCallIcon, StarIcon, type LucideIcon } from "lucide-react";
 
 type Status = Record<SecretKey, { masked: string | null; source: "base" | "env" | null }>;
 
@@ -18,6 +18,8 @@ const SERVICES: Array<{ title: string; icon: LucideIcon; feature?: FeatureKey; f
   { title: "Cloudflare Turnstile", icon: ShieldCheckIcon, feature: "feature_turnstile", featureLabel: "Vérifier le captcha sur les formulaires des sites clients",
     keys: [{ key: "turnstile_site_key", label: "Site key (publique)", help: "À coller aussi dans le snippet des sites." }, { key: "turnstile_secret_key", label: "Secret key", help: "dash.cloudflare.com → Turnstile." }] },
   { title: "Resend (emails)", icon: MailIcon, keys: [{ key: "resend_api_key", label: "Clé API Resend", help: "resend.com → API Keys. Domaine acco-lab.fr déjà vérifié." }] },
+  { title: "Aircall (téléphonie)", icon: PhoneCallIcon, feature: "feature_aircall", featureLabel: "Appels, enregistrements, résumés IA, sujets et sentiment Aircall dans l’historique des fiches prospects (synchronisation toutes les 5 minutes)",
+    keys: [{ key: "aircall_api_id", label: "API ID", help: "dashboard.aircall.io → Intégrations → API Keys." }, { key: "aircall_api_token", label: "API token", help: "Les analyses IA demandent une licence AI Assist sur l’utilisateur Aircall." }] },
   { title: "Avis Google", icon: StarIcon, feature: "feature_business_api", featureLabel: "Lire et répondre aux vrais avis via l’API Business Profile", keys: [],
     note: "À cocher seulement une fois l’accès à l’API validé par Google et le compte Google connecté ci-dessus. Sinon les avis restent en mode démo." },
 ];

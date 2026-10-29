@@ -52,7 +52,7 @@ export default async function ParametresPage({ searchParams }: { searchParams: P
 
   return (
     <AdminPage title="Paramètres">
-      <SectionTitle icon={Link2Icon}>Google (Search Console et fiche Google)</SectionTitle>
+      <SectionTitle icon={Link2Icon}>Google (Search Console, fiche Google et emails du CRM)</SectionTitle>
       <Card className="space-y-3">
         {google && <p className={`text-sm ${google === "ok" ? "text-green" : "text-pink"}`}>{GOOGLE_MSG[google] ?? ""}</p>}
         {email ? (
@@ -70,6 +70,7 @@ export default async function ParametresPage({ searchParams }: { searchParams: P
               </ul>
             )}
             <p className="text-xs text-muted">Pour lier un site : Sites → le site → Propriété Search Console (la liste se propose toute seule), puis « Synchroniser ».</p>
+            <p className="text-xs text-muted">Emails du CRM : les mails échangés avec un prospect (envoyés et reçus depuis cette boîte Gmail) apparaissent dans l’historique de sa fiche. Si la connexion date d’avant cette fonction, déconnectez puis reconnectez Google pour accorder la lecture de Gmail.</p>
           </>
         ) : (
           <>

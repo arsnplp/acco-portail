@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  CalendarDaysIcon, ChartColumnIcon, ChevronDownIcon, EllipsisIcon, HistoryIcon, KanbanSquareIcon, PlusIcon, SunIcon,
+  CalendarDaysIcon, ChartColumnIcon, ChevronDownIcon, EllipsisIcon, HistoryIcon, KanbanSquareIcon, ListChecksIcon, PlusIcon, SunIcon,
   UsersIcon, VaultIcon, XIcon, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -21,6 +21,7 @@ const PRINCIPAUX: Item[] = [
 /** Vues secondaires, regroupées dans « Plus ». */
 function secondaires(admin: boolean): Item[] {
   return [
+    { href: "/crm/prospects", label: "Tous les prospects", icon: ListChecksIcon, exact: true, hint: "Filtres avancés, repêchage, actions en masse" },
     { href: "/crm/leads", label: "Coffre à leads", icon: VaultIcon, hint: "Générer et utiliser des listes" },
     { href: "/crm/stats", label: "Stats", icon: ChartColumnIcon, hint: "Chiffres de l’équipe et graphiques" },
     ...(admin ? [

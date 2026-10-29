@@ -93,12 +93,12 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
 
   const euros = (n: number) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
   const parType = TYPES_ACTIVITE.map((t) => ({ label: ECHANGE[t].short, value: echanges.filter((e) => e.type === t).length, color: ECHANGE_COULEUR[t] }));
-  const statuts: ProspectStatut[] = [...PIPELINE, "GAGNE", "PERDU"];
+  const statuts: ProspectStatut[] = [...PIPELINE, "GAGNE", "PERDU", "ABANDON"];
   // CA potentiel d'un prospect : création (si connue) + 12 mois d'abonnement (signé, sinon le potentiel €/mois).
   const caPot = (p: (typeof pipeline)[number]) => (p.fraisCreationEuros ?? 0) + 12 * (p.mensuelEuros ?? p.potentielEuros ?? 0);
   const donut = statuts.map((s) => {
     const ps = pipeline.filter((p) => p.statut === s);
-    return { label: STATUT[s].label, value: ps.length, color: STATUT_COULEUR[s], montant: s === "PERDU" ? null : euros(ps.reduce((a, p) => a + caPot(p), 0)) };
+    return { label: STATUT[s].label, value: ps.length, color: STATUT_COULEUR[s], montant: s === "PERDU" || s === "ABANDON" ? null : euros(ps.reduce((a, p) => a + caPot(p), 0)) };
   });
   const ouverts = pipeline.filter((p) => PIPELINE.includes(p.statut));
   const caPotentiel = ouverts.reduce((a, p) => a + caPot(p), 0);
