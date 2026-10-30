@@ -43,6 +43,8 @@
   --violet: #6c5fd1;
 }
 html[data-theme="light"] { color-scheme: light; }
+/* Logos Acco (blancs sur fond transparent) : en noir en mode jour. */
+:root[data-theme="light"] .brand-logo { filter: invert(1); }
 /* Cases à cocher et curseurs : couleur du thème (la classe accent-white vient de l'époque 100 % sombre). */
 :root[data-theme="light"] .accent-white { accent-color: var(--title); }
 

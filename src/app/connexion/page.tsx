@@ -14,7 +14,7 @@ export default async function ConnexionPage({ searchParams }: { searchParams: Pr
   return (
     <main className="flex-1 flex flex-col items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm">
-        <div className="mb-10 flex justify-center"><Image src="/brand/acco-wordmark-600.png" alt="Acco" width={600} height={134} priority className="h-9 w-auto" /></div>
+        <div className="mb-10 flex justify-center"><Image src="/brand/acco-wordmark-600.png" alt="Acco" width={600} height={134} priority className="brand-logo h-9 w-auto" /></div>
         <h1 className="mb-2 text-2xl">Bienvenue</h1>
         <p className="mb-8 text-text">Votre espace client Acco. Vous restez connecté sur cet appareil.</p>
         {erreur && ERRORS[erreur] && <p className="mb-4 text-sm text-pink">{ERRORS[erreur]}</p>}
