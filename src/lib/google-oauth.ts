@@ -8,6 +8,9 @@ export const GOOGLE_SCOPES = [
   "openid", "email",
 ];
 
+/** Compte Google personnel d'un membre de l'équipe : seulement sa boîte Gmail (lecture) pour le CRM. */
+export const GOOGLE_SCOPES_PERSO = ["https://www.googleapis.com/auth/gmail.readonly", "openid", "email"];
+
 export const oauthConfigured = () => Boolean(process.env.GOOGLE_OAUTH_CLIENT_ID && process.env.GOOGLE_OAUTH_CLIENT_SECRET);
 
 export function oauthClient() {
@@ -30,6 +33,20 @@ export async function connectedGoogleClient() {
 
 export async function connectedGoogleEmail() {
   return (await prisma.setting.findUnique({ where: { key: "google_account_email" } }))?.value ?? null;
+}
+
+/** Client Google d'un membre de l'équipe (son propre compte), ou null s'il n'a rien connecté. */
+export async function userGoogleClient(userId: string) {
+  if (!oauthConfigured()) return null;
+  const u = await prisma.user.findUnique({ where: { id: userId }, select: { googleRefreshToken: true } });
+  if (!u?.googleRefreshToken) return null;
+  const client = oauthClient();
+  client.setCredentials({ refresh_token: u.googleRefreshToken });
+  return client;
+}
+
+export async function disconnectUserGoogle(userId: string) {
+  await prisma.user.update({ where: { id: userId }, data: { googleRefreshToken: null, googleEmail: null } });
 }
 
 export async function disconnectGoogle() {

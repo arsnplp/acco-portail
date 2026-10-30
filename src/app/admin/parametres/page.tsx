@@ -9,40 +9,19 @@ import { oauthConfigured, connectedGoogleEmail } from "@/lib/google-oauth";
 import { listProperties } from "@/lib/google-search";
 import { saveSettings, disconnectGoogleAction } from "./actions";
 import { ServicesForm } from "./services-form";
-import { AdminNotifForm } from "./notif-form";
 import { isGestionnaire, requireAdmin } from "@/lib/auth";
 import { secretsStatus, featureToggles } from "@/lib/settings";
-import { NewPasswordForm } from "@/app/nouveau-mot-de-passe/form";
-import { LogOut } from "lucide-react";
-import { BellIcon, KeyRoundIcon, Link2Icon, LockIcon, SettingsIcon } from "lucide-react";
+import { KeyRoundIcon, Link2Icon, SettingsIcon } from "lucide-react";
+import { GOOGLE_MSG, MesParametres } from "./moi";
 
 export const metadata = { title: "Paramètres" };
-
-const GOOGLE_MSG: Record<string, string> = {
-  ok: "Google est connecté.",
-  refuse: "Connexion annulée.",
-  "sans-jeton": "Google n’a pas renvoyé de jeton durable. Déconnectez l’app Acco dans votre compte Google (myaccount.google.com → Sécurité → Connexions tierces) puis réessayez.",
-  erreur: "Erreur pendant la connexion, réessayez.",
-  "non-configure": "Ajoutez GOOGLE_OAUTH_CLIENT_ID et GOOGLE_OAUTH_CLIENT_SECRET dans .env.",
-};
 
 export default async function ParametresPage({ searchParams }: { searchParams: Promise<{ google?: string }> }) {
   const { google } = await searchParams;
   const admin = await requireAdmin();
-  const notifPrefs = await prisma.notificationPreference.findUnique({ where: { userId: admin.id } });
-  const moi = (
-    <>
-      <SectionTitle icon={BellIcon}>Mes notifications</SectionTitle>
-      <AdminNotifForm prefs={notifPrefs} gestion={isGestionnaire(admin)} />
-
-      <SectionTitle icon={LockIcon}>Mon accès</SectionTitle>
-      <div className="grid gap-3">
-        <details className="rounded-card border border-border bg-surface"><summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-title">Changer mon mot de passe</summary><div className="border-t border-border p-4"><NewPasswordForm compact next="/admin/parametres" /></div></details>
-        <form action="/auth/deconnexion" method="post"><Button variant="secondary" type="submit" className="w-full"><LogOut size={18} strokeWidth={1.75} /> Se déconnecter</Button></form>
-      </div>
-    </>
-  );
-  // Clés API, Google (Search Console, avis) et réglages de l'agence : réservés au gestionnaire (Arsène).
+  const moi = <MesParametres user={admin} google={google} next="/admin/parametres" />;
+  // Clés API, Google de l'agence (Search Console, avis) et réglages de l'agence : réservés au gestionnaire (Arsène).
+  // Les autres admins et les commerciaux ont leurs paramètres personnels (compte Google à eux, notifications, accès).
   if (!isGestionnaire(admin)) return <AdminPage title="Paramètres">{moi}</AdminPage>;
 
   const [settings, email, secrets, toggles] = await Promise.all([prisma.setting.findMany(), connectedGoogleEmail(), secretsStatus(), featureToggles()]);
@@ -52,7 +31,7 @@ export default async function ParametresPage({ searchParams }: { searchParams: P
 
   return (
     <AdminPage title="Paramètres">
-      <SectionTitle icon={Link2Icon}>Google (Search Console, fiche Google et emails du CRM)</SectionTitle>
+      <SectionTitle icon={Link2Icon}>Google de l’agence (Search Console, fiche Google et emails du CRM)</SectionTitle>
       <Card className="space-y-3">
         {google && <p className={`text-sm ${google === "ok" ? "text-green" : "text-pink"}`}>{GOOGLE_MSG[google] ?? ""}</p>}
         {email ? (
@@ -70,7 +49,7 @@ export default async function ParametresPage({ searchParams }: { searchParams: P
               </ul>
             )}
             <p className="text-xs text-muted">Pour lier un site : Sites → le site → Propriété Search Console (la liste se propose toute seule), puis « Synchroniser ».</p>
-            <p className="text-xs text-muted">Emails du CRM : les mails échangés avec un prospect (envoyés et reçus depuis cette boîte Gmail) apparaissent dans l’historique de sa fiche. Si la connexion date d’avant cette fonction, déconnectez puis reconnectez Google pour accorder la lecture de Gmail.</p>
+            <p className="text-xs text-muted">Emails du CRM : les mails échangés avec un prospect depuis cette boîte apparaissent dans l’historique de sa fiche. Si la connexion date d’avant cette fonction, déconnectez puis reconnectez Google pour accorder la lecture de Gmail. Chaque membre de l’équipe peut aussi connecter son propre compte (section « Mon compte Google » plus bas).</p>
           </>
         ) : (
           <>

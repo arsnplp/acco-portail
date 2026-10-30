@@ -38,9 +38,10 @@ Accès : carte « Commercial » du tableau de bord admin, ou directement `/crm`.
   au plus) et bouton « Actualiser ». Un appel déjà noté à la main dans les 20 min autour est enrichi, pas dupliqué ; un appel
   sortant sans réponse devient un NRP, un appel répondu un Appel, un appel entrant manqué une simple note. Clés : Admin →
   Paramètres → Aircall (ou `AIRCALL_API_ID` / `AIRCALL_API_TOKEN` dans le .env).
-- **Emails sur la fiche** : les mails envoyés et reçus avec les adresses des contacts (boîte Gmail du compte Google connecté
-  dans Paramètres, lecture seule) apparaissent dans l'historique (objet, extrait, lien Gmail). Nouvelle permission Gmail :
-  déconnecter puis reconnecter Google dans Paramètres une fois.
+- **Emails sur la fiche** : les mails envoyés et reçus avec les adresses des contacts apparaissent dans l'historique (objet,
+  extrait, lien Gmail), lus en lecture seule dans toutes les boîtes Gmail connectées : celle de l'agence (gestionnaire,
+  Admin → Paramètres) et celle de **chaque membre de l'équipe** qui connecte son propre compte Google (avatar → Paramètres →
+  « Mon compte Google » ; les commerciaux ont leur page `/crm/parametres`). Un mail envoyé depuis la boîte d'un membre lui est attribué.
 - **Générer les infos** (bouton « Infos du lead » d'une fiche créée à la main) : remplit les 34 colonnes d'un lead du coffre
   (registre officiel, audit du site, recherche web si clé Anthropic) et complète les champs vides de la fiche (SIREN, SIRET,
   dirigeant, site, adresse, email du contact) sans écraser ce qui est saisi.

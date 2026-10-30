@@ -19,11 +19,7 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
           </Link>
           <CrmNav admin={admin} />
           <div className="ml-auto flex items-center gap-2">
-            {admin ? (
-              <Link href="/admin/parametres" aria-label="Paramètres"><Avatar initials={initials(user)} src={user.avatarUrl} size={32} /></Link>
-            ) : (
-              <Avatar initials={initials(user)} src={user.avatarUrl} size={32} />
-            )}
+            <Link href={admin ? "/admin/parametres" : "/crm/parametres"} aria-label="Paramètres"><Avatar initials={initials(user)} src={user.avatarUrl} size={32} /></Link>
           </div>
         </div>
       </header>

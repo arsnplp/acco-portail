@@ -196,6 +196,8 @@ model User {
   lastName  String?
   avatarUrl String?
   role      Role     @default(CLIENT)
+  googleRefreshToken String? // compte Google personnel (équipe) : lecture de sa boîte Gmail pour l'historique des fiches CRM
+  googleEmail        String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

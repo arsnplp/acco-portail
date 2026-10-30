@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin, requireGestionnaire } from "@/lib/auth";
-import { disconnectGoogle } from "@/lib/google-oauth";
+import { requireGestionnaire, requireTeam } from "@/lib/auth";
+import { disconnectGoogle, disconnectUserGoogle } from "@/lib/google-oauth";
 
 export async function saveSettings(formData: FormData) {
   await requireGestionnaire();
@@ -22,9 +22,17 @@ export async function disconnectGoogleAction() {
   revalidatePath("/admin/sites", "layout");
 }
 
+/** Déconnecter mon compte Google personnel (emails du CRM). */
+export async function disconnectMyGoogleAction() {
+  const me = await requireTeam();
+  await disconnectUserGoogle(me.id);
+  revalidatePath("/admin/parametres");
+  revalidatePath("/crm/parametres");
+}
+
 /** Mes notifications (équipe) : push sur cet appareil et choix des événements. */
 export async function saveAdminNotifPrefs(formData: FormData) {
-  const admin = await requireAdmin();
+  const admin = await requireTeam();
   const on = (k: string) => formData.get(k) === "on";
   const data = { pushEnabled: on("pushEnabled"), changes: on("changes"), messages: on("messages"), referrals: on("referrals"), documents: on("documents"), offers: on("offers") };
   await prisma.notificationPreference.upsert({ where: { userId: admin.id }, create: { userId: admin.id, ...data }, update: data });
@@ -33,7 +41,7 @@ export async function saveAdminNotifPrefs(formData: FormData) {
 
 /** Envoie un push de test sur tous les appareils où l'admin a activé les notifications. */
 export async function sendTestPush(): Promise<{ ok: boolean; devices: number }> {
-  const admin = await requireAdmin();
+  const admin = await requireTeam();
   const devices = await prisma.pushSubscription.count({ where: { userId: admin.id } });
   const { sendPushToUser } = await import("@/lib/push");
   await sendPushToUser(admin.id, { title: "Test Acco", body: "Les notifications fonctionnent sur cet appareil.", url: `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/admin/parametres`, tag: "test" });

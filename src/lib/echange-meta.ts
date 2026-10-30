@@ -8,7 +8,7 @@ export type AircallMeta = {
 };
 export const isAircallMeta = (m: unknown): m is AircallMeta => !!m && typeof m === "object" && (m as AircallMeta).source === "aircall";
 
-export type GmailMeta = { source: "gmail"; messageId: string; threadId: string; direction: "recu" | "envoye"; objet: string; de: string; a: string; extrait: string };
+export type GmailMeta = { source: "gmail"; messageId: string; threadId: string; direction: "recu" | "envoye"; objet: string; de: string; a: string; extrait: string; boite?: string | null };
 export const isGmailMeta = (m: unknown): m is GmailMeta => !!m && typeof m === "object" && (m as GmailMeta).source === "gmail";
 
 export const fmtDuree = (s: number) => (s >= 60 ? `${Math.floor(s / 60)} min${s % 60 ? ` ${String(s % 60).padStart(2, "0")}` : ""}` : `${s} s`);
