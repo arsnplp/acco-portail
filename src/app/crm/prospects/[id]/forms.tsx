@@ -6,7 +6,7 @@ import { useActionState, useEffect, useState, useTransition } from "react";
 import type { EchangeType, ProspectSource, ProspectStatut, RdvResultat } from "@prisma/client";
 import { BellIcon, UserXIcon, CalendarClockIcon, CheckIcon, HistoryIcon, MessageSquarePlusIcon, PencilIcon, PlusIcon, RefreshCwIcon, StarIcon, Trash2Icon, UserRoundIcon, BuildingIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { ECHANGE, ECHANGE_SAISIE, NOTE_OBLIGATOIRE, MOTIFS_ABANDON, MOTIFS_PERTE, REGLES, SOURCE, STATUT, TOUS_STATUTS, fmtDayTime, statutApres } from "@/lib/crm";
+import { ECHANGE, ECHANGE_SAISIE, NOTE_OBLIGATOIRE, MOTIFS_ABANDON, MOTIFS_PERTE, REGLES, SOURCE, STATUT, STATUT_COULEUR, STATUT_EMOJI, TOUS_STATUTS, fmtDayTime, statutApres } from "@/lib/crm";
 import { Field, FormError, Input, Select, Textarea } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { SectionTitle } from "@/components/ui/card";
@@ -14,6 +14,16 @@ import { AircallBloc, AircallTitre, GmailBloc, isAircallMeta, isGmailMeta } from
 import { assignProspect, deleteContact, deleteEchange, deleteProspect, logEchange, saveContact, setRdvResultat, syncProspectNow, updateProspect, type CrmState } from "../../actions";
 
 const box = "rounded-card border border-border bg-surface p-4";
+
+/** Menu déroulant des statuts : emoji + couleur du statut sur le texte, « Abandon » en premier dans « Noter un échange ». */
+function StatutSelect({ name, value, onChange, abandonFirst = false }: { name: string; value: ProspectStatut; onChange: (s: ProspectStatut) => void; abandonFirst?: boolean }) {
+  const ordre = abandonFirst ? ["ABANDON" as const, ...TOUS_STATUTS.filter((s) => s !== "ABANDON")] : TOUS_STATUTS;
+  return (
+    <Select name={name} value={value} onChange={(e) => onChange(e.target.value as ProspectStatut)} style={{ color: STATUT_COULEUR[value], fontWeight: 600 }}>
+      {ordre.map((s) => <option key={s} value={s} style={{ color: STATUT_COULEUR[s], fontWeight: 600 }}>{STATUT_EMOJI[s]} {STATUT[s].label}</option>)}
+    </Select>
+  );
+}
 const plusDays = (today: string, n: number) => { const d = new Date(`${today}T12:00:00`); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
 
 // ─── Noter un échange ────────────────────────────────────────
@@ -114,9 +124,7 @@ export function EchangeForm({ prospectId, statut, session, today }: { prospectId
               </div>
             )}
             <Field label="Statut après l’échange">
-              <Select name="statut" value={next} onChange={(e) => setNext(e.target.value as ProspectStatut)}>
-                {TOUS_STATUTS.map((s) => <option key={s} value={s}>{STATUT[s].label}</option>)}
-              </Select>
+              <StatutSelect name="statut" value={next} onChange={setNext} abandonFirst />
             </Field>
             {next === "RDV_POSE" && type !== "PRISE_RDV" && !report && <p className="text-xs text-muted">RDV posé : la date de relance est effacée, le rendez-vous suffit.</p>}
             {(next === "PERDU" || next === "ABANDON") && <MotifField statut={next} />}
@@ -274,9 +282,7 @@ export function ProspectForm({ p, team, cibles, canDelete, isAdmin }: { p: P; te
         <Field label="Site web"><Input name="siteWeb" defaultValue={p.siteWeb ?? ""} placeholder="exemple.fr" /></Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Statut">
-            <Select name="statut" value={statut} onChange={(e) => setStatut(e.target.value as ProspectStatut)}>
-              {TOUS_STATUTS.map((s) => <option key={s} value={s}>{STATUT[s].label}</option>)}
-            </Select>
+            <StatutSelect name="statut" value={statut} onChange={setStatut} />
           </Field>
           <Field label="Prochaine relance">
             <div className="grid grid-cols-2 gap-2">

@@ -11,7 +11,7 @@ import { Logo } from "@/components/crm/logo";
 import { DateInput, TimeInput } from "@/components/ui/date-time";
 import { AircallBloc, AircallTitre, GmailBloc, isAircallMeta, isGmailMeta } from "@/components/crm/echange-detail";
 import type { AircallMeta } from "@/lib/echange-meta";
-import { ECHANGE, MOTIFS_ABANDON, MOTIFS_PERTE, SEQUENCE_APPELS, STATUT, TOUS_STATUTS, fmtDayTime, fmtTime, initialsOf, logoUrl, relanceInfo } from "@/lib/crm";
+import { ECHANGE, MOTIFS_ABANDON, MOTIFS_PERTE, SEQUENCE_APPELS, STATUT, STATUT_COULEUR, STATUT_EMOJI, TOUS_STATUTS, fmtDayTime, fmtTime, initialsOf, logoUrl, relanceInfo } from "@/lib/crm";
 import { bulkProspects, type BulkInput } from "../actions";
 
 export type Row = {
@@ -72,7 +72,7 @@ export function Liste({ rows, team, isAdmin }: { rows: Row[]; team: Member[]; is
           </select>
           {action === "statut" && (
             <>
-              <select value={statut} onChange={(e) => setStatut(e.target.value as ProspectStatut)} className={input} aria-label="Nouveau statut">{TOUS_STATUTS.map((s) => <option key={s} value={s}>{STATUT[s].label}</option>)}</select>
+              <select value={statut} onChange={(e) => setStatut(e.target.value as ProspectStatut)} className={input} style={{ color: STATUT_COULEUR[statut], fontWeight: 600 }} aria-label="Nouveau statut">{["ABANDON" as const, ...TOUS_STATUTS.filter((s) => s !== "ABANDON")].map((s) => <option key={s} value={s} style={{ color: STATUT_COULEUR[s], fontWeight: 600 }}>{STATUT_EMOJI[s]} {STATUT[s].label}</option>)}</select>
               {(statut === "PERDU" || statut === "ABANDON") && <select value={motif} onChange={(e) => setMotif(e.target.value)} className={input} aria-label="Motif"><option value="">Motif…</option>{(statut === "PERDU" ? MOTIFS_PERTE : MOTIFS_ABANDON).map((m) => <option key={m}>{m}</option>)}</select>}
               {statut === "RDV_POSE" && <span className="text-xs text-yellow/80">La date de relance sera effacée.</span>}
             </>

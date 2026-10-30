@@ -64,7 +64,11 @@ export const STATUT_COULEUR: Record<ProspectStatut, string> = {
 
 export const MOTIFS_PERTE = ["Pas intéressé", "A déjà un site", "Trop cher", "Injoignable", "Pas le bon moment", "Autre"];
 /** Motifs d'abandon (fiche écartée sans être perdue : hors cible, doublon, fermée…). */
-export const MOTIFS_ABANDON = ["Hors cible", "Entreprise fermée", "Doublon", "Numéro invalide", "Injoignable", "Autre"];
+export const MOTIFS_ABANDON = ["Pas intéressé", "Hors cible", "Entreprise fermée", "Doublon", "Numéro invalide", "Injoignable", "Autre"];
+/** Emoji de chaque statut (menus déroulants). */
+export const STATUT_EMOJI: Record<ProspectStatut, string> = {
+  A_CONTACTER: "📞", A_RELANCER: "🔁", POSER_RDV: "📅", RDV_POSE: "🤝", A_SIGNER: "✍️", GAGNE: "🏆", PERDU: "❌", ABANDON: "🗂️",
+};
 /** Nombre d'appels (NRP ou appels) attendus avant de considérer la séquence faite. */
 export const SEQUENCE_APPELS = 5;
 
