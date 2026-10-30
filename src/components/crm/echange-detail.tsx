@@ -2,8 +2,7 @@
 
 import { ExternalLinkIcon, MailIcon, PhoneIncomingIcon, PhoneMissedIcon, PhoneOutgoingIcon, SparklesIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { fmtDuree, isAircallMeta, type AircallMeta } from "@/lib/aircall";
-import { isGmailMeta, type GmailMeta } from "@/lib/gmail";
+import { fmtDuree, isAircallMeta, isGmailMeta, type AircallMeta, type GmailMeta } from "@/lib/echange-meta";
 
 export { isAircallMeta, isGmailMeta };
 

@@ -5,9 +5,9 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { connectedGoogleClient } from "@/lib/google-oauth";
+import { isGmailMeta, type GmailMeta } from "@/lib/echange-meta";
 
-export type GmailMeta = { source: "gmail"; messageId: string; threadId: string; direction: "recu" | "envoye"; objet: string; de: string; a: string; extrait: string };
-export const isGmailMeta = (m: unknown): m is GmailMeta => !!m && typeof m === "object" && (m as GmailMeta).source === "gmail";
+export { isGmailMeta, type GmailMeta };
 
 type Message = { id: string; threadId: string; internalDate: string; snippet?: string; labelIds?: string[]; payload?: { headers?: { name: string; value: string }[] } };
 

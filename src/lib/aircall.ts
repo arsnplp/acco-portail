@@ -10,6 +10,9 @@ import type { EchangeType, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { featureEnabled, getSecret } from "@/lib/settings";
 import { normPhone } from "@/lib/crm";
+import { fmtDuree, isAircallMeta, type AircallMeta } from "@/lib/echange-meta";
+
+export { fmtDuree, isAircallMeta, type AircallMeta };
 
 const API = "https://api.aircall.io/v1";
 
@@ -22,14 +25,6 @@ export type AircallCall = {
 };
 type Utterance = { text: string; participant_type: "internal" | "external"; start_time: number };
 
-/** Ce qu'on garde d'un appel Aircall dans `Echange.meta`. */
-export type AircallMeta = {
-  source: "aircall"; aircallId: number; direction: "inbound" | "outbound"; repondu: boolean; dureeSec: number; motifManque: string | null;
-  agent: string | null; numero: string; ligne: string | null; enregistrement: boolean; messagerie: boolean;
-  resume: string | null; sujets: string[]; sentiment: string | null; transcription: { qui: "nous" | "prospect"; texte: string }[] | null;
-  analysePending: boolean; // les analyses IA arrivent quelques minutes après l'appel : on repasse tant qu'elles manquent (48 h au plus)
-};
-export const isAircallMeta = (m: unknown): m is AircallMeta => !!m && typeof m === "object" && (m as AircallMeta).source === "aircall";
 
 export const aircallConfigured = () => featureEnabled("feature_aircall");
 
@@ -119,8 +114,6 @@ async function withInsights(meta: AircallMeta, c: AircallCall): Promise<AircallM
   const complet = !!(i.resume && i.transcription);
   return { ...meta, ...i, analysePending: !complet && Date.now() - endedMs < 48 * 3600_000 };
 }
-
-export const fmtDuree = (s: number) => (s >= 60 ? `${Math.floor(s / 60)} min${s % 60 ? ` ${String(s % 60).padStart(2, "0")}` : ""}` : `${s} s`);
 
 /** Note lisible de l'appel (pour l'historique général, les stats et la recherche). */
 export function noteAppel(m: AircallMeta) {

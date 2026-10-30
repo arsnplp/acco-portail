@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Logo } from "@/components/crm/logo";
 import { DateInput, TimeInput } from "@/components/ui/date-time";
 import { AircallBloc, AircallTitre, GmailBloc, isAircallMeta, isGmailMeta } from "@/components/crm/echange-detail";
-import type { AircallMeta } from "@/lib/aircall";
+import type { AircallMeta } from "@/lib/echange-meta";
 import { ECHANGE, MOTIFS_ABANDON, MOTIFS_PERTE, SEQUENCE_APPELS, STATUT, TOUS_STATUTS, fmtDayTime, fmtTime, initialsOf, logoUrl, relanceInfo } from "@/lib/crm";
 import { bulkProspects, type BulkInput } from "../actions";
 

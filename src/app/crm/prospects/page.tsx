@@ -3,7 +3,7 @@ import type { Prisma, ProspectStatut } from "@prisma/client";
 import { FilterIcon, SearchIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireTeam } from "@/lib/auth";
-import { isAircallMeta } from "@/lib/aircall";
+import { isAircallMeta } from "@/lib/echange-meta";
 import { CLOS, MOTIFS_ABANDON, MOTIFS_PERTE, PIPELINE, SEQUENCE_APPELS, STATUT, TOUS_STATUTS, contactName, formatTel, teamName, todayBounds } from "@/lib/crm";
 import { Liste, type Row } from "./liste";
 
