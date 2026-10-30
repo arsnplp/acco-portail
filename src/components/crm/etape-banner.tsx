@@ -12,7 +12,8 @@ export function EtapeBanner({ statut, className, children, corner, grand = false
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
       {corner && <div className="absolute top-2 right-2">{corner}</div>}
       <div className={cn("relative flex w-full items-center gap-2", grand ? "px-6 pb-5" : "px-3 pb-2")}>
-        <h2 className={cn("font-title font-extrabold text-white drop-shadow", grand ? "text-3xl" : "text-lg")}>{STATUT[statut].label}</h2>
+        {/* Toujours blanc sur la photo, même en mode jour (la règle globale des titres passerait au noir). */}
+        <h2 style={{ color: "#fff" }} className={cn("font-title font-extrabold drop-shadow", grand ? "text-3xl" : "text-lg")}>{STATUT[statut].label}</h2>
         {children}
       </div>
     </header>
