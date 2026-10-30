@@ -225,6 +225,7 @@ export function Contacts({ prospectId, contacts }: { prospectId: string; contact
               <p className="truncate text-xs text-text">{[c.fonction, c.telephone, c.email].filter(Boolean).join(" · ") || "—"}</p>
             </div>
             {c.telephone && <a href={`tel:${c.telephone.replace(/\s/g, "")}`} className="text-xs text-text hover:text-title">Appeler</a>}
+            {c.email && <a href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(c.email)}`} target="_blank" rel="noreferrer" className="text-xs text-text hover:text-title">Écrire</a>}
             <button type="button" onClick={() => setEditing(c.id)} aria-label="Modifier" className="text-text hover:text-title"><PencilIcon size={14} /></button>
             <button type="button" onClick={() => confirm("Supprimer ce contact ?") && start(() => deleteContact(c.id))} aria-label="Supprimer" className="text-text hover:text-pink"><Trash2Icon size={14} /></button>
           </div>
