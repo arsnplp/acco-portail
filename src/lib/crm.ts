@@ -50,7 +50,7 @@ export const ECHANGE_COULEUR: Record<EchangeType, string> = {
 };
 /** Bandeau illustré de chaque étape du pipeline (public/etapes). */
 export const ETAPE_IMAGE: Partial<Record<ProspectStatut, string>> = {
-  A_CONTACTER: "/etapes/traineau.webp", A_RELANCER: "/etapes/trail.webp", POSER_RDV: "/etapes/arc.webp",
+  A_CONTACTER: "/etapes/traineau-droite.webp", A_RELANCER: "/etapes/trail.webp", POSER_RDV: "/etapes/arc.webp",
   RDV_POSE: "/etapes/boxe.webp", A_SIGNER: "/etapes/sommet.webp",
 };
 /** Mêmes bandeaux en grand format, pour la fiche prospect sur ordinateur. */
