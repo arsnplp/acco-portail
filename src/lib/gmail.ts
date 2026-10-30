@@ -71,9 +71,16 @@ export async function syncProspectEmails(prospectId: string): Promise<{ added: n
         added++;
       }
     } catch (e) {
-      const st = (e as { response?: { status?: number } }).response?.status;
-      erreurs.push(st === 403 || st === 401 ? `Gmail (${b.email ?? "agence"}) : reconnectez ce compte Google dans Paramètres pour autoriser la lecture des emails.` : `Gmail (${b.email ?? "agence"}) : ${(e as Error).message}`);
-      console.warn("[gmail]", erreurs.at(-1));
+      const err = e as { response?: { status?: number; data?: { error?: { message?: string; status?: string } } }; message?: string };
+      const st = err.response?.status, msg = err.response?.data?.error?.message ?? err.message ?? "";
+      const qui = `Gmail (${b.email ?? "agence"})`;
+      erreurs.push(
+        /has not been used|is disabled|accessNotConfigured|SERVICE_DISABLED/i.test(msg) ? `${qui} : l’API Gmail n’est pas activée dans le projet Google Cloud (API et services → Bibliothèque → Gmail API → Activer), puis réessayez dans 2 minutes.`
+        : /insufficient|ACCESS_TOKEN_SCOPE_INSUFFICIENT|scope/i.test(msg) || st === 403 ? `${qui} : permission Gmail manquante, déconnectez puis reconnectez ce compte Google dans Paramètres.`
+        : /invalid_grant|invalid_rapt|Token has been expired or revoked/i.test(msg) || st === 401 ? `${qui} : connexion Google expirée ou révoquée, reconnectez ce compte dans Paramètres.`
+        : `${qui} : ${msg}`,
+      );
+      console.warn("[gmail]", b.email, st, msg);
     }
   }
   return { added, error: erreurs.length ? erreurs.join(" ") : undefined };
