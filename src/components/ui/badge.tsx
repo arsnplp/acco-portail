@@ -1,6 +1,6 @@
 import { cn } from "@/lib/cn";
 
-export type Tone = "green" | "yellow" | "pink" | "blue" | "claude" | "neutral";
+export type Tone = "green" | "yellow" | "pink" | "blue" | "claude" | "violet" | "neutral";
 
 const tones: Record<Tone, string> = {
   green: "text-green",
@@ -8,6 +8,7 @@ const tones: Record<Tone, string> = {
   pink: "text-pink",
   blue: "text-blue",
   claude: "text-claude",
+  violet: "text-violet",
   neutral: "text-text",
 };
 const dots: Record<Tone, string> = {
@@ -16,6 +17,7 @@ const dots: Record<Tone, string> = {
   pink: "bg-pink",
   blue: "bg-blue",
   claude: "bg-claude",
+  violet: "bg-violet",
   neutral: "bg-text",
 };
 

@@ -5,7 +5,7 @@ import { CheckIcon } from "lucide-react";
 
 export type TimelineItem = { id: string; date: Date; title: string; description?: string | null; items?: string[]; tone?: Tone };
 
-const dot: Record<Tone, string> = { green: "bg-green", yellow: "bg-yellow", pink: "bg-pink", blue: "bg-blue", claude: "bg-claude", neutral: "bg-text" };
+const dot: Record<Tone, string> = { green: "bg-green", yellow: "bg-yellow", pink: "bg-pink", blue: "bg-blue", claude: "bg-claude", violet: "bg-violet", neutral: "bg-text" };
 
 export function Timeline({ items }: { items: TimelineItem[] }) {
   return (

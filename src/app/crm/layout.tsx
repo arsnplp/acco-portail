@@ -4,11 +4,14 @@ import { requireTeam, initials } from "@/lib/auth";
 import { Avatar } from "@/components/ui/avatar";
 import { CrmBottomNav, CrmNav } from "./crm-nav";
 import { Rappels } from "./rappels";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { getTheme } from "@/lib/theme";
 
 /** Espace Commercial (CRM) : séparé du reste de l'admin, ouvert à l'équipe (admins et commerciaux). */
 export default async function CrmLayout({ children }: { children: React.ReactNode }) {
   const user = await requireTeam();
   const admin = user.role === "ADMIN";
+  const theme = await getTheme();
   return (
     <div className="min-h-dvh bg-bg pb-[calc(var(--nav-h)+env(safe-area-inset-bottom)+16px)] sm:pb-10">
       <header className="sticky top-0 z-30 border-b border-border bg-bg/95 backdrop-blur" style={{ paddingTop: "env(safe-area-inset-top)" }}>
@@ -19,6 +22,7 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
           </Link>
           <CrmNav admin={admin} />
           <div className="ml-auto flex items-center gap-2">
+            <ThemeToggle initial={theme} />
             <Link href={admin ? "/admin/parametres" : "/crm/parametres"} aria-label="Paramètres"><Avatar initials={initials(user)} src={user.avatarUrl} size={32} /></Link>
           </div>
         </div>

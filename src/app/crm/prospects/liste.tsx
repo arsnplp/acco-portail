@@ -11,7 +11,8 @@ import { Logo } from "@/components/crm/logo";
 import { DateInput, TimeInput } from "@/components/ui/date-time";
 import { AircallBloc, AircallTitre, GmailBloc, isAircallMeta, isGmailMeta } from "@/components/crm/echange-detail";
 import type { AircallMeta } from "@/lib/echange-meta";
-import { ECHANGE, MOTIFS_ABANDON, MOTIFS_PERTE, SEQUENCE_APPELS, STATUT, STATUT_COULEUR, STATUT_EMOJI, TOUS_STATUTS, fmtDayTime, fmtTime, initialsOf, logoUrl, relanceInfo } from "@/lib/crm";
+import { ECHANGE, MOTIFS_ABANDON, MOTIFS_PERTE, SEQUENCE_APPELS, STATUT, fmtDayTime, fmtTime, initialsOf, logoUrl, relanceInfo } from "@/lib/crm";
+import { StatutPicker } from "@/components/crm/statut-picker";
 import { bulkProspects, type BulkInput } from "../actions";
 
 export type Row = {
@@ -65,14 +66,14 @@ export function Liste({ rows, team, isAdmin }: { rows: Row[]; team: Member[]; is
   return (
     <>
       {sel.size > 0 && (
-        <form action={appliquer} className="sticky top-14 z-20 mt-4 flex flex-wrap items-center gap-2 rounded-card border border-yellow/40 bg-[#2a2615] p-3 text-sm">
+        <form action={appliquer} className="sticky top-14 z-20 mt-4 flex flex-wrap items-center gap-2 rounded-card border border-yellow/50 bg-surface p-3 shadow-lg shadow-black/20 text-sm">
           <span className="font-semibold text-title">{sel.size} sélectionnée{sel.size > 1 ? "s" : ""}</span>
           <select value={action} onChange={(e) => setAction(e.target.value as typeof action)} className={input} aria-label="Action">
             <option value="statut">Changer le statut</option><option value="relance">Changer la date de relance</option>{isAdmin && <option value="commercial">Réattribuer</option>}
           </select>
           {action === "statut" && (
             <>
-              <select value={statut} onChange={(e) => setStatut(e.target.value as ProspectStatut)} className={input} style={{ color: STATUT_COULEUR[statut], fontWeight: 600 }} aria-label="Nouveau statut">{["ABANDON" as const, ...TOUS_STATUTS.filter((s) => s !== "ABANDON")].map((s) => <option key={s} value={s} style={{ color: STATUT_COULEUR[s], fontWeight: 600 }}>{STATUT_EMOJI[s]} {STATUT[s].label}</option>)}</select>
+              <StatutPicker name="statutMasse" value={statut} onChange={setStatut} abandonFirst className="w-48 [&>button]:h-10" />
               {(statut === "PERDU" || statut === "ABANDON") && <select value={motif} onChange={(e) => setMotif(e.target.value)} className={input} aria-label="Motif"><option value="">Motif…</option>{(statut === "PERDU" ? MOTIFS_PERTE : MOTIFS_ABANDON).map((m) => <option key={m}>{m}</option>)}</select>}
               {statut === "RDV_POSE" && <span className="text-xs text-yellow/80">La date de relance sera effacée.</span>}
             </>

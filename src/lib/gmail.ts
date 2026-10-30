@@ -54,7 +54,8 @@ export async function syncProspectEmails(prospectId: string): Promise<{ added: n
       if (!ids.length) continue;
       const known = new Set((await prisma.echange.findMany({ where: { externalId: { in: ids.map((id) => `gmail:${b.cle}${id}`) } }, select: { externalId: true } })).map((e) => e.externalId));
       for (const id of ids.filter((id) => !known.has(`gmail:${b.cle}${id}`))) {
-        const res = await b.client.request<Message>({ url: `https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}`, params: { format: "metadata", metadataHeaders: ["From", "To", "Subject", "Date"] } });
+        // Les en-têtes se demandent en répétant le paramètre (un tableau serait envoyé « From,To,… » et seul le premier reviendrait).
+        const res = await b.client.request<Message>({ url: `https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject&metadataHeaders=Date` });
         const m = res.data;
         const h = (n: string) => m.payload?.headers?.find((x) => x.name.toLowerCase() === n.toLowerCase())?.value ?? "";
         const de = h("From"), a = h("To"), objet = h("Subject") || "(sans objet)";

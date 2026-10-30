@@ -33,7 +33,7 @@ export function Rappels() {
   return (
     <div className="fixed inset-x-0 z-[60] flex flex-col items-center gap-2 px-3" style={{ top: "calc(env(safe-area-inset-top) + 64px)" }} role="status">
       {items.slice(0, 3).map((r) => (
-        <div key={r.id} className="flex w-full max-w-lg items-center gap-3 rounded-card border border-yellow/50 bg-[#2a2615] px-4 py-3 shadow-2xl shadow-black/60">
+        <div key={r.id} className="flex w-full max-w-lg items-center gap-3 rounded-card border border-yellow/50 bg-surface px-4 py-3 shadow-2xl shadow-black/60">
           <BellRingIcon size={20} className="shrink-0 animate-pulse text-yellow" aria-hidden />
           <Link href={`/crm/prospects/${r.id}`} onClick={() => dismiss(r)} className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-title">Rappel {fmtTime(r.at)} : {r.nom}</p>

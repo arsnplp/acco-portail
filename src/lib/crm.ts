@@ -6,7 +6,7 @@ export const PIPELINE: ProspectStatut[] = ["A_CONTACTER", "A_RELANCER", "POSER_R
 
 export const STATUT: Record<ProspectStatut, { label: string; tone: Tone }> = {
   A_CONTACTER: { label: "À contacter", tone: "blue" },
-  A_RELANCER: { label: "À relancer", tone: "neutral" },
+  A_RELANCER: { label: "À relancer", tone: "violet" },
   POSER_RDV: { label: "Poser RDV", tone: "yellow" },
   RDV_POSE: { label: "RDV posé", tone: "claude" },
   A_SIGNER: { label: "À signer", tone: "pink" },
@@ -65,10 +65,7 @@ export const STATUT_COULEUR: Record<ProspectStatut, string> = {
 export const MOTIFS_PERTE = ["Pas intéressé", "A déjà un site", "Trop cher", "Injoignable", "Pas le bon moment", "Autre"];
 /** Motifs d'abandon (fiche écartée sans être perdue : hors cible, doublon, fermée…). */
 export const MOTIFS_ABANDON = ["Pas intéressé", "Hors cible", "Entreprise fermée", "Doublon", "Numéro invalide", "Injoignable", "Autre"];
-/** Emoji de chaque statut (menus déroulants). */
-export const STATUT_EMOJI: Record<ProspectStatut, string> = {
-  A_CONTACTER: "📞", A_RELANCER: "🔁", POSER_RDV: "📅", RDV_POSE: "🤝", A_SIGNER: "✍️", GAGNE: "🏆", PERDU: "❌", ABANDON: "🗂️",
-};
+
 /** Nombre d'appels (NRP ou appels) attendus avant de considérer la séquence faite. */
 export const SEQUENCE_APPELS = 5;
 

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { getTheme } from "@/lib/theme";
 import { Inter, Poppins } from "next/font/google";
 import "./globals.css";
 import { RegisterServiceWorker } from "@/components/push/register-sw";
@@ -28,9 +29,11 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Mode jour / nuit choisi par l'utilisateur (cookie posé par le bouton soleil / lune), appliqué dès le serveur : pas de flash.
+  const theme = await getTheme();
   return (
-    <html lang="fr" className={`${inter.variable} ${poppins.variable} h-full antialiased`}>
+    <html lang="fr" data-theme={theme} className={`${inter.variable} ${poppins.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <RegisterServiceWorker />
         {children}
