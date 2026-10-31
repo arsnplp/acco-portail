@@ -50,7 +50,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
 
   const pendingDocs = client._count.documentRequests;
   const [offers, orders, echanges, equipe] = await Promise.all([
-    prisma.offer.findMany({ where: { OR: [{ isArchived: false }, { subscriptions: { some: { clientId: client.id, status: "ACTIF" } } }] }, orderBy: { order: "asc" }, include: { promotions: true } }),
+    prisma.offer.findMany({ where: { OR: [{ isArchived: false }, { subscriptions: { some: { clientId: client.id, status: "ACTIF" } } }] }, orderBy: { order: "asc" }, include: { promotions: true, parent: { select: { name: true } } } }),
     prisma.order.findMany({ where: { clientId: client.id, status: "A_TRAITER" }, select: { offerId: true } }),
     prisma.echange.findMany({
       where: { OR: [{ clientId: client.id }, ...(client.crmProspect ? [{ prospectId: client.crmProspect.id }] : [])] },
@@ -130,25 +130,29 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
             price: `${fmtPrice(activePromo(o)?.price ?? o.priceCents)}${o.billing === "MENSUEL" ? " / mois" : ""}${o.setupCents ? ` + ${fmtPrice(o.setupCents)} à l’installation` : ""}`,
             module: o.module !== "NONE" ? MODULE_LABEL[o.module] : null,
             actives: actives.filter((s) => s.offerId === o.id).map(toActive),
-            commandee: commandes.has(o.id),
+            commandee: commandes.has(o.id), parentId: o.parentId, parentName: o.parent?.name ?? null,
           }))}
           resiliees={client.subscriptions.filter((s) => s.status === "RESILIE").map((s) => ({ id: s.id, label: s.label, quand: s.cancelledAt ? `résiliée le ${fmtDate(s.cancelledAt)}` : "résiliée" }))}
           sites={client.sites.map((s) => ({ id: s.id, name: s.name }))}
         />
       </div>
 
-      {/* 3. Technique et web */}
-      <SectionTitle icon={GlobeIcon}>Technique et web</SectionTitle>
+      {/* 3. Offres actives : chaque site avec ses abonnements et modules */}
+      <SectionTitle icon={GlobeIcon}>Offres actives</SectionTitle>
       <div className="grid gap-2">
-        {client.sites.map((s) => (
-          <Card key={s.id} href={`/admin/sites/${s.id}`} className="flex items-center justify-between py-3">
-            <div className="min-w-0">
-              <p className="font-semibold text-title">{s.name}</p>
-              <p className="truncate text-xs text-text">{s.status === "EN_CREATION" ? `Étape : ${PROJECT_STEPS.find((p) => p.key === s.projectStep)?.label}${s.previewUrl ? ` · aperçu : ${s.previewUrl}` : ""}` : s.url ?? "—"}</p>
-            </div>
-            <Badge tone={SITE_STATUS[s.status].tone}>{SITE_STATUS[s.status].label}</Badge>
-          </Card>
-        ))}
+        {client.sites.map((s) => {
+          const subsSite = actives.filter((x) => x.siteId === s.id);
+          return (
+            <Card key={s.id} href={`/admin/sites/${s.id}`} className="flex items-center justify-between py-3">
+              <div className="min-w-0">
+                <p className="font-semibold text-title">{s.name}</p>
+                <p className="truncate text-xs text-text">{s.status === "EN_CREATION" ? `Étape : ${PROJECT_STEPS.find((p) => p.key === s.projectStep)?.label}${s.previewUrl ? ` · aperçu : ${s.previewUrl}` : ""}` : s.url ?? "—"}</p>
+                {subsSite.length > 0 && <p className="mt-0.5 truncate text-xs text-text-strong">{subsSite.map((x) => x.label).join(" · ")}</p>}
+              </div>
+              <Badge tone={SITE_STATUS[s.status].tone}>{SITE_STATUS[s.status].label}</Badge>
+            </Card>
+          );
+        })}
         {client.sites.length === 0 && <p className="text-sm text-text">Aucun site.</p>}
         <div className="flex flex-wrap gap-2 text-sm">
           {client.sites.filter((s) => s.previewUrl && s.status === "EN_CREATION").map((s) => <a key={s.id} href={s.previewUrl!} target="_blank" rel="noreferrer" className="flex items-center gap-1 rounded-full border border-border px-3 py-1 text-text-strong hover:border-text"><ExternalLinkIcon size={12} /> Prévisualisation {s.name}</a>)}

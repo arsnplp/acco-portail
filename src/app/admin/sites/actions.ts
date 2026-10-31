@@ -168,21 +168,21 @@ export async function addArticle(_prev: ActionState, formData: FormData): Promis
   const statut = (["A_REDIGER", "A_PUBLIER", "PUBLIE"].includes(String(formData.get("statut"))) ? String(formData.get("statut")) : "A_REDIGER") as "A_REDIGER" | "A_PUBLIER" | "PUBLIE";
   const url = String(formData.get("url") ?? "").trim() || null;
   await prisma.article.create({ data: { siteId, titre, url, statut, auteurId: me.id, publieAt: statut === "PUBLIE" ? new Date() : null } });
-  revalidatePath("/admin/production");
+  revalidatePath(`/admin/sites/${siteId}`);
   return { ok: true };
 }
 
 export async function setArticleStatut(id: string, statut: "A_REDIGER" | "A_PUBLIER" | "PUBLIE") {
   const me = await requireTeam();
   const a = await prisma.article.update({ where: { id }, data: { statut, publieAt: statut === "PUBLIE" ? new Date() : null }, include: { site: { select: { name: true, clientId: true } } } });
-  if (statut === "PUBLIE") await logActivite({ kind: "article", texte: `Article publié sur ${a.site.name} : ${a.titre}`, href: "/admin/production", userId: me.id, clientId: a.site.clientId, siteId: a.siteId });
-  revalidatePath("/admin/production");
+  if (statut === "PUBLIE") await logActivite({ kind: "article", texte: `Article publié sur ${a.site.name} : ${a.titre}`, href: `/admin/sites/${a.siteId}`, userId: me.id, clientId: a.site.clientId, siteId: a.siteId });
+  revalidatePath(`/admin/sites/${a.siteId}`);
 }
 
 export async function deleteArticle(id: string) {
   await requireTeam();
-  await prisma.article.delete({ where: { id } });
-  revalidatePath("/admin/production");
+  const a = await prisma.article.delete({ where: { id } });
+  revalidatePath(`/admin/sites/${a.siteId}`);
 }
 
 /** Kanban Production, zone « Livré » : le site passe en ligne (historique, notification au client, demande d'avis) et sort du tableau. */

@@ -664,9 +664,12 @@ model Offer {
   module      Module   @default(NONE)
   isArchived  Boolean  @default(false)
   order       Int      @default(0)
+  parentId    String? // offre complémentaire d'une autre offre (ex. Blog, complément de Site) : facultatif
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  parent        Offer?   @relation("OffreComplement", fields: [parentId], references: [id], onDelete: SetNull)
+  complements   Offer[]  @relation("OffreComplement")
   promotions    Promotion[]
   orders        Order[]
   subscriptions Subscription[]

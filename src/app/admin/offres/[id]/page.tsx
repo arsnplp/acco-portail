@@ -15,12 +15,13 @@ export default async function OfferAdminPage({ params }: { params: Promise<{ id:
   const { id } = await params;
   const offer = await prisma.offer.findUnique({ where: { id }, include: { promotions: { orderBy: { endsAt: "desc" } } } });
   if (!offer) notFound();
+  const parents = await prisma.offer.findMany({ where: { parentId: null, isArchived: false, id: { not: id } }, orderBy: { order: "asc" }, select: { id: true, name: true } });
   const now = new Date();
   return (
     <AdminPage title={offer.name} back={{ href: "/admin/offres", label: "Offres" }} action={
       <form action={toggleArchive.bind(null, offer.id)}><SubmitButton variant="secondary" size="sm" pendingLabel="…">{offer.isArchived ? "Réactiver" : "Archiver"}</SubmitButton></form>
     }>
-      <OfferForm offer={offer} />
+      <OfferForm offer={offer} parents={parents} />
 
       <SectionTitle icon={TagIcon}>Promotions</SectionTitle>
       <div className="grid gap-2">

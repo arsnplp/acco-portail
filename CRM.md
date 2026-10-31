@@ -17,8 +17,13 @@ Kanban « Sites en cours » : Maquette → Attente de validation → Modificatio
 espace fait aussi avancer la carte). « Livré » est une zone en bas pendant le glisser, comme Gagné / Perdu : le site passe en
 ligne (historique, notification au client, demande d'avis) et sort du tableau. Sur chaque carte : échéance de l'étape en cours (deadline V1, V2 ou livraison, réglées sur la fiche du site),
 demandes de modification ouvertes, lien de prévisualisation, développeur attitré ; filtre par développeur.
-Blogs : tableau des articles par site (à rédiger, à publier, publié). Flux d'activité : étapes franchies, modifications traitées,
-articles publiés, comptes rendus, validations client (aussi dans Pilotage → Historique global).
+Flux d'activité : étapes franchies, modifications traitées, articles publiés, comptes rendus, validations client (aussi dans
+Pilotage → Historique global). Le suivi des articles de blog (à rédiger, à publier, publié) est sur la fiche de chaque site.
+
+## Offres
+Une offre peut être le **complément** d'une autre (Offres → formulaire → « Complément d'une offre », facultatif) : par exemple
+« Blog », complément de « Site ». Dans la liste, les compléments suivent leur offre principale. Sur la fiche client, un
+complément actif apparaît en « Modules actifs » de son offre principale ; « Offres actives » liste les sites avec leurs abonnements.
 
 ## Clients (Suivi → Clients)
 « Mes clients » (clients suivis par le commercial, ou dont il développe un site) et « Tous les clients » (références en tête,

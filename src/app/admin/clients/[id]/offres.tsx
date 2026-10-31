@@ -8,7 +8,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { cn } from "@/lib/cn";
 
 export type ActiveSub = { id: string; label: string; price: string; since: string; site: string | null; endsAt: string | null; quota: number | null };
-export type OfferRow = { id: string; name: string; benefit: string; price: string; module: string | null; mensuel: boolean; actives: ActiveSub[]; commandee: boolean };
+export type OfferRow = { id: string; name: string; benefit: string; price: string; module: string | null; mensuel: boolean; actives: ActiveSub[]; commandee: boolean; parentId: string | null; parentName: string | null };
 
 /** Les offres du client, claires : ce qu'il a (vert), ce qu'il a commandé (à traiter), ce qu'on peut lui activer. */
 export function OffresClient({ clientId, totaux, base, offres, resiliees, sites }: {
@@ -20,7 +20,10 @@ export function OffresClient({ clientId, totaux, base, offres, resiliees, sites 
   sites: { id: string; name: string }[];
 }) {
   const actives = offres.filter((o) => o.actives.length);
-  const autres = offres.filter((o) => !o.actives.length);
+  // Compléments actifs dont l'offre principale est active aussi : affichés comme « modules actifs » de celle-ci.
+  const sousActifs = (o: OfferRow) => actives.filter((c) => c.parentId === o.id);
+  const principales = actives.filter((o) => !o.parentId || !actives.some((p) => p.id === o.parentId));
+  const autres = offres.filter((o) => !o.actives.length).sort((a, b) => Number(!!a.parentId) - Number(!!b.parentId));
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-2">
@@ -30,13 +33,13 @@ export function OffresClient({ clientId, totaux, base, offres, resiliees, sites 
       </div>
 
       {base.length > 0 && (
-        <Group title="Formule" icon={PackageIcon}>
+        <Group title="Site (abonnement sur mesure)" icon={PackageIcon}>
           {base.map((s) => <ActiveCard key={s.id} clientId={clientId} sub={s} title={s.label} />)}
         </Group>
       )}
 
       <Group title="Offres souscrites" icon={CheckIcon}>
-        {actives.length === 0 ? <p className="px-1 text-sm text-text">Aucune offre du catalogue pour l’instant.</p> : actives.flatMap((o) => o.actives.map((s) => <ActiveCard key={s.id} clientId={clientId} sub={s} title={o.name} sub2={o.benefit} />))}
+        {actives.length === 0 ? <p className="px-1 text-sm text-text">Aucune offre du catalogue pour l’instant.</p> : principales.flatMap((o) => o.actives.map((s) => <ActiveCard key={s.id} clientId={clientId} sub={s} title={o.name} sub2={o.benefit} modules={sousActifs(o).map((c) => c.name)} />))}
       </Group>
 
       {autres.length > 0 && (
@@ -73,7 +76,7 @@ function Group({ title, icon: Icon, children }: { title: string; icon: typeof Ch
   );
 }
 
-function ActiveCard({ clientId, sub, title, sub2 }: { clientId: string; sub: ActiveSub; title: string; sub2?: string }) {
+function ActiveCard({ clientId, sub, title, sub2, modules = [] }: { clientId: string; sub: ActiveSub; title: string; sub2?: string; modules?: string[] }) {
   return (
     <div className="flex flex-col rounded-card border border-[#199e70]/40 bg-surface p-4">
       <div className="flex items-start justify-between gap-2">
@@ -87,6 +90,7 @@ function ActiveCard({ clientId, sub, title, sub2 }: { clientId: string; sub: Act
         {sub.quota ? <li>{sub.quota} modifications / mois</li> : null}
         {sub.endsAt ? <li>Engagement jusqu’au {sub.endsAt}</li> : null}
       </ul>
+      {modules.length > 0 && <p className="mt-2 text-xs text-text">Modules actifs : <span className="font-semibold text-text-strong">{modules.join(", ")}</span></p>}
       <form action={cancelSubscription.bind(null, clientId, sub.id)} className="mt-3" onSubmit={(e) => { if (!confirm(`Résilier « ${title} » ?`)) e.preventDefault(); }}>
         <SubmitButton variant="ghost" size="sm" pendingLabel="…" className="px-0 text-xs text-text hover:text-pink">Résilier</SubmitButton>
       </form>
@@ -105,6 +109,7 @@ function OfferCard({ clientId, offer, sites }: { clientId: string; offer: OfferR
         {offer.commandee ? <span className="shrink-0 rounded-full bg-pink/15 px-2 py-0.5 text-[11px] font-semibold text-pink">Commandée</span> : <span className="shrink-0 rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-text">Non souscrite</span>}
       </div>
       <p className="mt-0.5 line-clamp-2 text-xs text-text">{offer.benefit}</p>
+      {offer.parentName && <p className="mt-1 text-[11px] text-muted">↳ complément de {offer.parentName}</p>}
       <p className="mt-3 text-sm font-semibold text-text-strong">{offer.price}{offer.module ? <span className="font-normal text-text"> · module {offer.module}</span> : null}</p>
       {!open ? (
         <button type="button" onClick={() => setOpen(true)} className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-title hover:border-text">

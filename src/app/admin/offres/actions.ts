@@ -25,6 +25,7 @@ function parseOffer(formData: FormData) {
       billing: (d.billing === "PONCTUEL" ? "PONCTUEL" : "MENSUEL") as Billing,
       module: (d.module === "AVIS" ? "AVIS" : "NONE") as Module,
       order: parseInt(d.order || "0", 10) || 0,
+      parentId: d.parentId?.trim() || null,
     },
   };
 }
@@ -49,6 +50,7 @@ export async function updateOffer(offerId: string, _prev: ActionState, formData:
   await requireProspection();
   const r = parseOffer(formData);
   if ("error" in r) return { error: r.error };
+  if (r.data.parentId === offerId) return { error: "Une offre ne peut pas être son propre complément." };
   await prisma.offer.update({ where: { id: offerId }, data: r.data });
   revalidate();
   return { ok: true };

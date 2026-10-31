@@ -6,7 +6,7 @@ import { createOffer, updateOffer, type ActionState } from "./actions";
 import { Field, Input, Select, Textarea, FormError } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 
-export function OfferForm({ offer }: { offer?: Offer }) {
+export function OfferForm({ offer, parents = [] }: { offer?: Offer; parents?: { id: string; name: string }[] }) {
   const [state, action] = useActionState<ActionState, FormData>(offer ? updateOffer.bind(null, offer.id) : createOffer, {});
   return (
     <form action={action} className="space-y-3 rounded-card border border-border bg-surface p-4">
@@ -19,7 +19,12 @@ export function OfferForm({ offer }: { offer?: Offer }) {
         <Field label="Frais fixes (€)" hint="(optionnel)"><Input name="setup" inputMode="decimal" defaultValue={offer?.setupCents != null ? (offer.setupCents / 100).toString() : ""} /></Field>
         <Field label="Module débloqué"><Select name="module" defaultValue={offer?.module ?? "NONE"}><option value="NONE">Aucun</option><option value="AVIS">Avis Google</option></Select></Field>
       </div>
-      <Field label="Ordre d’affichage"><Input name="order" inputMode="numeric" defaultValue={offer?.order ?? 0} className="w-24" /></Field>
+      <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+        <Field label="Complément d’une offre" hint="(facultatif : ex. Blog, complément de Site)">
+          <Select name="parentId" defaultValue={offer?.parentId ?? ""}><option value="">Non, offre à part entière</option>{parents.filter((p) => p.id !== offer?.id).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</Select>
+        </Field>
+        <Field label="Ordre d’affichage"><Input name="order" inputMode="numeric" defaultValue={offer?.order ?? 0} className="w-24" /></Field>
+      </div>
       <FormError message={state.error} />
       <div className="flex items-center gap-3"><SubmitButton size="sm">{offer ? "Enregistrer" : "Créer l’offre"}</SubmitButton>{state.ok && <span className="text-sm text-green">Enregistré</span>}</div>
     </form>

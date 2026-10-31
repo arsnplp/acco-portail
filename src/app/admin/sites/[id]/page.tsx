@@ -20,7 +20,8 @@ import { connectedGoogleEmail } from "@/lib/google-oauth";
 import { aiConfigured } from "@/lib/ai";
 import { getSecret } from "@/lib/settings";
 import { monthLabel, moisDuRecap, prochainEnvoi } from "@/lib/recaps";
-import { ActivityIcon, ChartColumnIcon, ClockIcon, KeyRoundIcon, PaperclipIcon, PuzzleIcon, StarIcon, WrenchIcon } from "lucide-react";
+import { ActivityIcon, ChartColumnIcon, ClockIcon, KeyRoundIcon, NewspaperIcon, PaperclipIcon, PuzzleIcon, StarIcon, WrenchIcon } from "lucide-react";
+import { ArticleForm, ArticleStatutSelect, DeleteArticleButton } from "@/app/admin/production/blogs";
 
 export default async function SiteAdminPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -35,6 +36,7 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
       searchStats: { orderBy: [{ year: "desc" }, { month: "desc" }], take: 1 },
       healthChecks: { orderBy: { checkedAt: "desc" }, take: 12 },
       recaps: { orderBy: [{ year: "desc" }, { month: "desc" }], take: 1 },
+      articles: { orderBy: [{ statut: "asc" }, { updatedAt: "desc" }] },
     },
   });
   if (!site) notFound();
@@ -143,6 +145,23 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
             <form action={syncReviewsAction.bind(null, site.id)}><SubmitButton size="sm" variant="secondary" pendingLabel="Synchro…">Synchroniser les avis</SubmitButton></form>
           </Card>
         </>
+      )}
+
+      <SectionTitle icon={NewspaperIcon}>Blog <span className="text-sm font-normal text-text">{site.articles.filter((a) => a.statut === "PUBLIE").length} publié{site.articles.filter((a) => a.statut === "PUBLIE").length > 1 ? "s" : ""} · {site.articles.filter((a) => a.statut !== "PUBLIE").length} à faire</span></SectionTitle>
+      <ArticleForm siteId={site.id} />
+      {site.articles.length > 0 && (
+        <ul className="mt-3 divide-y divide-border rounded-card border border-border bg-surface">
+          {site.articles.map((a) => (
+            <li key={a.id} className="flex items-center gap-3 px-3 py-2.5 text-sm">
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium text-title">{a.url ? <a href={a.url} target="_blank" rel="noreferrer" className="hover:underline">{a.titre}</a> : a.titre}</p>
+                <p className="truncate text-xs text-text">{a.publieAt ? `publié le ${fmtDateShort(a.publieAt)}` : `ajouté le ${fmtDateShort(a.createdAt)}`}</p>
+              </div>
+              <ArticleStatutSelect id={a.id} statut={a.statut} />
+              <DeleteArticleButton id={a.id} />
+            </li>
+          ))}
+        </ul>
       )}
 
       <SiteForms gestion={gestion} properties={properties} locations={locations} devs={devs.map((u) => ({ id: u.id, name: teamName(u) }))} site={{ id: site.id, name: site.name, url: site.url, previewUrl: site.previewUrl, screenshotUrl: site.screenshotUrl, status: site.status, projectStep: site.projectStep, searchConsoleProp: site.searchConsoleProp, googleLocationId: site.googleLocationId, repoUrl: site.repoUrl, repoBranch: site.repoBranch, repoRoot: site.repoRoot, developpeurId: site.developpeurId, deadlineV1: site.deadlineV1 ? parisDay(site.deadlineV1) : "", deadlineV2: site.deadlineV2 ? parisDay(site.deadlineV2) : "", deadlineLivraison: site.deadlineLivraison ? parisDay(site.deadlineLivraison) : "" }} />
