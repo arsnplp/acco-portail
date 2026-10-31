@@ -6,7 +6,10 @@ import { addDays, fmtPrice } from "@/lib/format";
 import { ROLE_LABEL, EQUIPE } from "@/lib/roles";
 import Link from "next/link";
 import { fmtDayTime, teamName } from "@/lib/crm";
-import { ActivityIcon, ChartColumnIcon, UsersIcon } from "lucide-react";
+import { ActivityIcon, ChartColumnIcon, TrendingUpIcon, UsersIcon } from "lucide-react";
+import { StackedBars } from "@/app/crm/stats/charts";
+import { VIZ } from "@/lib/crm";
+import { activiteParCollaborateur, projectionMrr } from "@/lib/pilotage";
 
 export const metadata = { title: "Pilotage" };
 
@@ -14,7 +17,7 @@ export const metadata = { title: "Pilotage" };
 export default async function PilotagePage() {
   await requireAdmin();
   const in60 = addDays(60);
-  const [mrr, actifs, clients, sitesEnLigne, equipe, engagements, activites] = await Promise.all([
+  const [mrr, actifs, clients, sitesEnLigne, equipe, engagements, activites, projection, collaborateurs] = await Promise.all([
     prisma.subscription.aggregate({ where: { status: "ACTIF", billing: "MENSUEL" }, _sum: { priceCents: true } }),
     prisma.subscription.count({ where: { status: "ACTIF" } }),
     prisma.client.count(),
@@ -22,7 +25,10 @@ export default async function PilotagePage() {
     prisma.user.findMany({ where: { role: { in: EQUIPE } }, orderBy: [{ role: "asc" }, { firstName: "asc" }], select: { id: true, firstName: true, lastName: true, email: true, role: true, _count: { select: { clientsSuivis: true, clientsDeveloppes: true, crmProspects: true } } } }),
     prisma.subscription.count({ where: { status: "ACTIF", commitmentEndsAt: { gte: new Date(), lte: in60 } } }),
     prisma.activite.findMany({ orderBy: { createdAt: "desc" }, take: 40, include: { user: { select: { firstName: true, email: true } } } }),
+    projectionMrr(),
+    activiteParCollaborateur(30),
   ]);
+  const euros = (n: number) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
   const tiles = [
     { n: fmtPrice(mrr._sum.priceCents ?? 0), label: "MRR (abonnements mensuels actifs)" },
     { n: String(actifs), label: "abonnements actifs" },
@@ -36,21 +42,37 @@ export default async function PilotagePage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {tiles.map((t) => <Card key={t.label}><p className="font-title text-2xl font-extrabold text-title">{t.n}</p><p className="mt-1 text-xs text-text">{t.label}</p></Card>)}
       </div>
-      <p className="mt-3 text-xs text-muted">Projection du MRR sur les prochains mois, activité et performances par collaborateur, historique global : prochaine étape.</p>
 
-      <SectionTitle icon={UsersIcon}>Équipe</SectionTitle>
-      <ul className="divide-y divide-border rounded-card border border-border bg-surface">
-        {equipe.map((u) => (
-          <li key={u.id} className="flex items-center gap-3 px-4 py-3">
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-title">{[u.firstName, u.lastName].filter(Boolean).join(" ") || u.email}</p>
-              <p className="truncate text-xs text-text">{u.email}</p>
-            </div>
-            <span className="hidden text-xs text-text sm:inline">{u._count.clientsSuivis} client{u._count.clientsSuivis > 1 ? "s" : ""} suivi{u._count.clientsSuivis > 1 ? "s" : ""} · {u._count.clientsDeveloppes} développé{u._count.clientsDeveloppes > 1 ? "s" : ""} · {u._count.crmProspects} prospect{u._count.crmProspects > 1 ? "s" : ""}</span>
-            <span className="rounded-full border border-border px-2.5 py-1 text-xs text-text">{ROLE_LABEL[u.role]}</span>
-          </li>
-        ))}
-      </ul>
+      <SectionTitle icon={TrendingUpIcon}>Projection du MRR sur 6 mois</SectionTitle>
+      <Card>
+        <p className="mb-3 text-sm text-text">
+          MRR acquis <span className="font-semibold text-title">{euros(projection.mrr)}</span> · à risque sous 3 mois (fins d’engagement) <span className="font-semibold text-pink">{euros(projection.aRisque3Mois)}</span> · pipeline pondéré (RDV posés 25 %, à signer 60 %) <span className="font-semibold text-green">{euros(projection.pondere)}</span> / mois
+        </p>
+        <StackedBars buckets={projection.points} series={[{ key: "acquis", label: "Acquis (engagement en cours)", color: VIZ.blue }, { key: "risque", label: "Engagement terminé (à renouveler)", color: VIZ.orange }, { key: "pipeline", label: "Pipeline pondéré", color: VIZ.green }]} />
+        <p className="mt-2 text-xs text-muted">Hypothèse : un abonnement dont l’engagement se termine passe en orange (à renouveler), le pipeline entre progressivement sur 3 mois.</p>
+      </Card>
+
+      <SectionTitle icon={UsersIcon}>Activité par collaborateur <span className="text-sm font-normal text-text">30 derniers jours</span></SectionTitle>
+      <div className="overflow-x-auto rounded-card border border-border bg-surface">
+        <table className="w-full text-sm">
+          <thead><tr className="text-left text-[11px] tracking-wide text-text uppercase">
+            <th className="px-3 py-2 font-semibold">Collaborateur</th><th className="px-3 py-2 font-semibold">Rôle</th><th className="px-3 py-2 text-right font-semibold">Échanges</th><th className="px-3 py-2 text-right font-semibold">RDV pris</th><th className="px-3 py-2 text-right font-semibold">Signatures</th><th className="px-3 py-2 text-right font-semibold">CA signé</th><th className="px-3 py-2 text-right font-semibold">Modifs terminées</th><th className="px-3 py-2 text-right font-semibold">Actions</th><th className="px-3 py-2 text-right font-semibold">Clients · sites</th>
+          </tr></thead>
+          <tbody className="divide-y divide-border">
+            {collaborateurs.map((c) => (
+              <tr key={c.id}>
+                <td className="px-3 py-2 font-semibold text-title">{c.nom}</td>
+                <td className="px-3 py-2 text-xs text-text">{ROLE_LABEL[c.role]}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{c.echanges}</td><td className="px-3 py-2 text-right tabular-nums">{c.rdv}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{c.signatures}</td><td className="px-3 py-2 text-right tabular-nums">{c.ca ? euros(c.ca) : "—"}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{c.modifs}</td><td className="px-3 py-2 text-right tabular-nums">{c.actions}</td>
+                <td className="px-3 py-2 text-right text-xs text-text tabular-nums">{c.clients} · {c.sites}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-2 text-xs text-muted">Échanges : appels, mails, visites, RDV notés (Aircall compris). CA signé : création + 12 mois d’abonnement des prospects gagnés sur la période. {equipe.length} membre{equipe.length > 1 ? "s" : ""} dans l’équipe.</p>
 
       <SectionTitle icon={ActivityIcon}>Historique global</SectionTitle>
       {activites.length === 0 ? <p className="text-sm text-text">Le flux se remplit au fil des actions de l’équipe (étapes de production, modifications, articles, comptes rendus).</p> : (

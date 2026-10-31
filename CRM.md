@@ -29,6 +29,17 @@ Avec son compte Google connecté (Paramètres → Mon compte Google), un membre 
 (mis à jour à la prise, au report, à l'annulation) et les échéances (V1, V2, livraison) des sites qu'il suit ou développe.
 Bouton « Synchroniser mon agenda maintenant » pour tout pousser d'un coup. Nécessite l'API Google Calendar activée dans le projet.
 
+## Pilotage (Direction)
+MRR (abonnements mensuels actifs), projection sur 6 mois (acquis, engagements qui se terminent, pipeline pondéré : RDV posés
+25 %, à signer 60 %), activité des 30 derniers jours par collaborateur (échanges, RDV pris, signatures, CA signé, modifications
+terminées, actions), équipe, historique global.
+
+## Espace client : ajouts
+- Résultats : une phrase « en clair » avant les chiffres ; bloc « Ce que nous avons fait » (interventions du site et articles publiés).
+- Récap mensuel (page et email) : mises à jour effectuées, articles publiés, position Google vs mois précédent.
+- Conseils : recommandations automatiques (fiche Google, actualités GMB, campagne d'avis, article de blog, réseaux sociaux,
+  Pages Jaunes, formulaire de contact) classées par priorité, reformulées par Claude si une clé Anthropic est active ; recalculées chaque semaine.
+
 ## Fiche client (Suivi)
 `/admin/clients/<id>` : informations et contacts (ceux de la fiche prospect liée), contrat et offre (formule Essentiel / Référence /
 Conquête / Signature, dates d'engagement, « Suivi par », développeur attitré, client référence épinglé en tête de liste), technique

@@ -23,6 +23,8 @@ export type RecapEmailData = {
   topQueries: { query: string; clicks: number }[];
   summary: string;
   href: string; // lien absolu vers la page Résultats
+  faits?: string[]; // mises à jour effectuées sur le site ce mois-ci
+  articles?: string[]; // titres des articles de blog publiés
 };
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -109,6 +111,14 @@ export function recapEmail(d: RecapEmailData) {
     <p style="margin:10px 0 0;font-size:15px;line-height:1.6;color:${C.strong}">${esc(d.summary)}</p>
   </td></tr>
 
+  ${(d.faits?.length || d.articles?.length) ? `<tr><td style="height:14px;line-height:14px;font-size:0">&nbsp;</td></tr>
+  <tr><td bgcolor="${C.surface}" style="background:${C.surface};border:1px solid ${C.border};border-radius:16px;padding:22px">
+    <div style="font-family:${TITLE};font-size:17px;font-weight:600;color:${C.title}">Ce que nous avons fait ce mois-ci</div>
+    ${d.faits?.length ? `<div style="margin-top:12px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:${C.text}">Mises à jour du site</div><ul style="margin:6px 0 0;padding-left:18px;font-size:14px;line-height:1.6;color:${C.strong}">${d.faits.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>` : ""}
+    ${d.articles?.length ? `<div style="margin-top:12px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:${C.text}">Articles publiés</div><ul style="margin:6px 0 0;padding-left:18px;font-size:14px;line-height:1.6;color:${C.strong}">${d.articles.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>` : ""}
+    ${d.prevPosition !== null && d.position ? `<div style="margin-top:12px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:${C.text}">Référencement</div><p style="margin:6px 0 0;font-size:14px;line-height:1.6;color:${C.strong}">Position moyenne dans Google : ${fmt(d.position, 1)} (${fmt(d.prevPosition, 1)} le mois dernier).</p>` : ""}
+  </td></tr>` : ""}
+
   ${queries.length ? `<tr><td style="height:14px;line-height:14px;font-size:0">&nbsp;</td></tr>
   <tr><td bgcolor="${C.surface}" style="background:${C.surface};border:1px solid ${C.border};border-radius:16px;padding:22px">
     <div style="font-family:${TITLE};font-size:17px;font-weight:600;color:${C.title}">Ce que les gens tapent pour vous trouver</div>
@@ -138,6 +148,6 @@ export function recapEmail(d: RecapEmailData) {
 </td></tr></table>
 </body></html>`;
 
-  const text = `${subject}\n\n${d.clicks} visites depuis Google\n${d.impressions} apparitions dans Google\nPosition moyenne : ${d.position}\n${d.contactCount} demande(s) de clients, ${d.reviewCount} nouvel(s) avis\n\n${d.summary}\n\n${queries.length ? `Ce que les gens tapent pour vous trouver :\n${queries.map((q, i) => `${i + 1}. ${q.query} (${q.clicks})`).join("\n")}\n\n` : ""}Voir tous mes résultats : ${d.href}`;
+  const text = `${subject}\n\n${d.clicks} visites depuis Google\n${d.impressions} apparitions dans Google\nPosition moyenne : ${d.position}\n${d.contactCount} demande(s) de clients, ${d.reviewCount} nouvel(s) avis\n\n${d.summary}\n\n${d.faits?.length ? `Mises à jour du site :\n${d.faits.map((f) => `- ${f}`).join("\n")}\n\n` : ""}${d.articles?.length ? `Articles publiés :\n${d.articles.map((f) => `- ${f}`).join("\n")}\n\n` : ""}${queries.length ? `Ce que les gens tapent pour vous trouver :\n${queries.map((q, i) => `${i + 1}. ${q.query} (${q.clicks})`).join("\n")}\n\n` : ""}Voir tous mes résultats : ${d.href}`;
   return { subject, html, text };
 }

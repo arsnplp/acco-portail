@@ -6,21 +6,33 @@ import { Card, SectionTitle } from "@/components/ui/card";
 import { Empty } from "@/components/ui/empty";
 import { LineChart } from "@/components/charts/line-chart";
 import { MONTHS, monthLabel, previousMonth } from "@/lib/recaps";
-import { fmtDate } from "@/lib/format";
-import { CalendarDaysIcon, SearchIcon, TrendingUpIcon } from "lucide-react";
+import { addDays, fmtDate } from "@/lib/format";
+import { CalendarDaysIcon, ClipboardCheckIcon, SearchIcon, TrendingUpIcon } from "lucide-react";
 
 export const metadata = { title: "Résultats" };
 
 export default async function ResultatsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { site } = await requireClientSite(id);
-  const [stats, recaps] = await Promise.all([
+  const depuis = addDays(-45);
+  const [stats, recaps, faits, articles] = await Promise.all([
     prisma.searchStatsMonthly.findMany({ where: { siteId: site.id }, orderBy: [{ year: "desc" }, { month: "desc" }], take: 13 }),
     prisma.monthlyRecap.findMany({ where: { siteId: site.id }, orderBy: [{ year: "desc" }, { month: "desc" }], take: 12 }),
+    prisma.siteHistoryEntry.findMany({ where: { siteId: site.id, happenedAt: { gte: depuis }, kind: { in: ["INTERVENTION", "MISE_EN_LIGNE"] } }, orderBy: { happenedAt: "desc" }, take: 8 }),
+    prisma.article.findMany({ where: { siteId: site.id, statut: "PUBLIE", publieAt: { gte: depuis } }, orderBy: { publieAt: "desc" }, take: 8 }),
   ]);
+  const ceMois = (faits.length > 0 || articles.length > 0) && (
+    <>
+      <SectionTitle icon={ClipboardCheckIcon}>Ce que nous avons fait ces dernières semaines</SectionTitle>
+      <Card className="divide-y divide-border p-0">
+        {faits.map((f) => <div key={f.id} className="flex items-center gap-3 px-4 py-2.5 text-sm"><span className="size-2 shrink-0 rounded-full bg-green" /><span className="min-w-0 flex-1 truncate text-title">{f.title}</span><span className="shrink-0 text-xs text-text">{fmtDate(f.happenedAt)}</span></div>)}
+        {articles.map((a) => <div key={a.id} className="flex items-center gap-3 px-4 py-2.5 text-sm"><span className="size-2 shrink-0 rounded-full bg-blue" /><span className="min-w-0 flex-1 truncate text-title">Article publié : {a.url ? <a href={a.url} target="_blank" rel="noreferrer" className="hover:underline">{a.titre}</a> : a.titre}</span><span className="shrink-0 text-xs text-text">{a.publieAt ? fmtDate(a.publieAt) : ""}</span></div>)}
+      </Card>
+    </>
+  );
 
   if (stats.length === 0) {
-    return <Empty icon={BarChart3} title="Vos résultats arrivent" text="Dès que Google aura un mois complet de données sur votre site, vous verrez ici vos visites et les recherches qui vous amènent des clients." />;
+    return <div>{ceMois}<Empty icon={BarChart3} title="Vos résultats arrivent" text="Dès que Google aura un mois complet de données sur votre site, vous verrez ici vos visites et les recherches qui vous amènent des clients." /></div>;
   }
 
   const [cur, prev] = stats;
@@ -34,11 +46,19 @@ export default async function ResultatsPage({ params }: { params: Promise<{ id: 
       <p className="mb-3 text-sm text-text">
         {MONTHS[cur.month - 1][0].toUpperCase() + MONTHS[cur.month - 1].slice(1)} {cur.year}{isLatest ? "" : " (dernier mois disponible)"}
       </p>
+      {/* En clair, avant les chiffres : une phrase simple. */}
+      <Card className="mb-3 py-3 text-sm text-text-strong">
+        {cur.clicks > 0 ? `${cur.clicks.toLocaleString("fr-FR")} personne${cur.clicks > 1 ? "s sont venues" : " est venue"} sur votre site depuis Google ce mois-ci` : "Votre site n’a pas encore reçu de visite depuis Google ce mois-ci"}
+        {prev && prev.clicks > 0 ? (cur.clicks >= prev.clicks ? `, c’est ${cur.clicks === prev.clicks ? "autant que" : "plus que"} le mois dernier.` : ", un peu moins que le mois dernier.") : "."}
+        {cur.position ? ` Vous apparaissez en moyenne en position ${Math.round(cur.position)} dans les résultats.` : ""}
+      </Card>
       <div className="grid grid-cols-3 gap-2">
         <Stat value={cur.clicks} prev={prev?.clicks} label="visites depuis Google" />
         <Stat value={cur.impressions} prev={prev?.impressions} label="apparitions dans Google" compact />
         <Stat value={cur.position} prev={prev?.position} label="position moyenne" lowerIsBetter decimals={1} />
       </div>
+
+      {ceMois}
 
       <SectionTitle icon={TrendingUpIcon}>Visites sur 12 mois</SectionTitle>
       <Card>

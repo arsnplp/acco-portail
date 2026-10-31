@@ -375,6 +375,8 @@ model Site {
   deadlineV1        DateTime? // présentation de la V1
   deadlineV2        DateTime? // V2 (après peaufinement / validation client)
   deadlineLivraison DateTime?
+  conseils          Json? // conseils business (espace client), regénérés chaque semaine
+  conseilsAt        DateTime?
   mockupValidatedAt DateTime?
   launchedAt        DateTime?
   siteKey           String      @unique @default(cuid()) // clé des formulaires

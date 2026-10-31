@@ -121,11 +121,14 @@ const emailFields = (e: { subject: string; html: string; text: string } | null) 
 /** Email du récap d'un mois (objet, HTML, texte), à partir des chiffres et du récap déjà enregistrés. */
 export async function recapEmailFor(siteId: string, year: number, month: number) {
   const prevYm = month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 };
-  const [site, stats, prev, recap] = await Promise.all([
+  const start = new Date(year, month - 1, 1), end = new Date(year, month, 1);
+  const [site, stats, prev, recap, faits, articles] = await Promise.all([
     prisma.site.findUniqueOrThrow({ where: { id: siteId } }),
     prisma.searchStatsMonthly.findUnique({ where: { siteId_year_month: { siteId, year, month } } }),
     prisma.searchStatsMonthly.findUnique({ where: { siteId_year_month: { siteId, ...prevYm } } }),
     prisma.monthlyRecap.findUnique({ where: { siteId_year_month: { siteId, year, month } } }),
+    prisma.siteHistoryEntry.findMany({ where: { siteId, happenedAt: { gte: start, lt: end }, kind: { in: ["INTERVENTION", "MISE_EN_LIGNE"] } }, orderBy: { happenedAt: "asc" }, select: { title: true } }),
+    prisma.article.findMany({ where: { siteId, statut: "PUBLIE", publieAt: { gte: start, lt: end } }, orderBy: { publieAt: "asc" }, select: { titre: true } }),
   ]);
   if (!stats || !recap) return null;
   return recapEmail({
@@ -136,6 +139,7 @@ export async function recapEmailFor(siteId: string, year: number, month: number)
     contactCount: recap.contactCount, reviewCount: recap.reviewCount,
     topQueries: (stats.topQueries as { query: string; clicks: number }[]) ?? [],
     summary: recap.summary, href: appUrl(`/sites/${siteId}/resultats`),
+    faits: faits.map((f) => f.title), articles: articles.map((a) => a.titre),
   });
 }
 
