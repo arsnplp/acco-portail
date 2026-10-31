@@ -98,7 +98,7 @@ export async function createSite(clientId: string, _prev: ActionState, formData:
       clientId,
       name,
       status: "EN_CREATION",
-      projectStep: "PREPARATION_V1",
+      projectStep: "MAQUETTE",
       assets: {
         create: [
           { kind: "LOGO", label: "Votre logo" },

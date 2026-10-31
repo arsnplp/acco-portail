@@ -46,7 +46,7 @@ export default async function ProductionPage({ searchParams }: { searchParams: P
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl">Production</h1>
-          <p className="mt-1 text-sm text-text">{cards.length} site{cards.length > 1 ? "s" : ""} en cours · glissez une carte pour changer d’étape, cliquez pour ouvrir le site.</p>
+          <p className="mt-1 text-sm text-text">{cards.length} site{cards.length > 1 ? "s" : ""} en cours · glissez une carte pour changer d’étape (vers « Livré » en bas pour mettre en ligne), cliquez pour ouvrir le site.</p>
         </div>
       </div>
       <ProductionBoard initial={cards} devs={devs} meId={me.id} initialDev={dev ?? "all"} />

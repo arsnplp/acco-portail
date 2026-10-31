@@ -8,7 +8,8 @@ import { CalendarIcon, ChevronDownIcon, ExternalLinkIcon, PencilRulerIcon, Users
 import { cn } from "@/lib/cn";
 import { PROJECT_STEPS } from "@/lib/labels";
 import { fmtDay, initialsOf, relanceInfo } from "@/lib/crm";
-import { moveSiteEtape } from "../sites/actions";
+import { livrerSite, moveSiteEtape } from "../sites/actions";
+import { PackageCheckIcon } from "lucide-react";
 
 export type SiteCard = {
   id: string; name: string; client: string; clientId: string; etape: ProjectStep; developpeurId: string | null; dev: string | null;
@@ -29,8 +30,14 @@ export function ProductionBoard({ initial, devs, meId, initialDev }: { initial: 
   function onEnd(e: DragEndEvent) {
     setDragging(null);
     const card = cards.find((c) => c.id === e.active.id);
-    const to = e.over?.id as ProjectStep | undefined;
+    const to = e.over?.id as ProjectStep | "LIVRE" | undefined;
     if (!card || !to || to === card.etape) return;
+    if (to === "LIVRE") {
+      if (!confirm(`Livrer ${card.name} ? Le site passe en ligne, le client est prévenu, la carte sort du tableau.`)) return;
+      setCards((cs) => cs.filter((c) => c.id !== card.id));
+      start(async () => { await livrerSite(card.id); router.refresh(); });
+      return;
+    }
     const step = PROJECT_STEPS.find((p) => p.key === to)!;
     setCards((cs) => cs.map((c) => (c.id === card.id ? { ...c, etape: to, deadlineLabel: step.deadline === "deadlineV1" ? "V1" : step.deadline === "deadlineV2" ? "V2" : "Livraison", depuis: new Date().toISOString() } : c)));
     start(async () => { await moveSiteEtape(card.id, to); router.refresh(); });
@@ -48,9 +55,14 @@ export function ProductionBoard({ initial, devs, meId, initialDev }: { initial: 
         <ChevronDownIcon size={15} className="pointer-events-none absolute right-3.5 text-text" aria-hidden />
       </label>
       <DndContext sensors={sensors} onDragStart={(e: DragStartEvent) => setDragging(cards.find((c) => c.id === e.active.id) ?? null)} onDragEnd={onEnd} onDragCancel={() => setDragging(null)}>
-        <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-4 lg:mx-0 lg:grid lg:grid-cols-6 lg:overflow-visible lg:px-0">
+        <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-4 lg:mx-0 lg:grid lg:grid-cols-5 lg:overflow-visible lg:px-0">
           {PROJECT_STEPS.map((s) => <Column key={s.key} etape={s.key} label={s.label} cards={visible.filter((c) => c.etape === s.key)} onOpen={(id) => router.push(`/admin/sites/${id}`)} />)}
         </div>
+        {dragging && (
+          <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-bg/95 p-3 backdrop-blur" style={{ paddingBottom: "calc(12px + env(safe-area-inset-bottom))" }}>
+            <LivreZone />
+          </div>
+        )}
         <DragOverlay dropAnimation={null}>{dragging ? <Card card={dragging} overlay /> : null}</DragOverlay>
       </DndContext>
     </div>
@@ -97,5 +109,15 @@ function Card({ card, overlay }: { card: SiteCard; overlay?: boolean }) {
         {card.dev ? <span title={card.dev} className="ml-auto flex size-5 items-center justify-center rounded-full bg-surface-2 text-[9px] font-semibold text-text-strong">{initialsOf(card.dev)}</span> : <span className="ml-auto text-muted" title="Sans développeur">—</span>}
       </div>
     </article>
+  );
+}
+
+/** Zone « Livré » en bas de l'écran pendant un glisser : comme Gagné / Perdu dans le pipeline commercial. */
+function LivreZone() {
+  const { setNodeRef, isOver } = useDroppable({ id: "LIVRE" });
+  return (
+    <div ref={setNodeRef} className={cn("mx-auto flex h-16 max-w-xl items-center justify-center gap-2 rounded-card border-2 border-dashed text-sm font-semibold", isOver ? "border-green bg-green/15 text-green" : "border-green/40 text-green")}>
+      <PackageCheckIcon size={18} aria-hidden /> Livré : le site passe en ligne
+    </div>
   );
 }

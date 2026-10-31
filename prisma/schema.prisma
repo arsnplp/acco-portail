@@ -44,14 +44,13 @@ enum SiteStatus {
   SUSPENDU
 }
 
-/// Pipeline de production d'un site (kanban « Sites en cours »).
+/// Pipeline de production d'un site (kanban « Sites en cours »). « Livré » n'est pas une étape : le site passe en ligne (status EN_LIGNE).
 enum ProjectStep {
-  PREPARATION_V1
-  PRESENTATION_V1
-  PEAUFINEMENT
-  VALIDATION_CLIENT
-  FINITION
-  LIVRAISON
+  MAQUETTE
+  ATTENTE_VALIDATION
+  MODIFICATION
+  ATTENTE_VALIDATION_FINITION
+  A_LIVRER
 }
 
 enum ArticleStatut {
@@ -369,7 +368,7 @@ model Site {
   previewUrl        String? // lien préprod
   screenshotUrl     String?
   status            SiteStatus  @default(EN_CREATION)
-  projectStep       ProjectStep @default(PREPARATION_V1)
+  projectStep       ProjectStep @default(MAQUETTE)
   etapeAt           DateTime? // dernier changement d'étape
   developpeurId     String? // développeur attitré au projet
   deadlineV1        DateTime? // présentation de la V1

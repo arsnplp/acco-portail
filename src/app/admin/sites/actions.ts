@@ -42,7 +42,7 @@ export async function updateSite(siteId: string, _prev: ActionState, formData: F
         previewUrl: d.previewUrl?.trim() || null,
         screenshotUrl: d.screenshotUrl?.trim() || null,
         status,
-        projectStep: goesLive ? "LIVRAISON" : projectStep,
+        projectStep: goesLive ? "A_LIVRER" : projectStep,
         etapeAt: projectStep !== before.projectStep ? new Date() : before.etapeAt,
         developpeurId: d.developpeurId || null,
         deadlineV1: d.deadlineV1 ? new Date(`${d.deadlineV1}T12:00:00`) : null,
@@ -183,4 +183,21 @@ export async function deleteArticle(id: string) {
   await requireTeam();
   await prisma.article.delete({ where: { id } });
   revalidatePath("/admin/production");
+}
+
+/** Kanban Production, zone « Livré » : le site passe en ligne (historique, notification au client, demande d'avis) et sort du tableau. */
+export async function livrerSite(siteId: string) {
+  const me = await requireTeam();
+  const site = await prisma.site.findUnique({ where: { id: siteId } });
+  if (!site || site.status === "EN_LIGNE") return;
+  await prisma.$transaction(async (tx) => {
+    await tx.site.update({ where: { id: siteId }, data: { status: "EN_LIGNE", projectStep: "A_LIVRER", etapeAt: new Date(), launchedAt: new Date() } });
+    await tx.siteHistoryEntry.create({ data: { siteId, kind: "MISE_EN_LIGNE", title: "Mise en ligne", authorId: me.id, items: [] } });
+    await tx.notification.create({ data: { clientId: site.clientId, siteId, kind: "SITE_EN_LIGNE", title: "Votre site est en ligne", body: site.name, href: `/sites/${siteId}` } });
+  });
+  await maybeCreateReviewPrompt(site.clientId, "SITE_EN_LIGNE");
+  await logActivite({ kind: "site_statut", texte: `${site.name} livré : en ligne`, href: `/admin/sites/${siteId}`, userId: me.id, clientId: site.clientId, siteId });
+  revalidatePath("/admin/production");
+  revalidatePath(`/admin/sites/${siteId}`);
+  revalidatePath(`/sites/${siteId}`, "layout");
 }

@@ -84,7 +84,7 @@ async function main() {
       name: "boulangerie-dupont.fr",
       url: "https://boulangerie-dupont.fr",
       status: "EN_LIGNE",
-      projectStep: "LIVRAISON",
+      projectStep: "A_LIVRER",
       launchedAt: daysAgo(210),
       siteKey: "demo-boulangerie-dupont",
       history: {
@@ -133,7 +133,7 @@ async function main() {
       name: "dupont-traiteur.fr",
       url: "https://dupont-traiteur.fr",
       status: "EN_LIGNE",
-      projectStep: "LIVRAISON",
+      projectStep: "A_LIVRER",
       launchedAt: daysAgo(40),
       siteKey: "demo-dupont-traiteur",
       history: { create: [{ kind: "CREATION", title: "Création du site", happenedAt: daysAgo(40), items: ["3 pages", "SEO technique", "Pages légales"] }] },
@@ -178,7 +178,7 @@ async function main() {
       clientId: plombier.id,
       name: "benali-plomberie.fr",
       status: "EN_CREATION",
-      projectStep: "PRESENTATION_V1",
+      projectStep: "ATTENTE_VALIDATION",
       previewUrl: "https://preprod.acco-lab.fr/benali",
       siteKey: "demo-benali-plomberie",
       assets: {

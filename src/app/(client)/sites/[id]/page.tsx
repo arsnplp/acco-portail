@@ -29,7 +29,7 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
     <div>
       <SectionTitle icon={ConstructionIcon}>Avancement</SectionTitle>
       <Card>
-        <ol className="grid grid-cols-6 gap-1">
+        <ol className="grid grid-cols-5 gap-1">
           {PROJECT_STEPS.map((s, i) => {
             const done = i < stepIndex;
             const current = i === stepIndex;
@@ -57,10 +57,10 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
         </Card>
       )}
 
-      {(site.projectStep === "PRESENTATION_V1" || site.projectStep === "VALIDATION_CLIENT") && (
+      {(site.projectStep === "ATTENTE_VALIDATION" || site.projectStep === "ATTENTE_VALIDATION_FINITION") && (
         <form action={validateMockup.bind(null, site.id)} className="mt-3">
           <SubmitButton size="lg" className="w-full" pendingLabel="Validation…">
-            <FileCheck2 size={18} /> {site.projectStep === "PRESENTATION_V1" ? "Valider la version 1" : "Valider la version 2"}
+            <FileCheck2 size={18} /> {site.projectStep === "ATTENTE_VALIDATION" ? "Valider la maquette" : "Valider la version finale"}
           </SubmitButton>
           <p className="mt-2 text-center text-xs text-muted">Une remarque ? Écrivez-nous dans Messages avant de valider.</p>
         </form>

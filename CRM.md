@@ -12,9 +12,10 @@ depuis son avatar ; les clés API et le Google de l'agence restent au gestionnai
 commercial `/crm`, autres `/admin/suivi`.
 
 ## Production (Suivi → Production)
-Kanban « Sites en cours » : Préparation V1 → Présentation V1 → Peaufinement → Validation client → Finition → Livraison
-(sites « en création » ; glisser une carte change l'étape ; le client qui valide la V1 ou la V2 depuis son espace fait aussi
-avancer la carte). Sur chaque carte : échéance de l'étape en cours (deadline V1, V2 ou livraison, réglées sur la fiche du site),
+Kanban « Sites en cours » : Maquette → Attente de validation → Modification → Attente de validation et finition → À livrer
+(sites « en création » ; glisser une carte change l'étape ; le client qui valide la maquette ou la version finale depuis son
+espace fait aussi avancer la carte). « Livré » est une zone en bas pendant le glisser, comme Gagné / Perdu : le site passe en
+ligne (historique, notification au client, demande d'avis) et sort du tableau. Sur chaque carte : échéance de l'étape en cours (deadline V1, V2 ou livraison, réglées sur la fiche du site),
 demandes de modification ouvertes, lien de prévisualisation, développeur attitré ; filtre par développeur.
 Blogs : tableau des articles par site (à rédiger, à publier, publié). Flux d'activité : étapes franchies, modifications traitées,
 articles publiés, comptes rendus, validations client (aussi dans Pilotage → Historique global).
