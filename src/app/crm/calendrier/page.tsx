@@ -2,7 +2,8 @@ import { UrlSelect } from "@/components/crm/url-select";
 import Link from "next/link";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { requireTeam } from "@/lib/auth";
+import { MODULES } from "@/lib/roles";
+import { requireProspection } from "@/lib/auth";
 import { cn } from "@/lib/cn";
 import { contactName, initialsOf, parisDay, parisMidnight, teamName, CLOS } from "@/lib/crm";
 import { Calendar, type CalEvent, type Vue } from "./calendar";
@@ -17,7 +18,7 @@ const shift = (day: string, n: number) => { const d = new Date(`${day}T12:00:00Z
 const weekday = (day: string) => (new Date(`${day}T12:00:00Z`).getUTCDay() + 6) % 7; // 0 = lundi
 
 export default async function CalendrierPage({ searchParams }: { searchParams: Promise<{ vue?: string; d?: string; c?: string; rappels?: string }> }) {
-  const me = await requireTeam();
+  const me = await requireProspection();
   const sp = await searchParams;
   const vue: Vue = sp.vue === "jour" || sp.vue === "mois" ? sp.vue : "semaine";
   const today = parisDay();
@@ -42,7 +43,7 @@ export default async function CalendrierPage({ searchParams }: { searchParams: P
       where: { ...byCommercial, rappelAt: { gte: from, lt: to }, statut: { notIn: CLOS } },
       select: { id: true, societe: true, rappelAt: true, commercial: { select: { firstName: true, email: true } }, contacts: { orderBy: [{ principal: "desc" }, { createdAt: "asc" }], take: 1, select: { prenom: true, nom: true } } },
     }) : Promise.resolve([]),
-    prisma.user.findMany({ where: { role: { in: ["ADMIN", "COMMERCIAL"] } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true } }),
+    prisma.user.findMany({ where: { role: { in: MODULES.prospection } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true } }),
   ]);
 
   const events: CalEvent[] = [

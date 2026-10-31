@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { requireProspection } from "@/lib/auth";
 import { notifyClient } from "@/lib/notify";
 
 function revalidate() {
@@ -13,14 +13,14 @@ function revalidate() {
 }
 
 export async function markContacted(referralId: string) {
-  await requireAdmin();
+  await requireProspection();
   await prisma.referral.updateMany({ where: { id: referralId, status: "ENVOYEE" }, data: { status: "CONTACTEE" } });
   revalidate();
 }
 
 /** « Signé » : valide la récompense paramétrée et prévient le parrain. Lie éventuellement le nouveau client. */
 export async function markSigned(referralId: string, formData: FormData) {
-  await requireAdmin();
+  await requireProspection();
   const ref = await prisma.referral.findUnique({ where: { id: referralId } });
   if (!ref || ref.status === "RECOMPENSE_VALIDEE") return;
   const reward = (await prisma.setting.findUnique({ where: { key: "referral_reward_label" } }))?.value ?? "Récompense de parrainage";
@@ -36,7 +36,7 @@ export async function markSigned(referralId: string, formData: FormData) {
 }
 
 export async function closeReferral(referralId: string) {
-  await requireAdmin();
+  await requireProspection();
   await prisma.referral.delete({ where: { id: referralId } });
   revalidate();
 }

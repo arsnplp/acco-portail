@@ -2,14 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { isGestionnaire, requireAdmin, requireGestionnaire } from "@/lib/auth";
+import { isGestionnaire, requireTeam, requireGestionnaire } from "@/lib/auth";
 import type { ProjectStep, SiteStatus } from "@prisma/client";
 import { maybeCreateReviewPrompt } from "@/lib/review-prompt";
 
 export type ActionState = { error?: string; ok?: boolean };
 
 export async function updateSite(siteId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
-  const admin = await requireAdmin();
+  const admin = await requireTeam();
   const d = Object.fromEntries(formData) as Record<string, string>;
   const before = await prisma.site.findUnique({ where: { id: siteId } });
   if (!before) return { error: "Site introuvable" };
@@ -69,7 +69,7 @@ export async function updateSite(siteId: string, _prev: ActionState, formData: F
 }
 
 export async function addHistoryEntry(siteId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
-  const admin = await requireAdmin();
+  const admin = await requireTeam();
   const title = String(formData.get("title") ?? "").trim();
   if (!title) return { error: "Titre requis" };
   const items = String(formData.get("items") ?? "").split("\n").map((s) => s.trim()).filter(Boolean);
@@ -84,7 +84,7 @@ export async function addHistoryEntry(siteId: string, _prev: ActionState, formDa
 }
 
 export async function addAssetRequest(siteId: string, formData: FormData) {
-  await requireAdmin();
+  await requireTeam();
   const label = String(formData.get("label") ?? "").trim();
   if (!label) return;
   const kind = (["LOGO", "TEXTE", "PHOTO", "AUTRE"].includes(String(formData.get("kind"))) ? formData.get("kind") : "AUTRE") as "LOGO" | "TEXTE" | "PHOTO" | "AUTRE";
@@ -119,7 +119,7 @@ export async function syncReviewsAction(siteId: string) {
 }
 
 export async function checkSiteNow(siteId: string) {
-  await requireAdmin();
+  await requireTeam();
   const site = await prisma.site.findUnique({ where: { id: siteId } });
   if (!site?.url) return;
   const { checkSite } = await import("@/lib/monitor");

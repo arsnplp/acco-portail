@@ -12,7 +12,7 @@ export async function GET(req: Request) {
   const perso = new URL(req.url).searchParams.get("perso") === "1";
   const base = process.env.NEXT_PUBLIC_APP_URL;
   if (!user || user.role === "CLIENT" || (!perso && !isGestionnaire(user))) return NextResponse.redirect(new URL("/", base));
-  const retour = user.role === "ADMIN" ? "/admin/parametres" : "/crm/parametres";
+  const retour = user.role === "COMMERCIAL" ? "/crm/parametres" : "/admin/parametres";
   if (!oauthConfigured()) return NextResponse.redirect(new URL(`${retour}?google=non-configure`, base));
   const url = oauthClient().generateAuthUrl({ access_type: "offline", prompt: "consent", scope: perso ? GOOGLE_SCOPES_PERSO : GOOGLE_SCOPES, include_granted_scopes: true, state: perso ? "perso" : "agence" });
   return NextResponse.redirect(url);

@@ -12,7 +12,7 @@ export type Espace = {
 /** Les grands espaces de l'équipe, chacun avec son illustration (public/espaces). */
 export function Espaces({ items }: { items: Espace[] }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className={`grid gap-4 sm:grid-cols-2 ${items.length >= 3 ? "lg:grid-cols-3" : ""}`}>
       {items.map((e, i) => (
         <Link
           key={e.href}
@@ -20,7 +20,7 @@ export function Espaces({ items }: { items: Espace[] }) {
           className="group relative flex flex-col overflow-hidden rounded-[22px] border border-border bg-surface transition-[border-color,transform] duration-300 hover:-translate-y-0.5 hover:border-text"
           style={{ boxShadow: `0 30px 60px -40px ${e.accent}` }}
         >
-          <div className="relative aspect-[4/3] w-full overflow-hidden sm:aspect-[4/5]">
+          <div className={`relative aspect-[4/3] w-full overflow-hidden ${items.length >= 3 ? "sm:aspect-[4/3]" : "sm:aspect-[4/5]"}`}>
             <Image
               src={e.image}
               alt=""

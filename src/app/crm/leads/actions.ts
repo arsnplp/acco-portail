@@ -3,7 +3,7 @@
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireTeam } from "@/lib/auth";
+import { requireProspection } from "@/lib/auth";
 import { generateLeadList } from "@/lib/leads/generate";
 import type { LeadRow } from "@/lib/leads/colonnes";
 import { formatTel, hostOf, nettoyerNom, normName, normPhone, parisDay, parisMidnight } from "@/lib/crm";
@@ -17,7 +17,7 @@ function refresh(id?: string) {
 
 /** Lance la génération d'une liste (elle tourne en arrière-plan, 2 à 5 minutes). */
 export async function createLeadList(_prev: LeadState, f: FormData): Promise<LeadState> {
-  const me = await requireTeam();
+  const me = await requireProspection();
   const demande = Math.round(Number(f.get("nombre")));
   const secteur = String(f.get("secteur") ?? "").trim();
   const region = String(f.get("region") ?? "").trim();
@@ -37,21 +37,21 @@ export async function createLeadList(_prev: LeadState, f: FormData): Promise<Lea
 }
 
 export async function retryLeadList(id: string) {
-  await requireTeam();
+  await requireProspection();
   const l = await prisma.leadListe.update({ where: { id }, data: { statut: "GENERATION", erreur: null, message: null } });
   after(() => generateLeadList(l.id));
   refresh(id);
 }
 
 export async function assignLeadList(id: string, commercialId: string | null) {
-  const me = await requireTeam();
+  const me = await requireProspection();
   if (me.role !== "ADMIN" && commercialId && commercialId !== me.id) return;
   await prisma.leadListe.update({ where: { id }, data: { commercialId: commercialId || null } });
   refresh(id);
 }
 
 export async function deleteLead(id: string) {
-  await requireTeam();
+  await requireProspection();
   const l = await prisma.lead.findUnique({ where: { id } });
   if (!l || l.prospectId) return;
   await prisma.$transaction([prisma.lead.delete({ where: { id } }), prisma.leadListe.update({ where: { id: l.listeId }, data: { obtenus: { decrement: 1 } } })]);
@@ -59,7 +59,7 @@ export async function deleteLead(id: string) {
 }
 
 export async function deleteLeadList(id: string) {
-  const me = await requireTeam();
+  const me = await requireProspection();
   const l = await prisma.leadListe.findUnique({ where: { id }, include: { _count: { select: { leads: { where: { prospectId: { not: null } } } } } } });
   if (!l || (me.role !== "ADMIN" && l.auteurId !== me.id)) return;
   await prisma.leadListe.delete({ where: { id } }); // les prospects déjà créés restent dans le CRM
@@ -78,7 +78,7 @@ function splitDirigeant(s: string | null) {
 
 /** Envoie les leads de la liste dans « À contacter » (en sautant ceux déjà présents dans le CRM). */
 export async function sendListToProspects(id: string): Promise<LeadState> {
-  const me = await requireTeam();
+  const me = await requireProspection();
   const liste = await prisma.leadListe.findUnique({ where: { id }, include: { leads: { where: { prospectId: null } } } });
   if (!liste) return { error: "Liste introuvable." };
   if (liste.statut === "GENERATION") return { error: "La liste est encore en cours de génération." };

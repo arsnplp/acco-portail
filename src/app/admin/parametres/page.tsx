@@ -9,7 +9,7 @@ import { oauthConfigured, connectedGoogleEmail } from "@/lib/google-oauth";
 import { listProperties } from "@/lib/google-search";
 import { saveSettings, disconnectGoogleAction } from "./actions";
 import { ServicesForm } from "./services-form";
-import { isGestionnaire, requireAdmin } from "@/lib/auth";
+import { isGestionnaire, requireTeam } from "@/lib/auth";
 import { secretsStatus, featureToggles } from "@/lib/settings";
 import { KeyRoundIcon, Link2Icon, SettingsIcon } from "lucide-react";
 import { GOOGLE_MSG, MesParametres } from "./moi";
@@ -18,7 +18,7 @@ export const metadata = { title: "Paramètres" };
 
 export default async function ParametresPage({ searchParams }: { searchParams: Promise<{ google?: string }> }) {
   const { google } = await searchParams;
-  const admin = await requireAdmin();
+  const admin = await requireTeam();
   const moi = <MesParametres user={admin} google={google} next="/admin/parametres" />;
   // Clés API, Google de l'agence (Search Console, avis) et réglages de l'agence : réservés au gestionnaire (Arsène).
   // Les autres admins et les commerciaux ont leurs paramètres personnels (compte Google à eux, notifications, accès).

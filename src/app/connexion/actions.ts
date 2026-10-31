@@ -2,7 +2,9 @@
 
 import { z } from "zod";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { recordLogin } from "@/lib/login-log";
 
 export type LoginState = { error?: string; email?: string };
 
@@ -14,7 +16,8 @@ export async function signInWithPassword(_prev: LoginState, formData: FormData):
   if (!password) return { error: "Entrez votre mot de passe.", email };
 
   const supabase = await createSupabaseServer();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { error: "Email ou mot de passe incorrect.", email };
+  if (data.user) await recordLogin(data.user.id, (await headers()).get("user-agent"));
   redirect(next.startsWith("/") ? next : "/");
 }

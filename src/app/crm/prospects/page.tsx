@@ -2,7 +2,8 @@ import Link from "next/link";
 import type { Prisma, ProspectStatut } from "@prisma/client";
 import { FilterIcon, SearchIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { requireTeam } from "@/lib/auth";
+import { MODULES } from "@/lib/roles";
+import { requireProspection } from "@/lib/auth";
 import { isAircallMeta } from "@/lib/echange-meta";
 import { CLOS, MOTIFS_ABANDON, MOTIFS_PERTE, PIPELINE, SEQUENCE_APPELS, STATUT, TOUS_STATUTS, contactName, formatTel, teamName, todayBounds } from "@/lib/crm";
 import { Liste, type Row } from "./liste";
@@ -19,7 +20,7 @@ const APPELS_TYPES = ["NRP", "APPEL", "PRISE_RDV"] as const;
  * et des actions en masse (statut, relance, réattribution).
  */
 export default async function ProspectsPage({ searchParams }: { searchParams: Promise<SP> }) {
-  const me = await requireTeam();
+  const me = await requireProspection();
   const sp = await searchParams;
   const isAdmin = me.role === "ADMIN";
   const q = (sp.q ?? "").trim();
@@ -48,7 +49,7 @@ export default async function ProspectsPage({ searchParams }: { searchParams: Pr
   };
 
   const [team, cibles, all] = await Promise.all([
-    prisma.user.findMany({ where: { role: { in: ["ADMIN", "COMMERCIAL"] } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true } }),
+    prisma.user.findMany({ where: { role: { in: MODULES.prospection } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true } }),
     prisma.cible.findMany({ orderBy: { nom: "asc" }, select: { nom: true } }),
     prisma.prospect.findMany({
       where, orderBy: { updatedAt: "desc" },

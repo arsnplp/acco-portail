@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { EchangeType, Prisma, ProspectSource, ProspectStatut } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { requireTeam } from "@/lib/auth";
+import { requireProspection } from "@/lib/auth";
 import { NOTE_OBLIGATOIRE, REGLES, TOUS_STATUTS, formatTel, nettoyerNom, fmtDayTime, statutApres, addDaysParis, hostOf, normName, normPhone, parisDateTime, parisDay, parisMidnight } from "@/lib/crm";
 
 export type CrmState = { error?: string; ok?: boolean; doublon?: { id: string; label: string; client: boolean } };
@@ -40,7 +40,7 @@ function statutData(statut: ProspectStatut, motif: string | null | undefined, no
 
 /** Glisser-déposer d'une carte dans une autre colonne (ou vers Gagné, Perdu, Abandon). */
 export async function moveProspect(id: string, statut: ProspectStatut, motifPerte?: string) {
-  await requireTeam();
+  await requireProspection();
   if (!STATUTS.includes(statut)) return;
   await prisma.prospect.update({ where: { id }, data: statutData(statut, motifPerte) });
   refresh(id);
@@ -49,7 +49,7 @@ export async function moveProspect(id: string, statut: ProspectStatut, motifPert
 export type BulkInput = { statut?: ProspectStatut; motif?: string | null; relance?: string | null; relanceHeure?: string | null; commercialId?: string | null };
 /** Actions en masse depuis « Tous les prospects » : statut, date de relance, réattribution (admins). */
 export async function bulkProspects(ids: string[], input: BulkInput): Promise<{ ok?: number; error?: string }> {
-  const me = await requireTeam();
+  const me = await requireProspection();
   const list = [...new Set(ids)].filter(Boolean).slice(0, 500);
   if (!list.length) return { error: "Sélectionnez au moins une fiche." };
   const data: Prisma.ProspectUpdateManyMutationInput = {};
@@ -77,7 +77,7 @@ export async function bulkProspects(ids: string[], input: BulkInput): Promise<{ 
 
 /** « Je reprends » ou réattribution à un autre commercial. */
 export async function assignProspect(id: string, commercialId: string | null) {
-  const me = await requireTeam();
+  const me = await requireProspection();
   const target = commercialId === "me" ? me.id : commercialId || null;
   if (target !== me.id && me.role !== "ADMIN") return; // attribuer à un autre (ou retirer) : admins seulement
   await prisma.prospect.update({ where: { id }, data: { commercialId: target } });
@@ -86,7 +86,7 @@ export async function assignProspect(id: string, commercialId: string | null) {
 
 /** « Noter un échange » : enregistre l'échange, met à jour statut et relance, crée le RDV si besoin. */
 export async function logEchange(prospectId: string, _prev: CrmState, f: FormData): Promise<CrmState> {
-  const me = await requireTeam();
+  const me = await requireProspection();
   const type = f.get("type") as EchangeType;
   if (!TYPES.includes(type)) return { error: "Choisissez le type d’échange." };
   const prospect = await prisma.prospect.findUnique({ where: { id: prospectId } });
@@ -138,7 +138,7 @@ export async function logEchange(prospectId: string, _prev: CrmState, f: FormDat
 
 /** Supprimer un échange : admins, ou l'auteur de sa propre note (jamais un appel Aircall ou un mail synchronisé : ils reviendraient). */
 export async function deleteEchange(id: string) {
-  const me = await requireTeam();
+  const me = await requireProspection();
   const e = await prisma.echange.findUnique({ where: { id }, select: { auteurId: true, externalId: true } });
   if (!e || e.externalId || (me.role !== "ADMIN" && e.auteurId !== me.id)) return;
   const d = await prisma.echange.delete({ where: { id } });
@@ -165,7 +165,7 @@ async function findDoublon(d: { societe: string; siren: string | null; telephone
 }
 
 export async function createProspect(_prev: CrmState, f: FormData): Promise<CrmState> {
-  const me = await requireTeam();
+  const me = await requireProspection();
   const societe = txt(f, "societe");
   if (!societe) return { error: "Nom de la société requis." };
   const d = { societe, siren: txt(f, "siren"), telephone: formatTel(txt(f, "telephone")), siteWeb: txt(f, "siteWeb") };
@@ -195,7 +195,7 @@ export async function createProspect(_prev: CrmState, f: FormData): Promise<CrmS
 }
 
 export async function updateProspect(id: string, _prev: CrmState, f: FormData): Promise<CrmState> {
-  const me = await requireTeam();
+  const me = await requireProspection();
   const societe = txt(f, "societe");
   if (!societe) return { error: "Nom de la société requis." };
   const source = txt(f, "source") as ProspectSource | null;
@@ -225,7 +225,7 @@ export async function updateProspect(id: string, _prev: CrmState, f: FormData): 
 }
 
 export async function saveContact(prospectId: string, contactId: string | null, _prev: CrmState, f: FormData): Promise<CrmState> {
-  await requireTeam();
+  await requireProspection();
   const data = { prenom: nettoyerNom(txt(f, "prenom")), nom: nettoyerNom(txt(f, "nom")), fonction: txt(f, "fonction"), email: txt(f, "email")?.toLowerCase() ?? null, telephone: formatTel(txt(f, "telephone")), principal: f.get("principal") === "on" };
   if (!data.prenom && !data.nom) return { error: "Prénom ou nom requis." };
   await prisma.$transaction(async (tx) => {
@@ -241,14 +241,14 @@ export async function saveContact(prospectId: string, contactId: string | null, 
 }
 
 export async function deleteContact(id: string) {
-  await requireTeam();
+  await requireProspection();
   const c = await prisma.prospectContact.delete({ where: { id } });
   refresh(c.prospectId);
 }
 
 /** Supprimer une fiche : admins uniquement (les commerciaux passent la fiche en « Abandon »). */
 export async function deleteProspect(id: string) {
-  const me = await requireTeam();
+  const me = await requireProspection();
   if (me.role !== "ADMIN") return;
   const p = await prisma.prospect.findUnique({ where: { id } });
   if (!p || p.clientId) return; // un client du portail ne se supprime pas d'ici
@@ -258,14 +258,14 @@ export async function deleteProspect(id: string) {
 }
 
 export async function setRdvResultat(id: string, resultat: "FAIT" | "ANNULE" | "PREVU" | "NO_SHOW") {
-  await requireTeam();
+  await requireProspection();
   const r = await prisma.rendezVous.update({ where: { id }, data: { resultat } });
   refresh(r.prospectId);
 }
 
 /** « Générer les infos » : enrichit la fiche (registre officiel, audit du site, recherche web si clé Anthropic). */
 export async function enrichProspect(id: string): Promise<{ ok?: boolean; error?: string; web?: boolean }> {
-  await requireTeam();
+  await requireProspection();
   const { enrichirProspect } = await import("@/lib/enrichir");
   const r = await enrichirProspect(id);
   if (!r.ok) return { error: r.error };
@@ -275,7 +275,7 @@ export async function enrichProspect(id: string): Promise<{ ok?: boolean; error?
 
 /** Bouton « Actualiser » de l'historique : appels Aircall et emails de la fiche, tout de suite. */
 export async function syncProspectNow(id: string): Promise<{ calls: number; emails: number; errors: string[] }> {
-  await requireTeam();
+  await requireProspection();
   const { syncProspect } = await import("@/lib/crm-sync");
   const r = (await syncProspect(id, true)) ?? { calls: 0, emails: 0, errors: [] };
   refresh(id);

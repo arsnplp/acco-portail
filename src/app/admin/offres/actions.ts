@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { requireProspection } from "@/lib/auth";
 import type { Billing, Module } from "@prisma/client";
 
 export type ActionState = { error?: string; ok?: boolean };
@@ -35,7 +35,7 @@ function revalidate() {
 }
 
 export async function createOffer(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireAdmin();
+  await requireProspection();
   const r = parseOffer(formData);
   if ("error" in r) return { error: r.error };
   let slug = slugify(r.data.name) || "offre";
@@ -46,7 +46,7 @@ export async function createOffer(_prev: ActionState, formData: FormData): Promi
 }
 
 export async function updateOffer(offerId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireAdmin();
+  await requireProspection();
   const r = parseOffer(formData);
   if ("error" in r) return { error: r.error };
   await prisma.offer.update({ where: { id: offerId }, data: r.data });
@@ -55,14 +55,14 @@ export async function updateOffer(offerId: string, _prev: ActionState, formData:
 }
 
 export async function toggleArchive(offerId: string) {
-  await requireAdmin();
+  await requireProspection();
   const o = await prisma.offer.findUniqueOrThrow({ where: { id: offerId } });
   await prisma.offer.update({ where: { id: offerId }, data: { isArchived: !o.isArchived } });
   revalidate();
 }
 
 export async function createPromotion(offerId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireAdmin();
+  await requireProspection();
   const d = Object.fromEntries(formData) as Record<string, string>;
   const promoPriceCents = toCents(d.promoPrice);
   const percentOff = d.percentOff ? parseInt(d.percentOff, 10) : null;
@@ -75,7 +75,7 @@ export async function createPromotion(offerId: string, _prev: ActionState, formD
 }
 
 export async function deletePromotion(offerId: string, promoId: string) {
-  await requireAdmin();
+  await requireProspection();
   await prisma.promotion.delete({ where: { id: promoId } });
   revalidate();
   revalidatePath(`/admin/offres/${offerId}`);

@@ -1,12 +1,13 @@
 import { prisma } from "@/lib/prisma";
-import { requireTeam } from "@/lib/auth";
+import { MODULES } from "@/lib/roles";
+import { requireProspection } from "@/lib/auth";
 import { PIPELINE, contactName, formatTel, teamName } from "@/lib/crm";
 import { Board, type CardData } from "./board";
 
 export const metadata = { title: "Pipeline" };
 
 export default async function PipelinePage({ searchParams }: { searchParams: Promise<{ c?: string }> }) {
-  const me = await requireTeam();
+  const me = await requireProspection();
   const { c } = await searchParams;
   const [prospects, team, cibles] = await Promise.all([
     prisma.prospect.findMany({
@@ -19,7 +20,7 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
         _count: { select: { echanges: { where: { type: "NRP" } } } },
       },
     }),
-    prisma.user.findMany({ where: { role: { in: ["ADMIN", "COMMERCIAL"] } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true, avatarUrl: true } }),
+    prisma.user.findMany({ where: { role: { in: MODULES.prospection } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true, avatarUrl: true } }),
     prisma.cible.findMany({ orderBy: { nom: "asc" }, select: { nom: true } }),
   ]);
   const cards: CardData[] = prospects.map((p) => ({

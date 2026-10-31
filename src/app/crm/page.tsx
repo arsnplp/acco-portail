@@ -2,7 +2,8 @@ import Link from "next/link";
 import { AlarmClockIcon, CalendarClockIcon, CheckIcon, PhoneCallIcon, PhoneIcon } from "lucide-react";
 import type { ProspectStatut } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { requireTeam } from "@/lib/auth";
+import { MODULES } from "@/lib/roles";
+import { requireProspection } from "@/lib/auth";
 import { cn } from "@/lib/cn";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { CLOS, STATUT, contactName, fmtDay, fmtTime, relanceInfo, teamName, todayBounds } from "@/lib/crm";
@@ -20,12 +21,12 @@ const journeeDe = (n: string) => (/^[aeiouyhàâéèêëîïôöûüœ]/i.test(n
 type Slot = { id: string; at: Date; kind: "rappel" | "rdv"; prospectId: string; nom: string; detail: string; phone: string | null; fait: boolean; qui: string | null };
 
 export default async function MaJournee({ searchParams }: { searchParams: Promise<{ vue?: string }> }) {
-  const me = await requireTeam();
+  const me = await requireProspection();
   const admin = me.role === "ADMIN";
   const vue = (await searchParams).vue;
   const equipe = vue === "equipe";
   // Les admins peuvent ouvrir la journée d'un autre membre de l'équipe (?vue=<id>).
-  const team = await prisma.user.findMany({ where: { role: { in: ["ADMIN", "COMMERCIAL"] } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true } });
+  const team = await prisma.user.findMany({ where: { role: { in: MODULES.prospection } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true } });
   const autre = admin && vue && !equipe && vue !== me.id ? team.find((u) => u.id === vue) ?? null : null;
   const cibleId = autre?.id ?? me.id;
   const { start, end } = todayBounds();

@@ -1,4 +1,4 @@
-import type { ChangeRequestStatus, ProjectStep, SiteStatus, ContactRequestStatus, Urgency } from "@prisma/client";
+import type { ChangeRequestStatus, Formule, ProjectStep, SiteStatus, ContactRequestStatus, Urgency } from "@prisma/client";
 import type { Tone } from "@/components/ui/badge";
 
 export const SITE_STATUS: Record<SiteStatus, { label: string; tone: Tone }> = {
@@ -31,6 +31,13 @@ export const CONTACT_STATUS: Record<ContactRequestStatus, { label: string; tone:
   NOUVELLE: { label: "À traiter", tone: "pink" },
   TRAITEE: { label: "Traitée", tone: "green" },
   DEVENU_CLIENT: { label: "Devenu client", tone: "blue" },
+};
+
+export const FORMULE: Record<Formule, { label: string; tone: Tone }> = {
+  ESSENTIEL: { label: "Essentiel", tone: "neutral" },
+  REFERENCE: { label: "Référence", tone: "blue" },
+  CONQUETE: { label: "Conquête", tone: "yellow" },
+  SIGNATURE: { label: "Signature", tone: "claude" },
 };
 
 export const SITE_PAGES = ["Accueil", "À propos", "Services / Produits", "Galerie", "Tarifs", "Contact", "Mentions légales", "Autre"];

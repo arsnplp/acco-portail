@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { requireProspection } from "@/lib/auth";
 import { AdminPage } from "@/components/admin/page";
 import { MoreList } from "@/components/ui/more-list";
 import { Card, SectionTitle } from "@/components/ui/card";
@@ -13,6 +14,7 @@ import { BellRingIcon, FolderOpenIcon } from "lucide-react";
 export const metadata = { title: "Commandes" };
 
 export default async function CommandesPage() {
+  await requireProspection();
   const orders = await prisma.order.findMany({
     orderBy: { createdAt: "desc" },
     take: 100,

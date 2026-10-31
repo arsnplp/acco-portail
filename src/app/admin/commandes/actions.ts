@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { requireProspection } from "@/lib/auth";
 import { notifyClient } from "@/lib/notify";
 import { activePromo } from "@/lib/offers";
 import { fmtPrice } from "@/lib/format";
@@ -19,7 +19,7 @@ function revalidate(clientId: string, siteId?: string | null) {
 
 /** Valider une commande : crée l'abonnement (et débloque le module sur le site choisi), prévient le client. */
 export async function validateOrder(orderId: string, formData: FormData) {
-  const admin = await requireAdmin();
+  const admin = await requireProspection();
   const order = await prisma.order.findUnique({ where: { id: orderId }, include: { offer: { include: { promotions: true } }, site: true } });
   if (!order || order.status !== "A_TRAITER") return;
   const siteId = String(formData.get("siteId") ?? "") || order.siteId;
@@ -48,7 +48,7 @@ export async function validateOrder(orderId: string, formData: FormData) {
 }
 
 export async function refuseOrder(orderId: string) {
-  const admin = await requireAdmin();
+  const admin = await requireProspection();
   const order = await prisma.order.update({ where: { id: orderId }, data: { status: "REFUSEE", validatedById: admin.id, validatedAt: new Date() } });
   revalidate(order.clientId, order.siteId);
 }

@@ -7,7 +7,8 @@ import { NrpMeter } from "@/components/crm/nrp-meter";
 import { LeadInfoButton } from "@/components/crm/lead-info";
 import type { LeadRow } from "@/lib/leads/colonnes";
 import { prisma } from "@/lib/prisma";
-import { requireTeam } from "@/lib/auth";
+import { MODULES } from "@/lib/roles";
+import { requireProspection } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { Logo } from "@/components/crm/logo";
 import { ETAPE_IMAGE, STATUT, contactName, fmtDayTime, fmtTime, logoUrl, relanceInfo, teamName, parisDay, todayBounds } from "@/lib/crm";
@@ -17,7 +18,7 @@ import { EchangeForm, ProspectForm, Contacts, Historique, AssignControl, RdvList
 export const metadata = { title: "Fiche prospect" };
 
 export default async function ProspectPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
-  const me = await requireTeam();
+  const me = await requireProspection();
   const { id } = await params;
   const sp = await searchParams;
   const sess = sp.session === "1" ? readSession(sp) : null;
@@ -34,7 +35,7 @@ export default async function ProspectPage({ params, searchParams }: { params: P
         lead: { select: { listeId: true, donnees: true, liste: { select: { secteur: true, region: true, createdAt: true } } } },
       },
     }),
-    prisma.user.findMany({ where: { role: { in: ["ADMIN", "COMMERCIAL"] } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true } }),
+    prisma.user.findMany({ where: { role: { in: MODULES.prospection } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true } }),
     prisma.cible.findMany({ orderBy: { nom: "asc" }, select: { nom: true } }),
   ]);
   if (!p) notFound();

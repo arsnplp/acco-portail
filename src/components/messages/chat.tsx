@@ -57,15 +57,15 @@ export function Chat({ messages, me, teamSide = false, sites, placeholder, empty
       {optimistic.length === 0 ? <Empty icon={MessageCircle} title="Aucun message" text={emptyText} /> : (
         <ol className="flex flex-col gap-3">
           {optimistic.map((m) => {
-            const mine = teamSide ? m.author?.role === "ADMIN" : m.author?.id === me.id;
-            const name = m.author?.firstName ?? (m.author?.role === "ADMIN" ? "Acco" : "Client");
+            const mine = teamSide ? (m.author?.role && m.author.role !== "CLIENT") : m.author?.id === me.id;
+            const name = m.author?.firstName ?? ((m.author?.role && m.author.role !== "CLIENT") ? "Acco" : "Client");
             const sending = m.id.startsWith("tmp-");
             return (
               <li key={m.id} className={`flex gap-2 ${mine ? "flex-row-reverse" : ""}`}>
                 {!mine && <Avatar initials={name[0]?.toUpperCase() ?? "?"} src={m.author?.avatarUrl} size={30} className="mt-1 shrink-0" />}
                 <div className={`flex max-w-[80%] flex-col ${mine ? "items-end" : "items-start"}`}>
                   <div className={`rounded-2xl border px-4 py-2.5 ${mine ? "border-title bg-title text-bg" : "border-border bg-surface text-text-strong"} ${sending ? "opacity-70" : ""}`}>
-                    {!mine && <p className={`mb-0.5 text-xs font-semibold ${m.author?.role === "ADMIN" ? "text-blue" : "text-text"}`}>{name}{m.author?.role === "ADMIN" ? " · Acco" : ""}</p>}
+                    {!mine && <p className={`mb-0.5 text-xs font-semibold ${(m.author?.role && m.author.role !== "CLIENT") ? "text-blue" : "text-text"}`}>{name}{(m.author?.role && m.author.role !== "CLIENT") ? " · Acco" : ""}</p>}
                     {m.body && <p className="whitespace-pre-wrap text-sm">{m.body}</p>}
                     {m.attachments.length > 0 && (
                       <ul className={`mt-2 grid gap-1 ${m.attachments.length > 1 ? "grid-cols-2" : ""}`}>

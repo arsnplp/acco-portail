@@ -8,6 +8,7 @@
  */
 import type { EchangeType, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { MODULES } from "@/lib/roles";
 import { featureEnabled, getSecret } from "@/lib/settings";
 import { normPhone } from "@/lib/crm";
 import { fmtDuree, isAircallMeta, type AircallMeta } from "@/lib/echange-meta";
@@ -131,7 +132,7 @@ type Index = { byPhone: Map<string, string>; userByEmail: Map<string, string> };
 async function buildIndex(prospectIds?: string[]): Promise<Index> {
   const [prospects, users] = await Promise.all([
     prisma.prospect.findMany({ where: prospectIds ? { id: { in: prospectIds } } : {}, select: { id: true, telephone: true, statut: true, contacts: { select: { telephone: true } } } }),
-    prisma.user.findMany({ where: { role: { in: ["ADMIN", "COMMERCIAL"] } }, select: { id: true, email: true } }),
+    prisma.user.findMany({ where: { role: { in: MODULES.prospection } }, select: { id: true, email: true } }),
   ]);
   const byPhone = new Map<string, string>();
   // Une fiche ouverte passe avant une fiche close si deux fiches partagent un numéro.

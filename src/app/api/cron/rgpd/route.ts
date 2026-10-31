@@ -3,15 +3,16 @@ import { prisma } from "@/lib/prisma";
 
 /**
  * Purge RGPD, une fois par jour : demandes de contact de plus de 24 mois,
- * notifications de plus de 12 mois, invitations expirées, jetons push orphelins.
+ * notifications de plus de 12 mois, invitations expirées, jetons push orphelins, journal des connexions de plus de 6 mois.
  */
 export async function GET(req: NextRequest) {
   if (!process.env.CRON_SECRET || req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) return NextResponse.json({ error: "non autorisé" }, { status: 401 });
   const now = Date.now();
-  const [contacts, notifications, invitations] = await Promise.all([
+  const [contacts, notifications, invitations, connexions] = await Promise.all([
     prisma.contactRequest.deleteMany({ where: { createdAt: { lt: new Date(now - 24 * 30.44 * 86400_000) } } }),
     prisma.notification.deleteMany({ where: { createdAt: { lt: new Date(now - 365 * 86400_000) } } }),
     prisma.invitation.deleteMany({ where: { expiresAt: { lt: new Date(now - 30 * 86400_000) }, acceptedAt: null } }),
+    prisma.loginLog.deleteMany({ where: { at: { lt: new Date(now - 183 * 86400_000) } } }),
   ]);
-  return NextResponse.json({ contactsSupprimes: contacts.count, notificationsSupprimees: notifications.count, invitationsSupprimees: invitations.count });
+  return NextResponse.json({ contactsSupprimes: contacts.count, notificationsSupprimees: notifications.count, invitationsSupprimees: invitations.count, connexionsSupprimees: connexions.count });
 }

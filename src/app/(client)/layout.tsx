@@ -9,7 +9,7 @@ export default async function ClientLayout({ children }: { children: React.React
   const conv = await prisma.conversation.findUnique({ where: { clientId: client.id }, select: { id: true, clientReadAt: true } });
   const unread = conv
     ? await prisma.message.count({
-        where: { conversationId: conv.id, author: { role: "ADMIN" }, createdAt: { gt: conv.clientReadAt ?? new Date(0) } },
+        where: { conversationId: conv.id, author: { role: { not: "CLIENT" } }, createdAt: { gt: conv.clientReadAt ?? new Date(0) } },
       })
     : 0;
 

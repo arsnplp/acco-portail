@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { EchangeType, ProspectStatut } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { requireTeam } from "@/lib/auth";
+import { MODULES } from "@/lib/roles";
+import { requireProspection } from "@/lib/auth";
 import { cn } from "@/lib/cn";
 import { ECHANGE, ECHANGE_COULEUR, PIPELINE, STATUT, STATUT_COULEUR, parisDay, teamName, todayBounds, VIZ } from "@/lib/crm";
 import { Avatar } from "@/components/ui/avatar";
@@ -22,7 +23,7 @@ const MOIS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août"
 const ca = (p: { fraisCreationEuros: number | null; mensuelEuros: number | null }) => (p.fraisCreationEuros ?? 0) + 12 * (p.mensuelEuros ?? 0);
 
 export default async function StatsPage({ searchParams }: { searchParams: Promise<{ p?: string; c?: string }> }) {
-  const me = await requireTeam();
+  const me = await requireProspection();
   const sp = await searchParams;
   const jours = Number(PERIODES.find((x) => x.v === sp.p)?.v ?? 30);
   const who = sp.c && sp.c !== "all" ? sp.c : null;
@@ -34,7 +35,7 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
   const byCommercial = who ? { commercialId: who } : {};
 
   const [team, wonAll, echanges, prevEchanges, rdvPris, prevRdvPris, rdvTenus, wins, prevWins, pipeline] = await Promise.all([
-    prisma.user.findMany({ where: { role: { in: ["ADMIN", "COMMERCIAL"] } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true, avatarUrl: true } }),
+    prisma.user.findMany({ where: { role: { in: MODULES.prospection } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true, avatarUrl: true } }),
     prisma.prospect.findMany({ where: { statut: "GAGNE" }, select: { commercialId: true, fraisCreationEuros: true, mensuelEuros: true } }),
     prisma.echange.findMany({ where: { ...byAuteur, date: { gte: since, lt: end } }, select: { type: true, date: true, auteurId: true, prospectId: true } }),
     prisma.echange.findMany({ where: { ...byAuteur, date: { gte: prevSince, lt: since } }, select: { type: true, prospectId: true } }),

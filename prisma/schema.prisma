@@ -15,10 +15,22 @@ datasource db {
 // Énumérations
 // ─────────────────────────────────────────────────────────────
 
+/// Rôles. Modules : Pilotage (ADMIN), Prospection (ADMIN, COMMERCIAL), Suivi (toute l'équipe), Espace client (CLIENT).
 enum Role {
   CLIENT
-  ADMIN
-  COMMERCIAL // équipe (alternants, commerciaux) : accès à l'espace Commercial uniquement
+  ADMIN // Direction : accès total
+  COMMERCIAL // commerciaux, alternants : Prospection + Suivi
+  DEV // développeurs : Suivi
+  EXPERT // prestataires externes : Suivi
+  SPECIALISTE // profils internes (SEO, Ads…) : Suivi
+}
+
+/// Formule d'abonnement d'un client.
+enum Formule {
+  ESSENTIEL
+  REFERENCE
+  CONQUETE
+  SIGNATURE
 }
 
 enum MembershipRole {
@@ -168,8 +180,19 @@ model Client {
   address   String?
   phone     String?
   email     String?
+  commercialId    String? // « Suivi par … »
+  developpeurId   String? // développeur attitré
+  formule         Formule?
+  engagementDebut DateTime?
+  engagementFin   DateTime?
+  gmbUrl          String? // fiche Google Business Profile
+  reference       Boolean  @default(false) // client référence : épinglé en tête de liste, appui pour les argumentaires
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  commercial  User? @relation("ClientCommercial", fields: [commercialId], references: [id], onDelete: SetNull)
+  developpeur User? @relation("ClientDeveloppeur", fields: [developpeurId], references: [id], onDelete: SetNull)
+  loginLogs   LoginLog[]
 
   memberships      ClientMembership[]
   invitations      Invitation[]
@@ -219,6 +242,24 @@ model User {
   crmTacheModeles   TacheModele[]           @relation("TacheModeleResponsable")
   leadListes        LeadListe[]             @relation("LeadListeCommercial")
   leadListesCreees  LeadListe[]             @relation("LeadListeAuteur")
+  clientsSuivis     Client[]                @relation("ClientCommercial")
+  clientsDeveloppes Client[]                @relation("ClientDeveloppeur")
+  loginLogs         LoginLog[]
+}
+
+/// Journal des connexions (qui se connecte, quand) : affiché sur la fiche client, purgé après 6 mois (cron rgpd).
+model LoginLog {
+  id        String   @id @default(cuid())
+  userId    String
+  clientId  String?
+  userAgent String?
+  at        DateTime @default(now())
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client Client? @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, at])
+  @@index([userId, at])
 }
 
 model ClientMembership {

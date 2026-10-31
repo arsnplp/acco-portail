@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { recordLogin } from "@/lib/login-log";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -23,6 +24,7 @@ export async function GET(request: NextRequest) {
 
   if (!ok) return NextResponse.redirect(`${origin}/connexion?erreur=lien-invalide`);
   const { data: { user } } = await supabase.auth.getUser();
+  if (user) await recordLogin(user.id, request.headers.get("user-agent"));
   const hasPassword = user?.user_metadata?.password_set === true;
   const target = next.startsWith("/") ? next : "/";
   if (!hasPassword && target !== "/nouveau-mot-de-passe") return NextResponse.redirect(`${origin}/nouveau-mot-de-passe?premiere=1`);

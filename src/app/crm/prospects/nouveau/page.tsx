@@ -1,14 +1,15 @@
 import { prisma } from "@/lib/prisma";
-import { requireTeam } from "@/lib/auth";
+import { MODULES } from "@/lib/roles";
+import { requireProspection } from "@/lib/auth";
 import { parisDay, teamName } from "@/lib/crm";
 import { NewProspectForm } from "./form";
 
 export const metadata = { title: "Nouveau prospect" };
 
 export default async function NewProspectPage() {
-  const me = await requireTeam();
+  const me = await requireProspection();
   const [team, cibles] = await Promise.all([
-    prisma.user.findMany({ where: { role: { in: ["ADMIN", "COMMERCIAL"] } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true } }),
+    prisma.user.findMany({ where: { role: { in: MODULES.prospection } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true } }),
     prisma.cible.findMany({ orderBy: { nom: "asc" }, select: { nom: true } }),
   ]);
   return (

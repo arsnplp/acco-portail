@@ -1,11 +1,11 @@
-import { requireTeam } from "@/lib/auth";
+import { requireProspection } from "@/lib/auth";
 import { MesParametres } from "@/app/admin/parametres/moi";
 
 export const metadata = { title: "Paramètres" };
 
 /** Paramètres d'un commercial : son compte Google (emails du CRM), ses notifications, son accès. */
 export default async function CrmParametresPage({ searchParams }: { searchParams: Promise<{ google?: string }> }) {
-  const me = await requireTeam();
+  const me = await requireProspection();
   const { google } = await searchParams;
   return (
     <main className="mx-auto max-w-3xl px-4 py-6">

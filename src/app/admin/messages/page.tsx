@@ -29,7 +29,7 @@ export default async function InboxPage() {
                 <div className="min-w-0">
                   <p className={`truncate ${unread ? "font-bold text-title" : "font-medium text-title"}`}>{c.client.name}</p>
                   <p className="truncate text-sm text-text">
-                    {last ? `${last.author?.role === "ADMIN" ? `${last.author.firstName ?? "Acco"} : ` : ""}${last.body || "Pièce jointe"}` : "Aucun message"}
+                    {last ? `${(last.author?.role && last.author.role !== "CLIENT") ? `${last.author.firstName ?? "Acco"} : ` : ""}${last.body || "Pièce jointe"}` : "Aucun message"}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2 text-xs text-muted">

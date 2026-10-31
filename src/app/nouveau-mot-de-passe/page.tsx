@@ -1,3 +1,4 @@
+import { homeFor } from "@/lib/roles";
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
@@ -9,7 +10,7 @@ export default async function NouveauMotDePasse({ searchParams }: { searchParams
   const { premiere } = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/connexion?erreur=lien-invalide");
-  const next = user.role === "ADMIN" ? "/admin" : user.role === "COMMERCIAL" ? "/crm" : "/";
+  const next = homeFor(user.role);
   return (
     <main className="flex-1 flex flex-col items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm">

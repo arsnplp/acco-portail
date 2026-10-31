@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { requireTeam } from "@/lib/auth";
 import type { ChangeRequestStatus } from "@prisma/client";
 import { CLAUDE_BUSY, changeDoneNotification, claudeNeedsMerge, recordChangeHistory } from "@/lib/change-requests";
 import { notifyClient } from "@/lib/notify";
@@ -16,7 +16,7 @@ function revalidate(siteId: string) {
 }
 
 export async function moveChange(reqId: string, status: ChangeRequestStatus) {
-  const admin = await requireAdmin();
+  const admin = await requireTeam();
   const cr = await prisma.changeRequest.findUnique({ where: { id: reqId }, include: { site: true } });
   if (!cr || cr.status === status) return;
   // Claude travaille ou publie : on ne déplace pas la carte en même temps.
@@ -53,7 +53,7 @@ export type ClaudeActionState = { error?: string; ok?: boolean };
 
 /** « Confier à Claude » (ou « Refaire » avec des consignes) : met la demande dans la file du worker. */
 export async function delegateToClaude(reqId: string, _prev: ClaudeActionState, formData: FormData): Promise<ClaudeActionState> {
-  const admin = await requireAdmin();
+  const admin = await requireTeam();
   const cr = await prisma.changeRequest.findUnique({ where: { id: reqId }, include: { site: true } });
   if (!cr) return { error: "Demande introuvable" };
   if (!(await featureEnabled("feature_claude_code"))) return { error: "Activez Claude Code et sa clé API dans Paramètres." };
@@ -78,7 +78,7 @@ export async function delegateToClaude(reqId: string, _prev: ClaudeActionState, 
 
 /** Retire la demande de la file tant que Claude n'a pas commencé. */
 export async function cancelClaude(reqId: string) {
-  await requireAdmin();
+  await requireTeam();
   const res = await prisma.changeRequest.updateMany({ where: { id: reqId, claudeState: "EN_FILE" }, data: { claudeState: null } });
   const cr = await prisma.changeRequest.findUnique({ where: { id: reqId }, select: { siteId: true } });
   if (res.count && cr) revalidate(cr.siteId);
@@ -91,7 +91,7 @@ const CLEARED = {
 
 /** « Annuler la modif » : on jette le travail de Claude, la carte revient en « En cours » (le site en ligne n'a pas bougé). */
 export async function discardClaudeWork(reqId: string) {
-  await requireAdmin();
+  await requireTeam();
   const cr = await prisma.changeRequest.findUnique({ where: { id: reqId } });
   if (!cr || cr.claudeMergedAt || (cr.claudeState && CLAUDE_BUSY.includes(cr.claudeState))) return;
   await prisma.changeRequest.update({
@@ -103,14 +103,14 @@ export async function discardClaudeWork(reqId: string) {
 }
 
 export async function assignChange(reqId: string, formData: FormData) {
-  await requireAdmin();
+  await requireTeam();
   const assigneeId = String(formData.get("assigneeId") ?? "") || null;
   const cr = await prisma.changeRequest.update({ where: { id: reqId }, data: { assigneeId } });
   revalidate(cr.siteId);
 }
 
 export async function commentChange(reqId: string, formData: FormData) {
-  const admin = await requireAdmin();
+  const admin = await requireTeam();
   const body = String(formData.get("body") ?? "").trim();
   if (!body) return;
   const cr = await prisma.changeRequestComment.create({ data: { changeRequestId: reqId, authorId: admin.id, body }, include: { changeRequest: true } });

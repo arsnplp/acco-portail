@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { requireProspection } from "@/lib/auth";
 import { AdminPage } from "@/components/admin/page";
 import { MoreList } from "@/components/ui/more-list";
 import { Card, SectionTitle } from "@/components/ui/card";
@@ -11,6 +12,7 @@ import { PlusIcon } from "lucide-react";
 export const metadata = { title: "Offres" };
 
 export default async function OffresAdminPage() {
+  await requireProspection();
   const offers = await prisma.offer.findMany({ orderBy: [{ isArchived: "asc" }, { order: "asc" }], include: { promotions: true, _count: { select: { subscriptions: { where: { status: "ACTIF" } }, orders: { where: { status: "A_TRAITER" } } } } } });
   return (
     <AdminPage title="Offres">

@@ -6,6 +6,7 @@
 import type { OAuth2Client } from "google-auth-library";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { MODULES } from "@/lib/roles";
 import { connectedGoogleClient, oauthConfigured, oauthClient } from "@/lib/google-oauth";
 import { isGmailMeta, type GmailMeta } from "@/lib/echange-meta";
 
@@ -23,7 +24,7 @@ async function boites(): Promise<Boite[]> {
   const out: Boite[] = [];
   const agence = await connectedGoogleClient();
   if (agence) out.push({ cle: "", userId: null, email: (await prisma.setting.findUnique({ where: { key: "google_account_email" } }))?.value ?? null, client: agence });
-  const users = await prisma.user.findMany({ where: { role: { in: ["ADMIN", "COMMERCIAL"] }, googleRefreshToken: { not: null } }, select: { id: true, googleRefreshToken: true, googleEmail: true } });
+  const users = await prisma.user.findMany({ where: { role: { in: MODULES.prospection }, googleRefreshToken: { not: null } }, select: { id: true, googleRefreshToken: true, googleEmail: true } });
   for (const u of users) {
     const client = oauthClient();
     client.setCredentials({ refresh_token: u.googleRefreshToken! });
@@ -41,7 +42,7 @@ export async function syncProspectEmails(prospectId: string): Promise<{ added: n
   const p = await prisma.prospect.findUnique({ where: { id: prospectId }, select: { contacts: { select: { email: true } } } });
   const emails = [...new Set((p?.contacts ?? []).map((c) => c.email?.trim().toLowerCase()).filter((e): e is string => !!e && e.includes("@")))].slice(0, 5);
   if (!emails.length) return { added: 0 };
-  const users = await prisma.user.findMany({ where: { role: { in: ["ADMIN", "COMMERCIAL"] } }, select: { id: true, email: true, googleEmail: true } });
+  const users = await prisma.user.findMany({ where: { role: { in: MODULES.prospection } }, select: { id: true, email: true, googleEmail: true } });
   const userByEmail = new Map<string, string>();
   for (const u of users) { userByEmail.set(u.email.toLowerCase(), u.id); if (u.googleEmail) userByEmail.set(u.googleEmail.toLowerCase(), u.id); }
   const q = emails.map((e) => `from:${e} OR to:${e}`).join(" OR ");

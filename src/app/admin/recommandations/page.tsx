@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { requireProspection } from "@/lib/auth";
 import { AdminPage } from "@/components/admin/page";
 import { MoreList } from "@/components/ui/more-list";
 import { Card, SectionTitle } from "@/components/ui/card";
@@ -12,6 +13,7 @@ import { GiftIcon, PhoneIcon } from "lucide-react";
 export const metadata = { title: "Recommandations" };
 
 export default async function RecommandationsAdminPage() {
+  await requireProspection();
   const [referrals, clients, reward] = await Promise.all([
     prisma.referral.findMany({ orderBy: { createdAt: "desc" }, take: 100, include: { referrer: { select: { name: true } }, referred: { select: { name: true } } } }),
     prisma.client.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),

@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { requireTeam, initials } from "@/lib/auth";
+import { requireProspection, initials } from "@/lib/auth";
 import { Avatar } from "@/components/ui/avatar";
 import { CrmBottomNav, CrmNav } from "./crm-nav";
 import { Rappels } from "./rappels";
@@ -9,7 +9,7 @@ import { getTheme } from "@/lib/theme";
 
 /** Espace Commercial (CRM) : séparé du reste de l'admin, ouvert à l'équipe (admins et commerciaux). */
 export default async function CrmLayout({ children }: { children: React.ReactNode }) {
-  const user = await requireTeam();
+  const user = await requireProspection();
   const admin = user.role === "ADMIN";
   const theme = await getTheme();
   return (

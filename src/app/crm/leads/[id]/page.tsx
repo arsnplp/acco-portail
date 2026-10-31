@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeftIcon, ExternalLinkIcon, MapPinIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { requireTeam } from "@/lib/auth";
+import { MODULES } from "@/lib/roles";
+import { requireProspection } from "@/lib/auth";
 import { cn } from "@/lib/cn";
 import { AutoRefresh } from "@/components/messages/auto-refresh";
 import { fmtDayTime, teamName } from "@/lib/crm";
@@ -16,12 +17,12 @@ export const metadata = { title: "Liste de leads" };
 const scoreCls = (s: number) => (s >= 85 ? "bg-green/20 text-green" : s >= 70 ? "bg-yellow/20 text-yellow" : "bg-surface-2 text-text");
 
 export default async function LeadListePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tout?: string }> }) {
-  const me = await requireTeam();
+  const me = await requireProspection();
   const { id } = await params;
   const tout = (await searchParams).tout === "1";
   const [liste, team] = await Promise.all([
     prisma.leadListe.findUnique({ where: { id }, include: { leads: { orderBy: [{ score: "desc" }, { createdAt: "asc" }] }, auteur: { select: { firstName: true, email: true } } } }),
-    prisma.user.findMany({ where: { role: { in: ["ADMIN", "COMMERCIAL"] } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true } }),
+    prisma.user.findMany({ where: { role: { in: MODULES.prospection } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true } }),
   ]);
   if (!liste) notFound();
   const stats = (await listeStats([liste.id])).get(liste.id)!;

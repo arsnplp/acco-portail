@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { requireTeam } from "@/lib/auth";
 import { uploadFile } from "@/lib/storage";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { notifyClient } from "@/lib/notify";
@@ -21,7 +21,7 @@ function revalidate(clientId: string) {
 }
 
 export async function uploadDocument(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireAdmin();
+  await requireTeam();
   const clientId = String(formData.get("clientId") ?? "");
   const siteId = String(formData.get("siteId") ?? "") || null;
   const kind = String(formData.get("kind") ?? "AUTRE") as DocumentKind;
@@ -48,7 +48,7 @@ export async function uploadDocument(_prev: ActionState, formData: FormData): Pr
 }
 
 export async function deleteDocument(docId: string) {
-  await requireAdmin();
+  await requireTeam();
   const doc = await prisma.document.delete({ where: { id: docId } });
   await createSupabaseAdmin().storage.from("documents").remove([doc.storagePath]);
   revalidate(doc.clientId);
@@ -56,7 +56,7 @@ export async function deleteDocument(docId: string) {
 
 /** L'équipe demande un document au client (Kbis, RIB, logo…). Le client le dépose depuis son espace. */
 export async function askClientDocument(clientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
-  const admin = await requireAdmin();
+  const admin = await requireTeam();
   const kind = String(formData.get("kind") ?? "AUTRE") as DocumentKind;
   const message = String(formData.get("message") ?? "").trim().slice(0, 300);
   const siteId = String(formData.get("siteId") ?? "") || null;
@@ -73,7 +73,7 @@ export async function askClientDocument(clientId: string, _prev: ActionState, fo
 }
 
 export async function cancelRequest(requestId: string) {
-  await requireAdmin();
+  await requireTeam();
   const req = await prisma.documentRequest.delete({ where: { id: requestId } });
   revalidate(req.clientId);
 }

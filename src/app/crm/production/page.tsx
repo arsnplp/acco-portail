@@ -1,10 +1,10 @@
 import { FolderKanbanIcon } from "lucide-react";
-import { requireTeam } from "@/lib/auth";
+import { requireProspection } from "@/lib/auth";
 
 export const metadata = { title: "Production" };
 
 export default async function ProductionPage() {
-  await requireTeam();
+  await requireProspection();
   return (
     <main className="mx-auto flex max-w-md flex-col items-center px-4 py-16 text-center">
       <FolderKanbanIcon size={40} className="text-text" aria-hidden />

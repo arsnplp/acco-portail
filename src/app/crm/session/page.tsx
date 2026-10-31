@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PartyPopperIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { requireTeam } from "@/lib/auth";
+import { requireProspection } from "@/lib/auth";
 import { STATUT, todayBounds } from "@/lib/crm";
 import { readSession, sessionQuery, sessionWhere } from "@/lib/crm-session";
 
@@ -10,7 +10,7 @@ export const metadata = { title: "Session d’appels" };
 
 /** Ouvre la fiche suivante de la colonne choisie (même ordre que le pipeline : relance la plus ancienne d'abord). */
 export default async function SessionPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
-  const me = await requireTeam();
+  const me = await requireProspection();
   const s = readSession(await searchParams);
   if (!s) redirect("/crm/pipeline");
   const next = await prisma.prospect.findFirst({

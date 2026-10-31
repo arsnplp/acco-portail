@@ -1,4 +1,4 @@
-import { isGestionnaire, requireAdmin } from "@/lib/auth";
+import { isGestionnaire, requireTeam } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { AdminPage } from "@/components/admin/page";
@@ -37,7 +37,7 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
     },
   });
   if (!site) notFound();
-  const gestion = isGestionnaire(await requireAdmin());
+  const gestion = isGestionnaire(await requireTeam());
   const [googleOn, googleEmail, properties] = gestion && site.status === "EN_LIGNE" ? await Promise.all([searchConsoleConfigured(), connectedGoogleEmail(), listProperties()]) : [false, null, []];
   const avisActive = site.subscriptions.some((x) => x.module === "AVIS");
   const [bizApi, aiOn, turnstileSiteKey] = await Promise.all([businessApiEnabled(), aiConfigured(), getSecret("turnstile_site_key")]);

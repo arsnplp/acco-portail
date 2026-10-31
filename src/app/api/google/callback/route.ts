@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   const user = await getCurrentUser();
   const perso = req.nextUrl.searchParams.get("state") === "perso";
   if (!user || user.role === "CLIENT" || (!perso && !isGestionnaire(user))) return NextResponse.redirect(`${base}/`);
-  const retour = `${base}${user.role === "ADMIN" ? "/admin/parametres" : "/crm/parametres"}`;
+  const retour = `${base}${user.role === "COMMERCIAL" ? "/crm/parametres" : "/admin/parametres"}`;
   const code = req.nextUrl.searchParams.get("code");
   if (!code) return NextResponse.redirect(`${retour}?google=refuse`);
   try {

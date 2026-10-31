@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { EQUIPE, canAccess, homeFor, type Module } from "@/lib/roles";
+import type { Role } from "@prisma/client";
 
 export const CLIENT_COOKIE = "acco_client";
 
@@ -25,7 +27,7 @@ export const getCurrentUser = cache(async () => {
       email,
       firstName: meta.first_name ?? null,
       lastName: meta.last_name ?? null,
-      role: meta.role === "ADMIN" ? "ADMIN" : meta.role === "COMMERCIAL" ? "COMMERCIAL" : "CLIENT",
+      role: EQUIPE.includes(meta.role as Role) ? (meta.role as Role) : "CLIENT",
     },
     update: { email },
     include: { memberships: { include: { client: true }, orderBy: { createdAt: "asc" } } },
@@ -41,12 +43,16 @@ export async function requireUser() {
   return user;
 }
 
-export async function requireAdmin() {
+/** Accès à un module ; sinon renvoi vers l'accueil du rôle. */
+export async function requireModule(module: Module) {
   const user = await requireUser();
-  if (user.role === "COMMERCIAL") redirect("/crm");
-  if (user.role !== "ADMIN") redirect("/");
+  if (!canAccess(user.role, module)) redirect(homeFor(user.role));
   return user;
 }
+/** Direction uniquement (Pilotage, équipe, réglages sensibles). */
+export const requireAdmin = () => requireModule("pilotage");
+/** Prospection (CRM) : Direction et Commerciaux. */
+export const requireProspection = () => requireModule("prospection");
 
 export { isGestionnaire } from "@/lib/roles";
 import { isGestionnaire } from "@/lib/roles";
@@ -57,18 +63,13 @@ export async function requireGestionnaire() {
   return user;
 }
 
-/** Équipe (admins + commerciaux / alternants) : accès à l'espace Commercial. */
-export async function requireTeam() {
-  const user = await requireUser();
-  if (user.role === "CLIENT") redirect("/");
-  return user;
-}
+/** Suivi : toute l'équipe (Direction, commerciaux, développeurs, experts, spécialistes), jamais les clients. */
+export const requireTeam = () => requireModule("suivi");
 
 /** Client (entreprise) actif pour un utilisateur côté client. */
 export async function requireClientContext() {
   const user = await requireUser();
-  if (user.role === "ADMIN") redirect("/admin");
-  if (user.role === "COMMERCIAL") redirect("/crm");
+  if (user.role !== "CLIENT") redirect(homeFor(user.role));
   if (user.memberships.length === 0) redirect("/connexion?erreur=aucun-compte");
 
   const cookieStore = await cookies();

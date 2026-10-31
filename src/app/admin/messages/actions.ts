@@ -2,13 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { requireTeam } from "@/lib/auth";
 import { uploadFile } from "@/lib/storage";
 import { notifyClient } from "@/lib/notify";
 import { layout, appUrl } from "@/lib/email";
 
 export async function sendTeamMessage(clientId: string, formData: FormData) {
-  const admin = await requireAdmin();
+  const admin = await requireTeam();
   const body = String(formData.get("body") ?? "").trim();
   const siteId = String(formData.get("siteId") ?? "") || null;
   const files = formData.getAll("files").filter((f): f is File => f instanceof File && f.size > 0).slice(0, 5);

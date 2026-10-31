@@ -1,3 +1,23 @@
+# Modules et rôles
+
+Quatre modules, chacun ouvert à des rôles précis (vérifié côté serveur à l'entrée de chaque page et action) :
+- **Pilotage** (`/admin/pilotage`) : Direction (`ADMIN`) seulement. MRR, abonnements, clients, équipe ; projection et activité par collaborateur à venir.
+- **Prospection** (`/crm`) : Direction et Commerciaux (`COMMERCIAL`). Tout le CRM ci-dessous.
+- **Suivi** (`/admin/...`) : toute l'équipe (Direction, Commerciaux, Développeurs `DEV`, Experts `EXPERT`, Spécialistes `SPECIALISTE`),
+  jamais les clients. Offres, commandes et recommandations restent réservées à la Direction et aux commerciaux.
+- **Espace client** (`/`) : clients seulement, hermétique.
+
+Rôles et comptes : Prospection → Plus → Équipe (Direction). Chaque membre a ses paramètres personnels (compte Google, notifications)
+depuis son avatar ; les clés API et le Google de l'agence restent au gestionnaire. Accueil selon le rôle : Direction `/admin`,
+commercial `/crm`, autres `/admin/suivi`.
+
+## Fiche client (Suivi)
+`/admin/clients/<id>` : informations et contacts (ceux de la fiche prospect liée), contrat et offre (formule Essentiel / Référence /
+Conquête / Signature, dates d'engagement, « Suivi par », développeur attitré, client référence épinglé en tête de liste), technique
+et web (sites, prévisualisation, fiche Google), historique des échanges (appels Aircall, emails, comptes rendus saisis à la main :
+appel, réunion, mail, visite, note), demandes de modification des sites, accès du client, journal des connexions (qui se connecte,
+quand, depuis quel appareil ; purgé après 6 mois par le cron rgpd). « Dernier contact il y a N j » passe en rouge au-delà de 60 jours.
+
 # Espace Commercial (CRM)
 
 Accès : carte « Commercial » du tableau de bord admin, ou directement `/crm`. Les comptes **Commercial**
@@ -52,7 +72,7 @@ Accès : carte « Commercial » du tableau de bord admin, ou directement `/crm`.
 - **Notes obligatoires** pour Appel, PP, RDV et Prise de RDV.
 - **Stats** (`/crm/stats`) : période (7 j, 30 j, 3 mois, 12 mois) et commercial ; appels, RDV pris, no show,
   signatures, CA signé (création + 12 mois), activité par type, RDV, pipeline, entonnoir, classement.
-- **Équipe** (admins) : créer le compte d'un alternant / commercial (lien de connexion envoyé à SON adresse), retirer un accès.
+- **Équipe** (Direction) : créer le compte d'un membre avec son rôle (Direction, Commercial, Développeur, Expert, Spécialiste), changer un rôle, retirer un accès.
 
 ## Coffre à leads (`/crm/leads`)
 - **Générer** : nombre (1 à 50), secteur et région en texte libre, filtres « mobiles uniquement (06/07) » et
