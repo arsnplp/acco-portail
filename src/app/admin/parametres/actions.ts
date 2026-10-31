@@ -30,6 +30,13 @@ export async function disconnectMyGoogleAction() {
   revalidatePath("/crm/parametres");
 }
 
+/** Pousse mes RDV et échéances dans mon Google Agenda maintenant. */
+export async function syncMyAgendaAction(): Promise<{ ok: boolean; rdv: number; echeances: number; error?: string }> {
+  const me = await requireTeam();
+  const { syncAgendaForUser } = await import("@/lib/agenda");
+  return syncAgendaForUser(me.id);
+}
+
 /** Mes notifications (équipe) : push sur cet appareil et choix des événements. */
 export async function saveAdminNotifPrefs(formData: FormData) {
   const admin = await requireTeam();

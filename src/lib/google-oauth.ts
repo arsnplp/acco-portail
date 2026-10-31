@@ -9,7 +9,7 @@ export const GOOGLE_SCOPES = [
 ];
 
 /** Compte Google personnel d'un membre de l'équipe : seulement sa boîte Gmail (lecture) pour le CRM. */
-export const GOOGLE_SCOPES_PERSO = ["https://www.googleapis.com/auth/gmail.readonly", "openid", "email"];
+export const GOOGLE_SCOPES_PERSO = ["https://www.googleapis.com/auth/gmail.readonly", "https://www.googleapis.com/auth/calendar.events", "openid", "email"];
 
 export const oauthConfigured = () => Boolean(process.env.GOOGLE_OAUTH_CLIENT_ID && process.env.GOOGLE_OAUTH_CLIENT_SECRET);
 

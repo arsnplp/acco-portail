@@ -7,4 +7,6 @@ export async function register() {
   startRecapsTicker();
   const { startAircallTicker } = await import("./lib/aircall");
   startAircallTicker();
+  const { startAlertesTicker } = await import("./lib/alertes");
+  startAlertesTicker();
 }

@@ -19,6 +19,16 @@ demandes de modification ouvertes, lien de prévisualisation, développeur attit
 Blogs : tableau des articles par site (à rédiger, à publier, publié). Flux d'activité : étapes franchies, modifications traitées,
 articles publiés, comptes rendus, validations client (aussi dans Pilotage → Historique global).
 
+## Clients (Suivi → Clients)
+« Mes clients » (clients suivis par le commercial, ou dont il développe un site) et « Tous les clients » (références en tête,
+filtre par commercial, recherche). Chaque carte indique le dernier contact ; au-delà de 60 jours sans échange, le client est
+signalé en rouge et son commercial reçoit une notification (une par client tous les 30 jours au plus, vérification quotidienne).
+
+## Google Agenda (membre)
+Avec son compte Google connecté (Paramètres → Mon compte Google), un membre reçoit dans son Google Agenda ses RDV prospects
+(mis à jour à la prise, au report, à l'annulation) et les échéances (V1, V2, livraison) des sites qu'il suit ou développe.
+Bouton « Synchroniser mon agenda maintenant » pour tout pousser d'un coup. Nécessite l'API Google Calendar activée dans le projet.
+
 ## Fiche client (Suivi)
 `/admin/clients/<id>` : informations et contacts (ceux de la fiche prospect liée), contrat et offre (formule Essentiel / Référence /
 Conquête / Signature, dates d'engagement, « Suivi par », développeur attitré, client référence épinglé en tête de liste), technique

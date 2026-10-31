@@ -9,6 +9,7 @@ import type { CurrentUser } from "@/lib/auth";
 import { BellIcon, LockIcon, LogOut, MailIcon } from "lucide-react";
 import { AdminNotifForm } from "./notif-form";
 import { disconnectMyGoogleAction } from "./actions";
+import { AgendaSyncButton } from "./agenda-button";
 
 export const GOOGLE_MSG: Record<string, string> = {
   ok: "Google est connecté.",
@@ -27,20 +28,22 @@ export async function MesParametres({ user, google, next }: { user: CurrentUser;
   const connecte = !!me?.googleRefreshToken;
   return (
     <>
-      <SectionTitle icon={MailIcon}>Mon compte Google (emails du CRM)</SectionTitle>
+      <SectionTitle icon={MailIcon}>Mon compte Google (emails et agenda)</SectionTitle>
       <div className="space-y-3 rounded-card border border-border bg-surface p-4">
         {google && <p className={`text-sm ${google === "ok" ? "text-green" : "text-pink"}`}>{GOOGLE_MSG[google] ?? ""}</p>}
-        {connecte ? (
+        {connecte ? (<>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="font-medium text-title">Connecté avec {me?.googleEmail}</p>
-              <p className="text-xs text-text">Les mails que vous échangez avec un prospect (envoyés et reçus) apparaissent dans l’historique de sa fiche. Lecture seule, rien n’est envoyé depuis l’app.</p>
+              <p className="text-xs text-text">Emails : les mails échangés avec un prospect apparaissent dans l’historique de sa fiche (lecture seule). Agenda : vos RDV prospects et les échéances des sites que vous suivez ou développez sont ajoutés à votre Google Agenda, et mis à jour automatiquement.</p>
             </div>
             <form action={disconnectMyGoogleAction}><SubmitButton variant="ghost" size="sm" pendingLabel="…">Déconnecter</SubmitButton></form>
           </div>
-        ) : (
+          <AgendaSyncButton />
+          <p className="text-xs text-muted">Connexion faite avant l’ajout de l’agenda ? Déconnectez puis reconnectez une fois pour accorder la permission Agenda.</p>
+        </>) : (
           <>
-            <p className="text-sm text-text">Connectez votre propre compte Google : les mails que vous échangez avec un prospect (envoyés et reçus) apparaîtront dans l’historique de sa fiche. Lecture seule, chacun son compte.</p>
+            <p className="text-sm text-text">Connectez votre propre compte Google : les mails échangés avec un prospect apparaîtront dans l’historique de sa fiche (lecture seule), et vos RDV et échéances de sites iront dans votre Google Agenda. Chacun son compte.</p>
             {oauthConfigured() ? <Button href="/api/google/connect?perso=1">Connecter mon compte Google</Button> : <p className="text-sm text-yellow">Connexion Google non configurée sur le serveur (GOOGLE_OAUTH_CLIENT_ID / SECRET).</p>}
           </>
         )}

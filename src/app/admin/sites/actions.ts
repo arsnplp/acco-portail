@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isGestionnaire, requireTeam, requireGestionnaire } from "@/lib/auth";
 import type { ProjectStep, SiteStatus } from "@prisma/client";
@@ -66,6 +67,11 @@ export async function updateSite(siteId: string, _prev: ActionState, formData: F
   if (goesLive) await logActivite({ kind: "site_statut", texte: `${before.name} est en ligne`, href: `/admin/sites/${siteId}`, userId: admin.id, clientId: before.clientId, siteId });
   else if (projectStep !== before.projectStep) await logActivite({ kind: "site_etape", texte: `${before.name} passe à « ${stepLabel(projectStep)} »`, href: `/admin/sites/${siteId}`, userId: admin.id, clientId: before.clientId, siteId });
   revalidatePath("/admin/production");
+  // Échéances ou développeur modifiés : agendas Google du commercial du client et du développeur.
+  after(async () => {
+    const [{ syncAgendaUsers }, client] = await Promise.all([import("@/lib/agenda"), prisma.client.findUnique({ where: { id: before.clientId }, select: { commercialId: true } })]);
+    await syncAgendaUsers([client?.commercialId, before.developpeurId, d.developpeurId || null]);
+  });
   // Première liaison à une propriété (ou propriété changée) : on récupère 12 mois et on prépare le récap du mois dernier.
   if (status === "EN_LIGNE" && searchConsoleProp && searchConsoleProp !== before.searchConsoleProp) {
     const { syncSiteMonths, activerRecapAuto } = await import("@/lib/recaps");

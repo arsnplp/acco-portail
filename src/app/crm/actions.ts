@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { redirect } from "next/navigation";
 import type { EchangeType, Prisma, ProspectSource, ProspectStatut } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -131,6 +132,8 @@ export async function logEchange(prospectId: string, _prev: CrmState, f: FormDat
     });
   });
   refresh(prospectId);
+  // RDV pris, reporté ou honoré : l'agenda Google du commercial suit (si son compte est connecté).
+  if (rdvAt || reportAt || type === "RDV" || type === "NO_SHOW") after(async () => { const { syncAgendaUsers } = await import("@/lib/agenda"); await syncAgendaUsers([prospect.commercialId ?? me.id]); });
   const session = String(f.get("session") ?? "");
   if (session) redirect(`/crm/session?${session}`); // session d'appels : fiche suivante de la colonne
   return { ok: true };
@@ -260,6 +263,7 @@ export async function deleteProspect(id: string) {
 export async function setRdvResultat(id: string, resultat: "FAIT" | "ANNULE" | "PREVU" | "NO_SHOW") {
   await requireProspection();
   const r = await prisma.rendezVous.update({ where: { id }, data: { resultat } });
+  after(async () => { const { syncAgendaUsers } = await import("@/lib/agenda"); await syncAgendaUsers([r.commercialId]); });
   refresh(r.prospectId);
 }
 
