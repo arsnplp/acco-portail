@@ -13,6 +13,7 @@ const ITEMS: Array<[string, string, "suivi" | "prospection"]> = [
   ["/admin/suivi", "Tableau de bord", "suivi"],
   ["/admin/clients", "Clients", "suivi"],
   ["/admin/sites", "Sites", "suivi"],
+  ["/admin/production", "Production", "suivi"],
   ["/admin/modifications", "Modifications", "suivi"],
   ["/admin/offres", "Offres", "prospection"],
   ["/admin/commandes", "Commandes", "prospection"],

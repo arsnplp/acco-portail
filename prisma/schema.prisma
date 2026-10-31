@@ -44,11 +44,20 @@ enum SiteStatus {
   SUSPENDU
 }
 
+/// Pipeline de production d'un site (kanban « Sites en cours »).
 enum ProjectStep {
-  BRIEF
-  MAQUETTE
-  DEVELOPPEMENT
-  MISE_EN_LIGNE
+  PREPARATION_V1
+  PRESENTATION_V1
+  PEAUFINEMENT
+  VALIDATION_CLIENT
+  FINITION
+  LIVRAISON
+}
+
+enum ArticleStatut {
+  A_REDIGER
+  A_PUBLIER
+  PUBLIE
 }
 
 enum AssetKind {
@@ -193,6 +202,7 @@ model Client {
   commercial  User? @relation("ClientCommercial", fields: [commercialId], references: [id], onDelete: SetNull)
   developpeur User? @relation("ClientDeveloppeur", fields: [developpeurId], references: [id], onDelete: SetNull)
   loginLogs   LoginLog[]
+  activites   Activite[]
 
   memberships      ClientMembership[]
   invitations      Invitation[]
@@ -245,6 +255,46 @@ model User {
   clientsSuivis     Client[]                @relation("ClientCommercial")
   clientsDeveloppes Client[]                @relation("ClientDeveloppeur")
   loginLogs         LoginLog[]
+  sitesDeveloppes   Site[]                  @relation("SiteDeveloppeur")
+  articles          Article[]
+  activites         Activite[]
+}
+
+/// Article de blog d'un site : suivi de publication (Production → Blogs).
+model Article {
+  id        String        @id @default(cuid())
+  siteId    String
+  titre     String
+  url       String?
+  statut    ArticleStatut @default(A_REDIGER)
+  publieAt  DateTime?
+  auteurId  String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  site   Site  @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  auteur User? @relation(fields: [auteurId], references: [id], onDelete: SetNull)
+
+  @@index([siteId, statut])
+}
+
+/// Flux d'activité de l'agence : tâches terminées, étapes franchies, notes, statuts… (Production et Pilotage).
+model Activite {
+  id        String   @id @default(cuid())
+  kind      String // site_etape, site_statut, modification, article, compte_rendu, prospect…
+  texte     String
+  href      String?
+  userId    String?
+  clientId  String?
+  siteId    String?
+  createdAt DateTime @default(now())
+
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  client Client? @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  site   Site?   @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([clientId, createdAt])
 }
 
 /// Journal des connexions (qui se connecte, quand) : affiché sur la fiche client, purgé après 6 mois (cron rgpd).
@@ -304,7 +354,12 @@ model Site {
   previewUrl        String? // lien préprod
   screenshotUrl     String?
   status            SiteStatus  @default(EN_CREATION)
-  projectStep       ProjectStep @default(BRIEF)
+  projectStep       ProjectStep @default(PREPARATION_V1)
+  etapeAt           DateTime? // dernier changement d'étape
+  developpeurId     String? // développeur attitré au projet
+  deadlineV1        DateTime? // présentation de la V1
+  deadlineV2        DateTime? // V2 (après peaufinement / validation client)
+  deadlineLivraison DateTime?
   mockupValidatedAt DateTime?
   launchedAt        DateTime?
   siteKey           String      @unique @default(cuid()) // clé des formulaires
@@ -321,6 +376,9 @@ model Site {
   updatedAt         DateTime    @updatedAt
 
   client           Client               @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  developpeur      User?                @relation("SiteDeveloppeur", fields: [developpeurId], references: [id], onDelete: SetNull)
+  articles         Article[]
+  activites        Activite[]
   assets           SiteAsset[]
   history          SiteHistoryEntry[]
   healthChecks     SiteHealthCheck[]

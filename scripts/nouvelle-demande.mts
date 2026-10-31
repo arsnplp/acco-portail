@@ -22,7 +22,7 @@ if (!site && a.client && a.repo) {
   const client = (await prisma.client.findFirst({ where: { name: a.client } })) ?? (await prisma.client.create({ data: { name: a.client } }));
   site = await prisma.site.create({
     data: {
-      clientId: client.id, name: a.site, url: a.url ?? `https://${a.site}`, status: "EN_LIGNE", projectStep: "MISE_EN_LIGNE", launchedAt: new Date(),
+      clientId: client.id, name: a.site, url: a.url ?? `https://${a.site}`, status: "EN_LIGNE", projectStep: "LIVRAISON", launchedAt: new Date(),
       repoUrl: a.repo, repoBranch: a.branche || null, repoRoot: a.dossier || null,
     },
     include: { client: true },

@@ -11,6 +11,14 @@ Rôles et comptes : Prospection → Plus → Équipe (Direction). Chaque membre 
 depuis son avatar ; les clés API et le Google de l'agence restent au gestionnaire. Accueil selon le rôle : Direction `/admin`,
 commercial `/crm`, autres `/admin/suivi`.
 
+## Production (Suivi → Production)
+Kanban « Sites en cours » : Préparation V1 → Présentation V1 → Peaufinement → Validation client → Finition → Livraison
+(sites « en création » ; glisser une carte change l'étape ; le client qui valide la V1 ou la V2 depuis son espace fait aussi
+avancer la carte). Sur chaque carte : échéance de l'étape en cours (deadline V1, V2 ou livraison, réglées sur la fiche du site),
+demandes de modification ouvertes, lien de prévisualisation, développeur attitré ; filtre par développeur.
+Blogs : tableau des articles par site (à rédiger, à publier, publié). Flux d'activité : étapes franchies, modifications traitées,
+articles publiés, comptes rendus, validations client (aussi dans Pilotage → Historique global).
+
 ## Fiche client (Suivi)
 `/admin/clients/<id>` : informations et contacts (ceux de la fiche prospect liée), contrat et offre (formule Essentiel / Référence /
 Conquête / Signature, dates d'engagement, « Suivi par », développeur attitré, client référence épinglé en tête de liste), technique

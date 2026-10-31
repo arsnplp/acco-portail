@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { isGestionnaire, requireTeam, requireGestionnaire } from "@/lib/auth";
 import type { ProjectStep, SiteStatus } from "@prisma/client";
 import { maybeCreateReviewPrompt } from "@/lib/review-prompt";
+import { logActivite } from "@/lib/activite";
+import { stepLabel } from "@/lib/labels";
 
 export type ActionState = { error?: string; ok?: boolean };
 
@@ -39,7 +41,12 @@ export async function updateSite(siteId: string, _prev: ActionState, formData: F
         previewUrl: d.previewUrl?.trim() || null,
         screenshotUrl: d.screenshotUrl?.trim() || null,
         status,
-        projectStep: goesLive ? "MISE_EN_LIGNE" : projectStep,
+        projectStep: goesLive ? "LIVRAISON" : projectStep,
+        etapeAt: projectStep !== before.projectStep ? new Date() : before.etapeAt,
+        developpeurId: d.developpeurId || null,
+        deadlineV1: d.deadlineV1 ? new Date(`${d.deadlineV1}T12:00:00`) : null,
+        deadlineV2: d.deadlineV2 ? new Date(`${d.deadlineV2}T12:00:00`) : null,
+        deadlineLivraison: d.deadlineLivraison ? new Date(`${d.deadlineLivraison}T12:00:00`) : null,
         searchConsoleProp,
         googleLocationId: gestion ? d.googleLocationId?.trim() || null : before.googleLocationId,
         repoUrl: d.repoUrl?.trim() || null,
@@ -56,6 +63,9 @@ export async function updateSite(siteId: string, _prev: ActionState, formData: F
     }
   });
   if (goesLive) await maybeCreateReviewPrompt(before.clientId, "SITE_EN_LIGNE");
+  if (goesLive) await logActivite({ kind: "site_statut", texte: `${before.name} est en ligne`, href: `/admin/sites/${siteId}`, userId: admin.id, clientId: before.clientId, siteId });
+  else if (projectStep !== before.projectStep) await logActivite({ kind: "site_etape", texte: `${before.name} passe à « ${stepLabel(projectStep)} »`, href: `/admin/sites/${siteId}`, userId: admin.id, clientId: before.clientId, siteId });
+  revalidatePath("/admin/production");
   // Première liaison à une propriété (ou propriété changée) : on récupère 12 mois et on prépare le récap du mois dernier.
   if (status === "EN_LIGNE" && searchConsoleProp && searchConsoleProp !== before.searchConsoleProp) {
     const { syncSiteMonths, activerRecapAuto } = await import("@/lib/recaps");
@@ -78,6 +88,8 @@ export async function addHistoryEntry(siteId: string, _prev: ActionState, formDa
   await prisma.siteHistoryEntry.create({
     data: { siteId, kind, title, description: String(formData.get("description") ?? "").trim() || null, items, happenedAt, authorId: admin.id },
   });
+  const site = await prisma.site.findUnique({ where: { id: siteId }, select: { name: true, clientId: true } });
+  await logActivite({ kind: "intervention", texte: `${site?.name ?? "Site"} : ${title}`, href: `/admin/sites/${siteId}`, userId: admin.id, clientId: site?.clientId, siteId });
   revalidatePath(`/admin/sites/${siteId}`);
   revalidatePath(`/sites/${siteId}`);
   return { ok: true };
@@ -127,4 +139,42 @@ export async function checkSiteNow(siteId: string) {
   revalidatePath(`/admin/sites/${siteId}`);
   revalidatePath("/admin/sites");
   revalidatePath(`/sites/${siteId}`, "layout");
+}
+
+/** Kanban Production : déplacer un site dans une autre colonne. */
+export async function moveSiteEtape(siteId: string, etape: ProjectStep) {
+  const me = await requireTeam();
+  const site = await prisma.site.findUnique({ where: { id: siteId }, select: { name: true, clientId: true, projectStep: true } });
+  if (!site || site.projectStep === etape) return;
+  await prisma.site.update({ where: { id: siteId }, data: { projectStep: etape, etapeAt: new Date() } });
+  await logActivite({ kind: "site_etape", texte: `${site.name} passe à « ${stepLabel(etape)} »`, href: `/admin/sites/${siteId}`, userId: me.id, clientId: site.clientId, siteId });
+  revalidatePath("/admin/production");
+  revalidatePath(`/admin/sites/${siteId}`);
+  revalidatePath(`/sites/${siteId}`, "layout");
+}
+
+// ─── Blogs ───────────────────────────────────────────────────
+export async function addArticle(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const me = await requireTeam();
+  const siteId = String(formData.get("siteId") ?? "");
+  const titre = String(formData.get("titre") ?? "").trim();
+  if (!siteId || !titre) return { error: "Choisissez un site et donnez un titre." };
+  const statut = (["A_REDIGER", "A_PUBLIER", "PUBLIE"].includes(String(formData.get("statut"))) ? String(formData.get("statut")) : "A_REDIGER") as "A_REDIGER" | "A_PUBLIER" | "PUBLIE";
+  const url = String(formData.get("url") ?? "").trim() || null;
+  await prisma.article.create({ data: { siteId, titre, url, statut, auteurId: me.id, publieAt: statut === "PUBLIE" ? new Date() : null } });
+  revalidatePath("/admin/production");
+  return { ok: true };
+}
+
+export async function setArticleStatut(id: string, statut: "A_REDIGER" | "A_PUBLIER" | "PUBLIE") {
+  const me = await requireTeam();
+  const a = await prisma.article.update({ where: { id }, data: { statut, publieAt: statut === "PUBLIE" ? new Date() : null }, include: { site: { select: { name: true, clientId: true } } } });
+  if (statut === "PUBLIE") await logActivite({ kind: "article", texte: `Article publié sur ${a.site.name} : ${a.titre}`, href: "/admin/production", userId: me.id, clientId: a.site.clientId, siteId: a.siteId });
+  revalidatePath("/admin/production");
+}
+
+export async function deleteArticle(id: string) {
+  await requireTeam();
+  await prisma.article.delete({ where: { id } });
+  revalidatePath("/admin/production");
 }

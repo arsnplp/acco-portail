@@ -9,6 +9,7 @@ import { Input, Select } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { CHANGE_STATUS, SITE_STATUS } from "@/lib/labels";
 import { fmtDateShort, daysUntil } from "@/lib/format";
+import { parisDay, teamName } from "@/lib/crm";
 import { SiteForms } from "./forms";
 import { addAssetRequest, syncReviewsAction, checkSiteNow } from "../actions";
 import { Dot } from "@/components/ui/badge";
@@ -38,6 +39,7 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
   });
   if (!site) notFound();
   const gestion = isGestionnaire(await requireTeam());
+  const devs = await prisma.user.findMany({ where: { role: { in: ["ADMIN", "DEV", "EXPERT", "SPECIALISTE"] } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true } });
   const [googleOn, googleEmail, properties] = gestion && site.status === "EN_LIGNE" ? await Promise.all([searchConsoleConfigured(), connectedGoogleEmail(), listProperties()]) : [false, null, []];
   const avisActive = site.subscriptions.some((x) => x.module === "AVIS");
   const [bizApi, aiOn, turnstileSiteKey] = await Promise.all([businessApiEnabled(), aiConfigured(), getSecret("turnstile_site_key")]);
@@ -143,7 +145,7 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
         </>
       )}
 
-      <SiteForms gestion={gestion} properties={properties} locations={locations} site={{ id: site.id, name: site.name, url: site.url, previewUrl: site.previewUrl, screenshotUrl: site.screenshotUrl, status: site.status, projectStep: site.projectStep, searchConsoleProp: site.searchConsoleProp, googleLocationId: site.googleLocationId, repoUrl: site.repoUrl, repoBranch: site.repoBranch, repoRoot: site.repoRoot }} />
+      <SiteForms gestion={gestion} properties={properties} locations={locations} devs={devs.map((u) => ({ id: u.id, name: teamName(u) }))} site={{ id: site.id, name: site.name, url: site.url, previewUrl: site.previewUrl, screenshotUrl: site.screenshotUrl, status: site.status, projectStep: site.projectStep, searchConsoleProp: site.searchConsoleProp, googleLocationId: site.googleLocationId, repoUrl: site.repoUrl, repoBranch: site.repoBranch, repoRoot: site.repoRoot, developpeurId: site.developpeurId, deadlineV1: site.deadlineV1 ? parisDay(site.deadlineV1) : "", deadlineV2: site.deadlineV2 ? parisDay(site.deadlineV2) : "", deadlineLivraison: site.deadlineLivraison ? parisDay(site.deadlineLivraison) : "" }} />
 
       {site.status === "EN_CREATION" && (
         <>

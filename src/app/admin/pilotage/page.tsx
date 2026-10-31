@@ -4,7 +4,9 @@ import { AdminPage } from "@/components/admin/page";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { addDays, fmtPrice } from "@/lib/format";
 import { ROLE_LABEL, EQUIPE } from "@/lib/roles";
-import { ChartColumnIcon, UsersIcon } from "lucide-react";
+import Link from "next/link";
+import { fmtDayTime, teamName } from "@/lib/crm";
+import { ActivityIcon, ChartColumnIcon, UsersIcon } from "lucide-react";
 
 export const metadata = { title: "Pilotage" };
 
@@ -12,13 +14,14 @@ export const metadata = { title: "Pilotage" };
 export default async function PilotagePage() {
   await requireAdmin();
   const in60 = addDays(60);
-  const [mrr, actifs, clients, sitesEnLigne, equipe, engagements] = await Promise.all([
+  const [mrr, actifs, clients, sitesEnLigne, equipe, engagements, activites] = await Promise.all([
     prisma.subscription.aggregate({ where: { status: "ACTIF", billing: "MENSUEL" }, _sum: { priceCents: true } }),
     prisma.subscription.count({ where: { status: "ACTIF" } }),
     prisma.client.count(),
     prisma.site.count({ where: { status: "EN_LIGNE" } }),
     prisma.user.findMany({ where: { role: { in: EQUIPE } }, orderBy: [{ role: "asc" }, { firstName: "asc" }], select: { id: true, firstName: true, lastName: true, email: true, role: true, _count: { select: { clientsSuivis: true, clientsDeveloppes: true, crmProspects: true } } } }),
     prisma.subscription.count({ where: { status: "ACTIF", commitmentEndsAt: { gte: new Date(), lte: in60 } } }),
+    prisma.activite.findMany({ orderBy: { createdAt: "desc" }, take: 40, include: { user: { select: { firstName: true, email: true } } } }),
   ]);
   const tiles = [
     { n: fmtPrice(mrr._sum.priceCents ?? 0), label: "MRR (abonnements mensuels actifs)" },
@@ -48,6 +51,19 @@ export default async function PilotagePage() {
           </li>
         ))}
       </ul>
+
+      <SectionTitle icon={ActivityIcon}>Historique global</SectionTitle>
+      {activites.length === 0 ? <p className="text-sm text-text">Le flux se remplit au fil des actions de l’équipe (étapes de production, modifications, articles, comptes rendus).</p> : (
+        <ol className="space-y-2 border-l border-border pl-4">
+          {activites.map((a) => (
+            <li key={a.id} className="relative text-sm">
+              <span className="absolute top-2 -left-[21px] size-2 rounded-full bg-blue" />
+              {a.href ? <Link href={a.href} className="text-text-strong hover:underline">{a.texte}</Link> : <span className="text-text-strong">{a.texte}</span>}
+              <p className="text-xs text-text">{fmtDayTime(a.createdAt)}{a.user ? ` · ${teamName(a.user)}` : ""}</p>
+            </li>
+          ))}
+        </ol>
+      )}
     </AdminPage>
   );
 }

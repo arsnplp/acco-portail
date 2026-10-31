@@ -7,6 +7,8 @@ import type { ChangeRequestStatus } from "@prisma/client";
 import { CLAUDE_BUSY, changeDoneNotification, claudeNeedsMerge, recordChangeHistory } from "@/lib/change-requests";
 import { notifyClient } from "@/lib/notify";
 import { featureEnabled } from "@/lib/settings";
+import { logActivite } from "@/lib/activite";
+import { CHANGE_STATUS } from "@/lib/labels";
 
 function revalidate(siteId: string) {
   revalidatePath("/admin/modifications");
@@ -46,6 +48,7 @@ export async function moveChange(reqId: string, status: ChangeRequestStatus) {
     if (status === "TERMINEE") await recordChangeHistory(tx, cr, admin.id, now);
   });
   if (status === "TERMINEE") await notifyClient(changeDoneNotification(cr, cr.site)).catch((e) => console.warn("[notify]", (e as Error).message));
+  await logActivite({ kind: "modification", texte: `Modification « ${cr.title} » (${cr.site.name}) : ${CHANGE_STATUS[status].label.toLowerCase()}`, href: "/admin/modifications", userId: admin.id, clientId: cr.site.clientId, siteId: cr.siteId });
   revalidate(cr.siteId);
 }
 

@@ -29,24 +29,20 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
     <div>
       <SectionTitle icon={ConstructionIcon}>Avancement</SectionTitle>
       <Card>
-        <ol className="grid grid-cols-4 gap-1">
+        <ol className="grid grid-cols-6 gap-1">
           {PROJECT_STEPS.map((s, i) => {
             const done = i < stepIndex;
             const current = i === stepIndex;
             return (
               <li key={s.key} className="flex flex-col items-center gap-2 text-center">
                 <span className={cn("h-1.5 w-full rounded-full", done || current ? "bg-green" : "bg-border", current && "bg-yellow")} />
-                <span className={cn("text-[11px] leading-tight", current ? "text-title font-semibold" : done ? "text-text-strong" : "text-muted")}>{s.label}</span>
+                <span className={cn("text-[10px] leading-tight sm:text-[11px]", current ? "text-title font-semibold" : done ? "text-text-strong" : "text-muted")}>{s.court}</span>
               </li>
             );
           })}
         </ol>
-        <p className="mt-4 text-sm text-text">
-          {site.projectStep === "BRIEF" && "Nous préparons votre projet à partir de notre échange."}
-          {site.projectStep === "MAQUETTE" && "Votre maquette est prête : regardez-la et validez-la pour lancer le développement."}
-          {site.projectStep === "DEVELOPPEMENT" && "Votre site est en cours de développement."}
-          {site.projectStep === "MISE_EN_LIGNE" && "Dernières vérifications avant la mise en ligne."}
-        </p>
+        <p className="mt-4 text-sm text-text">{PROJECT_STEPS.find((s) => s.key === site.projectStep)?.client}</p>
+        {site.deadlineLivraison && <p className="mt-1 text-xs text-text">Livraison prévue : <span className="font-semibold text-title">{fmtDateShort(site.deadlineLivraison)}</span></p>}
       </Card>
 
       {site.previewUrl && (
@@ -61,10 +57,10 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
         </Card>
       )}
 
-      {site.projectStep === "MAQUETTE" && !site.mockupValidatedAt && (
+      {(site.projectStep === "PRESENTATION_V1" || site.projectStep === "VALIDATION_CLIENT") && (
         <form action={validateMockup.bind(null, site.id)} className="mt-3">
           <SubmitButton size="lg" className="w-full" pendingLabel="Validation…">
-            <FileCheck2 size={18} /> Valider la maquette
+            <FileCheck2 size={18} /> {site.projectStep === "PRESENTATION_V1" ? "Valider la version 1" : "Valider la version 2"}
           </SubmitButton>
           <p className="mt-2 text-center text-xs text-muted">Une remarque ? Écrivez-nous dans Messages avant de valider.</p>
         </form>

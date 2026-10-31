@@ -7,12 +7,22 @@ export const SITE_STATUS: Record<SiteStatus, { label: string; tone: Tone }> = {
   SUSPENDU: { label: "Suspendu", tone: "pink" },
 };
 
-export const PROJECT_STEPS: Array<{ key: ProjectStep; label: string }> = [
-  { key: "BRIEF", label: "Brief" },
-  { key: "MAQUETTE", label: "Maquette" },
-  { key: "DEVELOPPEMENT", label: "Développement" },
-  { key: "MISE_EN_LIGNE", label: "Mise en ligne" },
+/** Les 6 étapes de production (colonnes du kanban « Sites en cours »), avec le texte montré au client et l'échéance qui compte. */
+export const PROJECT_STEPS: Array<{ key: ProjectStep; label: string; court: string; client: string; deadline: "deadlineV1" | "deadlineV2" | "deadlineLivraison" }> = [
+  { key: "PREPARATION_V1", label: "Préparation V1", court: "Prépa V1", client: "Nous préparons la première version de votre site à partir de notre échange.", deadline: "deadlineV1" },
+  { key: "PRESENTATION_V1", label: "Présentation V1", court: "Présentation", client: "Votre première version est prête : regardez-la et validez-la pour que nous passions au peaufinement.", deadline: "deadlineV1" },
+  { key: "PEAUFINEMENT", label: "Peaufinement", court: "Peaufinement", client: "Nous peaufinons votre site à partir de vos retours.", deadline: "deadlineV2" },
+  { key: "VALIDATION_CLIENT", label: "Validation client", court: "Validation", client: "La version 2 vous attend : vérifiez-la et dites-nous si tout est bon.", deadline: "deadlineV2" },
+  { key: "FINITION", label: "Finition", court: "Finition", client: "Derniers réglages avant la livraison.", deadline: "deadlineLivraison" },
+  { key: "LIVRAISON", label: "Livraison", court: "Livraison", client: "Livraison imminente : dernières vérifications avant la mise en ligne.", deadline: "deadlineLivraison" },
 ];
+export const stepLabel = (s: ProjectStep) => PROJECT_STEPS.find((p) => p.key === s)?.label ?? s;
+
+export const ARTICLE_STATUT: Record<"A_REDIGER" | "A_PUBLIER" | "PUBLIE", { label: string; tone: Tone }> = {
+  A_REDIGER: { label: "À rédiger", tone: "neutral" },
+  A_PUBLIER: { label: "À publier", tone: "yellow" },
+  PUBLIE: { label: "Publié", tone: "green" },
+};
 
 export const CHANGE_STATUS: Record<ChangeRequestStatus, { label: string; tone: Tone }> = {
   RECUE: { label: "Reçue", tone: "pink" },

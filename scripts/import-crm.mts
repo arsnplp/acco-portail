@@ -205,7 +205,7 @@ try {
       let siteId = sites.find((s) => host && s.url?.includes(host))?.id ?? sites[0]?.id ?? null;
       if (!siteId) {
         const start = date(c.Date_Debut_Contrat);
-        siteId = (await tx.site.create({ data: { clientId, name: host ?? name, url: siteUrl, status: siteUrl ? "EN_LIGNE" : "EN_CREATION", projectStep: siteUrl ? "MISE_EN_LIGNE" : "BRIEF", launchedAt: siteUrl ? start : null } })).id;
+        siteId = (await tx.site.create({ data: { clientId, name: host ?? name, url: siteUrl, status: siteUrl ? "EN_LIGNE" : "EN_CREATION", projectStep: siteUrl ? "LIVRAISON" : "PREPARATION_V1", launchedAt: siteUrl ? start : null } })).id;
         add("sites créés");
       }
 

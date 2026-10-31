@@ -98,7 +98,7 @@ export async function createSite(clientId: string, _prev: ActionState, formData:
       clientId,
       name,
       status: "EN_CREATION",
-      projectStep: "BRIEF",
+      projectStep: "PREPARATION_V1",
       assets: {
         create: [
           { kind: "LOGO", label: "Votre logo" },
@@ -226,6 +226,9 @@ export async function logClientEchange(clientId: string, _prev: ActionState, for
   await prisma.echange.create({
     data: { clientId, prospectId: client.crmProspect?.id ?? null, type, notes, auteurId: me.id, origine: "saisie", date: day ? new Date(`${day}T12:00:00`) : new Date() },
   });
+  const { logActivite } = await import("@/lib/activite");
+  const nomClient = (await prisma.client.findUnique({ where: { id: clientId }, select: { name: true } }))?.name ?? "client";
+  await logActivite({ kind: "compte_rendu", texte: `Compte rendu ajouté pour ${nomClient}`, href: `/admin/clients/${clientId}`, userId: me.id, clientId });
   revalidatePath(`/admin/clients/${clientId}`);
   if (client.crmProspect) revalidatePath(`/crm/prospects/${client.crmProspect.id}`);
   return {};

@@ -9,9 +9,9 @@ import { SectionTitle } from "@/components/ui/card";
 import { PROJECT_STEPS } from "@/lib/labels";
 import { PlusIcon, SettingsIcon } from "lucide-react";
 
-type SiteInfo = { id: string; name: string; url: string | null; previewUrl: string | null; screenshotUrl: string | null; status: SiteStatus; projectStep: ProjectStep; searchConsoleProp: string | null; googleLocationId: string | null; repoUrl: string | null; repoBranch: string | null; repoRoot: string | null };
+type SiteInfo = { id: string; name: string; url: string | null; previewUrl: string | null; screenshotUrl: string | null; status: SiteStatus; projectStep: ProjectStep; searchConsoleProp: string | null; googleLocationId: string | null; repoUrl: string | null; repoBranch: string | null; repoRoot: string | null; developpeurId: string | null; deadlineV1: string; deadlineV2: string; deadlineLivraison: string };
 
-export function SiteForms({ site, gestion = false, properties = [], locations = [] }: { site: SiteInfo; gestion?: boolean; properties?: string[]; locations?: { id: string; title: string; address?: string }[] }) {
+export function SiteForms({ site, gestion = false, properties = [], locations = [], devs = [] }: { site: SiteInfo; gestion?: boolean; properties?: string[]; locations?: { id: string; title: string; address?: string }[]; devs?: { id: string; name: string }[] }) {
   const [s1, a1] = useActionState<ActionState, FormData>(updateSite.bind(null, site.id), {});
   const [s2, a2] = useActionState<ActionState, FormData>(addHistoryEntry.bind(null, site.id), {});
   return (
@@ -32,6 +32,14 @@ export function SiteForms({ site, gestion = false, properties = [], locations = 
               {PROJECT_STEPS.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
             </Select>
           </Field>
+          <Field label="Développeur attitré">
+            <Select name="developpeurId" defaultValue={site.developpeurId ?? ""}><option value="">Personne</option>{devs.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</Select>
+          </Field>
+          <div className="grid grid-cols-3 gap-2">
+            <Field label="Deadline V1"><Input name="deadlineV1" type="date" defaultValue={site.deadlineV1} className="px-2 text-sm" /></Field>
+            <Field label="Deadline V2"><Input name="deadlineV2" type="date" defaultValue={site.deadlineV2} className="px-2 text-sm" /></Field>
+            <Field label="Livraison"><Input name="deadlineLivraison" type="date" defaultValue={site.deadlineLivraison} className="px-2 text-sm" /></Field>
+          </div>
           <Field label="URL de production"><Input name="url" defaultValue={site.url ?? ""} placeholder="https://" /></Field>
           <Field label="Lien préprod"><Input name="previewUrl" defaultValue={site.previewUrl ?? ""} placeholder="https://" /></Field>
           {gestion && <>
