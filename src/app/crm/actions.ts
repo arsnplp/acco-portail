@@ -246,7 +246,7 @@ export async function saveContact(prospectId: string, contactId: string | null, 
 export async function deleteContact(id: string) {
   await requireProspection();
   const c = await prisma.prospectContact.delete({ where: { id } });
-  refresh(c.prospectId);
+  refresh(c.prospectId ?? undefined);
 }
 
 /** Supprimer une fiche : admins uniquement (les commerciaux passent la fiche en « Abandon »). */
@@ -264,7 +264,7 @@ export async function setRdvResultat(id: string, resultat: "FAIT" | "ANNULE" | "
   await requireProspection();
   const r = await prisma.rendezVous.update({ where: { id }, data: { resultat } });
   after(async () => { const { syncAgendaUsers } = await import("@/lib/agenda"); await syncAgendaUsers([r.commercialId]); });
-  refresh(r.prospectId);
+  refresh(r.prospectId ?? undefined);
 }
 
 /** « Générer les infos » : enrichit la fiche (registre officiel, audit du site, recherche web si clé Anthropic). */

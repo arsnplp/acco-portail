@@ -35,7 +35,7 @@ export default async function CalendrierPage({ searchParams }: { searchParams: P
 
   const [rdvs, rappels, team] = await Promise.all([
     prisma.rendezVous.findMany({
-      where: { ...byCommercial, debut: { gte: from, lt: to } },
+      where: { ...byCommercial, prospectId: { not: null }, debut: { gte: from, lt: to } },
       orderBy: { debut: "asc" },
       include: { commercial: { select: { firstName: true, email: true } }, prospect: { select: { id: true, societe: true, contacts: { orderBy: [{ principal: "desc" }, { createdAt: "asc" }], take: 1, select: { prenom: true, nom: true } } } } },
     }),
@@ -48,8 +48,8 @@ export default async function CalendrierPage({ searchParams }: { searchParams: P
 
   const events: CalEvent[] = [
     ...rdvs.map((r) => ({
-      id: r.id, kind: "rdv" as const, at: r.debut.toISOString(), duree: r.dureeMin, prospectId: r.prospect.id,
-      nom: contactName(r.prospect.contacts[0]) ?? r.prospect.societe, societe: r.prospect.societe,
+      id: r.id, kind: "rdv" as const, at: r.debut.toISOString(), duree: r.dureeMin, prospectId: r.prospect!.id,
+      nom: contactName(r.prospect!.contacts[0]) ?? r.prospect!.societe, societe: r.prospect!.societe,
       objet: r.reportDeId ? `RDV reporté${r.lieu ? ` · ${r.lieu}` : ""}` : r.lieu ? `RDV · ${r.lieu}` : "Rendez-vous", resultat: r.resultat,
       qui: r.commercial ? initialsOf(teamName(r.commercial)) : null,
     })),

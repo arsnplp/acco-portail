@@ -25,6 +25,96 @@ enum Role {
   SPECIALISTE // profils internes (SEO, Ads…) : Suivi
 }
 
+/// Vue de travail (distincte des droits) : page d'accueil et menus mis en avant.
+enum Mode {
+  COMMERCIAL
+  DIRECTION
+  PRODUCTION
+  ADMIN
+}
+
+enum ClientStatut {
+  ACTIF
+  SUSPENDU
+  ARCHIVE
+}
+
+/// Contrat : brouillon → envoyé → consulté → signé (ou refusé) ; terminé en fin d'engagement ou résiliation.
+enum ContratStatut {
+  BROUILLON
+  ENVOYE
+  CONSULTE
+  SIGNE
+  REFUSE
+  TERMINE
+}
+
+enum MoyenPaiement {
+  SEPA
+  CARTE
+  VIREMENT
+  LIEN
+  AUTRE
+}
+
+/// Brief collaboratif d'un site : rempli par le commercial, complété par le client, validé par le commercial puis par Arsène.
+enum BriefEtat {
+  EN_COURS
+  ATTENDU_CLIENT
+  COMPLET
+  VALIDE
+}
+
+/// Circuits de validation à deux niveaux (section 20.1 du prompt maître).
+enum ValidationType {
+  BRIEF_COMMERCIAL
+  BRIEF_TECHNIQUE
+  MAQUETTE
+  DEROGATION_PAIEMENT_COMMERCIALE
+  DEROGATION_PAIEMENT_TECHNIQUE
+  GO_LIVE
+  EXCEPTION_TARIFAIRE
+  LIVRABLE
+  CAMPAGNE
+}
+
+enum ValidationStatut {
+  EN_ATTENTE
+  VALIDEE
+  REFUSEE
+}
+
+enum TacheClientType {
+  RELANCE
+  RDV_A_PLANIFIER
+  APPEL
+  EMAIL
+  DOCUMENT
+  MAINTENANCE
+  AUTRE
+}
+
+enum TacheClientStatut {
+  A_FAIRE
+  FAIT
+  ANNULEE
+}
+
+enum CampagneStatut {
+  BROUILLON
+  VALIDEE
+  EN_COURS
+  TERMINEE
+  ANNULEE
+}
+
+enum DestinataireStatut {
+  EN_ATTENTE
+  ENVOYE
+  ERREUR
+  EXCLU
+}
+
 /// Formule d'abonnement d'un client.
 enum Formule {
   ESSENTIEL
@@ -182,27 +272,39 @@ enum DocumentRequestStatus {
 // ─────────────────────────────────────────────────────────────
 
 model Client {
-  id        String   @id @default(cuid())
-  name      String // raison sociale / enseigne
-  siren     String?
-  address   String?
-  phone     String?
-  email     String?
+  id              String       @id @default(cuid())
+  name            String // raison sociale / enseigne
+  siren           String?
+  address         String?
+  phone           String?
+  email           String?
   commercialId    String? // « Suivi par … »
   developpeurId   String? // développeur attitré
   formule         Formule?
   engagementDebut DateTime?
   engagementFin   DateTime?
   gmbUrl          String? // fiche Google Business Profile
-  reference       Boolean  @default(false) // client référence : épinglé en tête de liste, appui pour les argumentaires
+  reference       Boolean      @default(false) // client référence : épinglé en tête de liste, appui pour les argumentaires
   alerteContactAt DateTime? // dernière alerte « aucun contact depuis 60 jours » envoyée au commercial
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  logoPath        String? // logo déposé (bucket documents, dossier logos/<clientId>), recadré carré côté serveur
+  logoMiniPath    String? // miniature 128 px générée une fois
+  secteur         String? // activité / métier
+  statut          ClientStatut @default(ACTIF)
+  archivedAt      DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
-  commercial  User? @relation("ClientCommercial", fields: [commercialId], references: [id], onDelete: SetNull)
-  developpeur User? @relation("ClientDeveloppeur", fields: [developpeurId], references: [id], onDelete: SetNull)
-  loginLogs   LoginLog[]
-  activites   Activite[]
+  commercial    User?                  @relation("ClientCommercial", fields: [commercialId], references: [id], onDelete: SetNull)
+  developpeur   User?                  @relation("ClientDeveloppeur", fields: [developpeurId], references: [id], onDelete: SetNull)
+  loginLogs     LoginLog[]
+  activites     Activite[]
+  contrats      Contrat[]
+  contacts      ProspectContact[]
+  delegations   Delegation[]
+  taches        TacheClient[]
+  validations   Validation[]
+  rendezVous    RendezVous[]
+  destinataires CampagneDestinataire[]
 
   memberships      ClientMembership[]
   invitations      Invitation[]
@@ -223,42 +325,315 @@ model Client {
 }
 
 model User {
-  id        String   @id // = auth.users.id (Supabase Auth)
-  email     String   @unique
-  firstName String?
-  lastName  String?
-  avatarUrl String?
-  role      Role     @default(CLIENT)
+  id                 String   @id // = auth.users.id (Supabase Auth)
+  email              String   @unique
+  firstName          String?
+  lastName           String?
+  avatarUrl          String?
+  role               Role     @default(CLIENT)
+  droits             String[] @default([]) // droits unitaires en plus du rôle : pilotage, equipe, reglages, validation_commerciale, go_live, dates_production, finance, ia_admin (src/lib/permissions.ts)
+  modeDefaut         Mode? // vue de travail au démarrage (Bilel : Commercial, Arsène : Production)
   googleRefreshToken String? // compte Google personnel (équipe) : lecture de sa boîte Gmail pour l'historique des fiches CRM
   googleEmail        String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  memberships       ClientMembership[]
-  invitationsSent   Invitation[]
-  messages          Message[]
-  assignedChanges   ChangeRequest[]         @relation("AssignedChanges")
-  changeComments    ChangeRequestComment[]
-  pushSubscriptions PushSubscription[]
-  notificationPref  NotificationPreference?
-  historyEntries    SiteHistoryEntry[]
-  validatedOrders   Order[]                 @relation("ValidatedOrders")
-  documentRequests  DocumentRequest[]
-  crmProspects      Prospect[]              @relation("ProspectCommercial")
-  crmEchanges       Echange[]               @relation("EchangeAuteur")
-  crmRendezVous     RendezVous[]            @relation("RdvCommercial")
-  crmProjets        Projet[]                @relation("ProjetResponsable")
-  crmTaches         Tache[]                 @relation("TacheResponsable")
-  crmTacheModeles   TacheModele[]           @relation("TacheModeleResponsable")
-  leadListes        LeadListe[]             @relation("LeadListeCommercial")
-  leadListesCreees  LeadListe[]             @relation("LeadListeAuteur")
-  clientsSuivis     Client[]                @relation("ClientCommercial")
-  clientsDeveloppes Client[]                @relation("ClientDeveloppeur")
-  loginLogs         LoginLog[]
-  sitesDeveloppes   Site[]                  @relation("SiteDeveloppeur")
-  articles          Article[]
-  activites         Activite[]
-  agendaEvents      AgendaEvent[]
+  memberships          ClientMembership[]
+  invitationsSent      Invitation[]
+  messages             Message[]
+  assignedChanges      ChangeRequest[]         @relation("AssignedChanges")
+  changeComments       ChangeRequestComment[]
+  pushSubscriptions    PushSubscription[]
+  notificationPref     NotificationPreference?
+  historyEntries       SiteHistoryEntry[]
+  validatedOrders      Order[]                 @relation("ValidatedOrders")
+  documentRequests     DocumentRequest[]
+  crmProspects         Prospect[]              @relation("ProspectCommercial")
+  crmEchanges          Echange[]               @relation("EchangeAuteur")
+  crmRendezVous        RendezVous[]            @relation("RdvCommercial")
+  crmProjets           Projet[]                @relation("ProjetResponsable")
+  crmTaches            Tache[]                 @relation("TacheResponsable")
+  crmTacheModeles      TacheModele[]           @relation("TacheModeleResponsable")
+  leadListes           LeadListe[]             @relation("LeadListeCommercial")
+  leadListesCreees     LeadListe[]             @relation("LeadListeAuteur")
+  clientsSuivis        Client[]                @relation("ClientCommercial")
+  clientsDeveloppes    Client[]                @relation("ClientDeveloppeur")
+  loginLogs            LoginLog[]
+  sitesDeveloppes      Site[]                  @relation("SiteDeveloppeur")
+  articles             Article[]
+  activites            Activite[]
+  agendaEvents         AgendaEvent[]
+  contratsCrees        Contrat[]               @relation("ContratCreePar")
+  contratsSuivis       Contrat[]               @relation("ContratCommercial")
+  delegationsDe        Delegation[]            @relation("DelegationDe")
+  delegationsVers      Delegation[]            @relation("DelegationVers")
+  tachesClient         TacheClient[]           @relation("TacheClientResponsable")
+  validationsAssignees Validation[]            @relation("ValidationAssigne")
+  validationsDecidees  Validation[]            @relation("ValidationDecidePar")
+  campagnes            Campagne[]
+  vues                 SavedView[]
+  usagesIA             UsageIA[]
+}
+
+/// Contrat (plusieurs par client) : généré par l'app (PDF), signé par acceptation en ligne ou scan, archivé immuable.
+/// Un avenant est un nouveau Contrat dont parentId pointe sur le contrat d'origine (version précédente conservée).
+model Contrat {
+  id                      String         @id @default(cuid())
+  reference               String         @unique // ex. ACCO-2026-0012
+  clientId                String?
+  prospectId              String?
+  siteId                  String?
+  parentId                String? // avenant d'un contrat existant
+  version                 Int            @default(1)
+  statut                  ContratStatut  @default(BROUILLON)
+  titre                   String
+  formule                 Formule?
+  montantMensuelHt        Int            @default(0) // centimes
+  montantPonctuelHt       Int            @default(0) // centimes (création, prestations ponctuelles)
+  moyenPaiement           MoyenPaiement?
+  dureeMois               Int            @default(24)
+  reconductionMois        Int            @default(24)
+  preavisJours            Int            @default(30)
+  debutEngagement         DateTime?
+  finEngagement           DateTime?
+  contenu                 Json? // clauses et variables du modèle au moment de la génération
+  pdfPath                 String? // PDF généré (bucket documents)
+  pdfSha256               String? // empreinte du PDF exact accepté
+  certificatPath          String? // certificat de preuve PDF
+  scanPath                String? // PDF signé à la main et scanné
+  token                   String         @unique @default(cuid()) // lien sécurisé d'acceptation
+  otpHash                 String?
+  otpExpiresAt            DateTime?
+  envoyeAt                DateTime?
+  consulteAt              DateTime?
+  signeAt                 DateTime?
+  signataireNom           String?
+  signataireEmail         String?
+  signataireIp            String?
+  signataireUa            String?
+  refuseAt                DateTime?
+  refusMotif              String?
+  premierPaiementAt       DateTime?
+  premierPaiementParId    String?
+  premierPaiementAnnuleAt DateTime?
+  impayeAt                DateTime?
+  impayeParId             String?
+  regulariseAt            DateTime?
+  sourceFinanciere        String         @default("manuelle") // manuelle | connecteur (futur)
+  externalId              String? // identifiant dans un futur outil de facturation
+  majFinanciereAt         DateTime?
+  commercialId            String?
+  createdById             String?
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
+
+  client        Client?        @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  prospect      Prospect?      @relation(fields: [prospectId], references: [id], onDelete: SetNull)
+  site          Site?          @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  parent        Contrat?       @relation("Avenant", fields: [parentId], references: [id], onDelete: SetNull)
+  avenants      Contrat[]      @relation("Avenant")
+  commercial    User?          @relation("ContratCommercial", fields: [commercialId], references: [id], onDelete: SetNull)
+  createdBy     User?          @relation("ContratCreePar", fields: [createdById], references: [id], onDelete: SetNull)
+  lignes        LigneContrat[]
+  subscriptions Subscription[]
+  validations   Validation[]
+
+  @@index([clientId, statut])
+  @@index([prospectId])
+  @@index([statut])
+}
+
+/// Ligne de service d'un contrat : une offre (ou libellé libre), un montant HT, éventuellement ciblée sur un site.
+model LigneContrat {
+  id        String  @id @default(cuid())
+  contratId String
+  offerId   String?
+  siteId    String?
+  libelle   String
+  billing   Billing
+  montantHt Int // centimes
+  quantite  Int     @default(1)
+  ordre     Int     @default(0)
+
+  contrat Contrat @relation(fields: [contratId], references: [id], onDelete: Cascade)
+  offer   Offer?  @relation(fields: [offerId], references: [id], onDelete: SetNull)
+  site    Site?   @relation(fields: [siteId], references: [id], onDelete: SetNull)
+
+  @@index([contratId])
+}
+
+/// Brief collaboratif d'un site (ouvert à la signature) : contenu structuré, états, double validation.
+model Brief {
+  id                   String    @id @default(cuid())
+  siteId               String    @unique
+  etat                 BriefEtat @default(EN_COURS)
+  contenu              Json? // sections : activité, cibles, pages, textes, photos, préférences, concurrents, contacts…
+  validCommercialParId String?
+  validCommercialAt    DateTime?
+  validTechniqueParId  String?
+  validTechniqueAt     DateTime?
+  derogationNote       String? // points non essentiels levés par Arsène (carte blanche), justification
+  derogationParId      String?
+  derogationAt         DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+}
+
+/// Validation demandée à une personne (ou à son délégataire) : un clic depuis « En attente de ma validation ».
+model Validation {
+  id           String           @id @default(cuid())
+  type         ValidationType
+  statut       ValidationStatut @default(EN_ATTENTE)
+  clientId     String?
+  siteId       String?
+  contratId    String?
+  objetId      String? // id libre (campagne, article…)
+  assigneId    String
+  delegueAId   String?
+  demandeParId String?
+  commentaire  String?
+  decideParId  String?
+  decideAt     DateTime?
+  motif        String?
+  createdAt    DateTime         @default(now())
+
+  client    Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  site      Site?    @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  contrat   Contrat? @relation(fields: [contratId], references: [id], onDelete: Cascade)
+  assigne   User     @relation("ValidationAssigne", fields: [assigneId], references: [id], onDelete: Cascade)
+  decidePar User?    @relation("ValidationDecidePar", fields: [decideParId], references: [id], onDelete: SetNull)
+
+  @@index([assigneId, statut])
+  @@index([siteId, type, statut])
+}
+
+/// Délégation temporaire du portefeuille d'un commercial (retour automatique à la fin).
+model Delegation {
+  id          String   @id @default(cuid())
+  clientId    String? // vide = tout le portefeuille du commercial
+  deId        String
+  versId      String
+  debut       DateTime
+  fin         DateTime
+  motif       String?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  client Client? @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  de     User    @relation("DelegationDe", fields: [deId], references: [id], onDelete: Cascade)
+  vers   User    @relation("DelegationVers", fields: [versId], references: [id], onDelete: Cascade)
+
+  @@index([versId, fin])
+  @@index([deId, fin])
+}
+
+/// Tâche commerciale ou de maintenance rattachée à un client (après signature), avec sa source.
+model TacheClient {
+  id            String            @id @default(cuid())
+  clientId      String
+  siteId        String?
+  contratId     String?
+  type          TacheClientType   @default(AUTRE)
+  titre         String
+  description   String?
+  echeance      DateTime?
+  statut        TacheClientStatut @default(A_FAIRE)
+  responsableId String?
+  source        String? // rdv, email, appel, campagne, maquette, livraison, saisie
+  recurrence    Recurrence        @default(PONCTUEL)
+  faitAt        DateTime?
+  createdById   String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  client      Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  site        Site?  @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  responsable User?  @relation("TacheClientResponsable", fields: [responsableId], references: [id], onDelete: SetNull)
+
+  @@index([responsableId, statut, echeance])
+  @@index([clientId, statut])
+}
+
+/// Envoi groupé d'emails à de petites sélections de clients, via Gmail, validé par un humain avant départ.
+model Campagne {
+  id           String         @id @default(cuid())
+  titre        String
+  objet        String
+  corpsHtml    String // modèle avec variables {{prenom}} {{societe}} {{site}} {{commercial}}
+  commercial   Boolean        @default(true) // message commercial (désinscription appliquée) ou transactionnel
+  statut       CampagneStatut @default(BROUILLON)
+  plafond      Int            @default(50)
+  auteurId     String?
+  validParId   String?
+  validAt      DateTime?
+  envoiDebutAt DateTime?
+  envoiFinAt   DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  auteur        User?                  @relation(fields: [auteurId], references: [id], onDelete: SetNull)
+  destinataires CampagneDestinataire[]
+}
+
+model CampagneDestinataire {
+  id         String             @id @default(cuid())
+  campagneId String
+  clientId   String
+  contactId  String?
+  email      String
+  statut     DestinataireStatut @default(EN_ATTENTE)
+  gmailId    String?
+  erreur     String?
+  envoyeAt   DateTime?
+
+  campagne Campagne @relation(fields: [campagneId], references: [id], onDelete: Cascade)
+  client   Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([campagneId, statut])
+}
+
+/// Vue enregistrée d'une liste (filtres, tri, colonnes), par utilisateur.
+model SavedView {
+  id        String   @id @default(cuid())
+  userId    String
+  espace    String // clients, prospects, taches
+  nom       String
+  params    Json
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, espace])
+}
+
+/// Consommation IA : un enregistrement par appel (compteur et plafond mensuel dans Administration > IA et intégrations).
+model UsageIA {
+  id           String   @id @default(cuid())
+  fonction     String // recap, conseils, enrichissement, leads, synthese_client, brouillon_email…
+  modele       String
+  inputTokens  Int      @default(0)
+  outputTokens Int      @default(0)
+  coutCents    Int      @default(0)
+  userId       String?
+  createdAt    DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([fonction, createdAt])
+}
+
+/// Journal des connecteurs externes (Gmail, Calendar, Aircall, Search Console…) : état, dernière synchro, erreurs.
+model ConnecteurLog {
+  id         String   @id @default(cuid())
+  connecteur String
+  niveau     String // info | erreur
+  message    String
+  createdAt  DateTime @default(now())
+
+  @@index([connecteur, createdAt])
 }
 
 /// Événements poussés dans le Google Agenda personnel d'un membre (RDV, échéances de sites) : clé interne → id Google.
@@ -276,15 +651,18 @@ model AgendaEvent {
 
 /// Article de blog d'un site : suivi de publication (Production → Blogs).
 model Article {
-  id        String        @id @default(cuid())
-  siteId    String
-  titre     String
-  url       String?
-  statut    ArticleStatut @default(A_REDIGER)
-  publieAt  DateTime?
-  auteurId  String?
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id                String        @id @default(cuid())
+  siteId            String
+  titre             String
+  url               String?
+  statut            ArticleStatut @default(A_REDIGER)
+  publieAt          DateTime?
+  demandeClient     Boolean       @default(false) // commandé par le client depuis son portail
+  consignes         String?
+  approbationClient Boolean       @default(false) // le client veut relire le texte avant publication
+  auteurId          String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
 
   site   Site  @relation(fields: [siteId], references: [id], onDelete: Cascade)
   auteur User? @relation(fields: [auteurId], references: [id], onDelete: SetNull)
@@ -361,40 +739,54 @@ model Invitation {
 // ─────────────────────────────────────────────────────────────
 
 model Site {
-  id                String      @id @default(cuid())
-  clientId          String
-  name              String
-  url               String? // URL de production
-  previewUrl        String? // lien préprod
-  screenshotUrl     String?
-  status            SiteStatus  @default(EN_CREATION)
-  projectStep       ProjectStep @default(MAQUETTE)
-  etapeAt           DateTime? // dernier changement d'étape
-  developpeurId     String? // développeur attitré au projet
-  deadlineV1        DateTime? // présentation de la V1
-  deadlineV2        DateTime? // V2 (après peaufinement / validation client)
-  deadlineLivraison DateTime?
-  conseils          Json? // conseils business (espace client), regénérés chaque semaine
-  conseilsAt        DateTime?
-  mockupValidatedAt DateTime?
-  launchedAt        DateTime?
-  siteKey           String      @unique @default(cuid()) // clé des formulaires
-  searchConsoleProp String? // ex. sc-domain:example.fr
-  recapAuto         Boolean   @default(false) // récap mensuel envoyé tout seul le 4 (activé par une synchro réussie)
-  googleLocationId  String? // fiche Google Business Profile
-  reviewsSyncedAt   DateTime?
-  reviewAverage     Float?
-  reviewTotal       Int?
-  repoUrl           String? // dépôt GitHub du site, ex. https://github.com/arsnplp/swella.git
-  repoBranch        String? // branche publiée (défaut : main)
-  repoRoot          String? // sous-dossier servi en ligne (ex. « site »), vide = racine
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  id                   String      @id @default(cuid())
+  clientId             String
+  name                 String
+  url                  String? // URL de production
+  previewUrl           String? // lien préprod
+  screenshotUrl        String?
+  status               SiteStatus  @default(EN_CREATION)
+  projectStep          ProjectStep @default(MAQUETTE)
+  etapeAt              DateTime? // dernier changement d'étape
+  developpeurId        String? // développeur attitré au projet
+  deadlineV1           DateTime? // présentation de la V1
+  deadlineV2           DateTime? // V2 (après peaufinement / validation client)
+  deadlineLivraison    DateTime?
+  conseils             Json? // conseils business (espace client), regénérés chaque semaine
+  conseilsAt           DateTime?
+  mockupValidatedAt    DateTime?
+  version              Int         @default(1) // V1, V2, V3…
+  maquetteEnvoyeeAt    DateTime? // clic explicite « Envoyer maquette » : seulement alors le lien est visible du client
+  maquetteEnvoyeeParId String?
+  goLiveAutoriseAt     DateTime? // autorisation technique de mise en ligne (Arsène)
+  goLiveAutoriseParId  String?
+  receptionPath        String? // document de réception de livraison signé
+  receptionSigneeAt    DateTime?
+  contratId            String? // contrat de référence
+  launchedAt           DateTime?
+  siteKey              String      @unique @default(cuid()) // clé des formulaires
+  searchConsoleProp    String? // ex. sc-domain:example.fr
+  recapAuto            Boolean     @default(false) // récap mensuel envoyé tout seul le 4 (activé par une synchro réussie)
+  googleLocationId     String? // fiche Google Business Profile
+  reviewsSyncedAt      DateTime?
+  reviewAverage        Float?
+  reviewTotal          Int?
+  repoUrl              String? // dépôt GitHub du site, ex. https://github.com/arsnplp/swella.git
+  repoBranch           String? // branche publiée (défaut : main)
+  repoRoot             String? // sous-dossier servi en ligne (ex. « site »), vide = racine
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
 
   client           Client               @relation(fields: [clientId], references: [id], onDelete: Cascade)
   developpeur      User?                @relation("SiteDeveloppeur", fields: [developpeurId], references: [id], onDelete: SetNull)
   articles         Article[]
   activites        Activite[]
+  brief            Brief?
+  contrats         Contrat[]
+  lignesContrat    LigneContrat[]
+  validations      Validation[]
+  taches           TacheClient[]
+  rendezVous       RendezVous[]
   assets           SiteAsset[]
   history          SiteHistoryEntry[]
   healthChecks     SiteHealthCheck[]
@@ -668,8 +1060,9 @@ model Offer {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  parent        Offer?   @relation("OffreComplement", fields: [parentId], references: [id], onDelete: SetNull)
-  complements   Offer[]  @relation("OffreComplement")
+  parent        Offer?         @relation("OffreComplement", fields: [parentId], references: [id], onDelete: SetNull)
+  complements   Offer[]        @relation("OffreComplement")
+  lignesContrat LigneContrat[]
   promotions    Promotion[]
   orders        Order[]
   subscriptions Subscription[]
@@ -725,10 +1118,15 @@ model Subscription {
   startedAt        DateTime           @default(now())
   commitmentEndsAt DateTime? // fin d'engagement
   cancelledAt      DateTime?
+  contratId        String? // contrat d'origine de la ligne
+  sourceFinanciere String             @default("manuelle")
+  externalId       String?
+  updatedAt        DateTime           @default(now()) @updatedAt
 
-  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  site   Site?  @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  offer  Offer? @relation(fields: [offerId], references: [id], onDelete: SetNull)
+  client  Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  site    Site?    @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  offer   Offer?   @relation(fields: [offerId], references: [id], onDelete: SetNull)
+  contrat Contrat? @relation(fields: [contratId], references: [id], onDelete: SetNull)
 
   @@index([clientId])
   @@index([siteId, module, status])
@@ -1024,6 +1422,7 @@ model Prospect {
   contacts   ProspectContact[]
   echanges   Echange[]
   rendezVous RendezVous[]
+  contrats   Contrat[]
   lead       Lead?
 
   @@index([statut, relanceAt])
@@ -1033,20 +1432,25 @@ model Prospect {
   @@index([telephone])
 }
 
+/// Contact d'un prospect et/ou d'un client (même ligne avant et après signature : une seule source de vérité).
 model ProspectContact {
-  id         String   @id @default(cuid())
-  prospectId String
-  prenom     String?
-  nom        String?
-  fonction   String?
-  email      String?
-  telephone  String?
-  principal  Boolean  @default(false)
-  createdAt  DateTime @default(now())
+  id               String   @id @default(cuid())
+  prospectId       String?
+  clientId         String?
+  prenom           String?
+  nom              String?
+  fonction         String?
+  email            String?
+  telephone        String?
+  principal        Boolean  @default(false)
+  optOutCommercial Boolean  @default(false) // ne plus recevoir de messages commerciaux (désinscription)
+  createdAt        DateTime @default(now())
 
-  prospect Prospect @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  prospect Prospect? @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  client   Client?   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@index([prospectId])
+  @@index([clientId])
 }
 
 model Echange {
@@ -1074,17 +1478,25 @@ model Echange {
 }
 
 model RendezVous {
-  id           String      @id @default(cuid())
-  prospectId   String
-  commercialId String?
-  debut        DateTime
-  dureeMin     Int         @default(60)
-  lieu         String?
-  resultat     RdvResultat @default(PREVU)
-  reportDeId   String? // RDV recalé après un no show : ne compte pas comme un nouveau RDV pris
-  createdAt    DateTime    @default(now())
+  id            String      @id @default(cuid())
+  prospectId    String?
+  clientId      String? // RDV avec un client signé (présentation de maquette, suivi, livraison…)
+  siteId        String?
+  commercialId  String?
+  titre         String?
+  debut         DateTime
+  dureeMin      Int         @default(60)
+  lieu          String?
+  meetUrl       String?
+  googleEventId String? // événement créé ou lu dans Google Agenda (synchro bidirectionnelle)
+  resultat      RdvResultat @default(PREVU)
+  reportDeId    String? // RDV recalé après un no show : ne compte pas comme un nouveau RDV pris
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @default(now()) @updatedAt
 
-  prospect   Prospect     @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  prospect   Prospect?    @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  client     Client?      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  site       Site?        @relation(fields: [siteId], references: [id], onDelete: SetNull)
   commercial User?        @relation("RdvCommercial", fields: [commercialId], references: [id], onDelete: SetNull)
   reportDe   RendezVous?  @relation("RdvReport", fields: [reportDeId], references: [id], onDelete: SetNull)
   reports    RendezVous[] @relation("RdvReport")

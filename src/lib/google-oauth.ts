@@ -5,11 +5,12 @@ export const GOOGLE_SCOPES = [
   "https://www.googleapis.com/auth/webmasters.readonly", // Search Console (lecture)
   "https://www.googleapis.com/auth/business.manage", // Fiche Google : avis et réponses (étape 7)
   "https://www.googleapis.com/auth/gmail.readonly", // CRM : historique des emails échangés avec un prospect (lecture seule)
+  "https://www.googleapis.com/auth/gmail.send", // envoi des emails aux clients depuis l'app (00.4)
   "openid", "email",
 ];
 
 /** Compte Google personnel d'un membre de l'équipe : seulement sa boîte Gmail (lecture) pour le CRM. */
-export const GOOGLE_SCOPES_PERSO = ["https://www.googleapis.com/auth/gmail.readonly", "https://www.googleapis.com/auth/calendar.events", "openid", "email"];
+export const GOOGLE_SCOPES_PERSO = ["https://www.googleapis.com/auth/gmail.readonly", "https://www.googleapis.com/auth/gmail.send", "https://www.googleapis.com/auth/calendar.events", "openid", "email"];
 
 export const oauthConfigured = () => Boolean(process.env.GOOGLE_OAUTH_CLIENT_ID && process.env.GOOGLE_OAUTH_CLIENT_SECRET);
 

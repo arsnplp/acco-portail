@@ -25,14 +25,21 @@ export async function derniersContacts(clientIds?: string[]) {
   return out;
 }
 
+/** Clients qui ont un rendez-vous prévu à venir (RDV client, ou RDV de leur fiche prospect) : exclus de l'alerte. */
+export async function clientsAvecRdvAVenir(clientIds: string[], now = new Date()) {
+  const rdv = await prisma.rendezVous.findMany({ where: { resultat: "PREVU", debut: { gte: now }, OR: [{ clientId: { in: clientIds } }, { prospect: { clientId: { in: clientIds } } }] }, select: { clientId: true, prospect: { select: { clientId: true } } } });
+  return new Set(rdv.map((r) => r.clientId ?? r.prospect?.clientId).filter((x): x is string => !!x));
+}
+
 export async function alerterClientsSansContact(now = new Date()) {
   const clients = await prisma.client.findMany({ where: { commercialId: { not: null } }, select: { id: true, name: true, createdAt: true, commercialId: true, alerteContactAt: true } });
   const contacts = await derniersContacts(clients.map((c) => c.id));
+  const avecRdv = await clientsAvecRdvAVenir(clients.map((c) => c.id), now);
   let envoyees = 0;
   for (const c of clients) {
     const dernier = contacts.get(c.id) ?? c.createdAt;
     const jours = Math.floor((now.getTime() - dernier.getTime()) / 86400_000);
-    if (jours < JOURS_SANS_CONTACT) continue;
+    if (jours < JOURS_SANS_CONTACT || avecRdv.has(c.id)) continue; // un RDV déjà programmé = pas d'alerte (section 2.3)
     if (c.alerteContactAt && now.getTime() - c.alerteContactAt.getTime() < 30 * 86400_000) continue;
     await sendPushToUser(c.commercialId!, { title: `${c.name} : aucun contact depuis ${jours} jours`, body: "Un appel ou un mail pour garder le lien ?", url: `/admin/clients/${c.id}`, tag: `contact-${c.id}` }).catch((e) => console.warn("[alertes]", (e as Error).message));
     await logActivite({ kind: "alerte", texte: `${c.name} : aucun contact depuis ${jours} jours`, href: `/admin/clients/${c.id}`, clientId: c.id, userId: c.commercialId });

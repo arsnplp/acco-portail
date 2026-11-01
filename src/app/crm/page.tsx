@@ -48,7 +48,7 @@ export default async function MaJournee({ searchParams }: { searchParams: Promis
       select: { id: true, societe: true, relanceAt: true, statut: true, telephone: true, commercial: { select: { firstName: true, email: true } }, contacts: contactSel, echanges: { where: { date: { gte: start } }, take: 1, select: { id: true } } },
     }),
     prisma.rendezVous.findMany({
-      where: { ...(equipe ? {} : { commercialId: cibleId }), resultat: "PREVU", debut: { gte: start, lt: in7 } },
+      where: { ...(equipe ? {} : { commercialId: cibleId }), prospectId: { not: null }, resultat: "PREVU", debut: { gte: start, lt: in7 } },
       orderBy: { debut: "asc" },
       include: { commercial: { select: { firstName: true, email: true } }, prospect: { select: { id: true, societe: true, telephone: true, contacts: contactSel } } },
     }),
@@ -63,9 +63,9 @@ export default async function MaJournee({ searchParams }: { searchParams: Promis
       phone: p.contacts[0]?.telephone ?? p.telephone, fait: !!p.echanges[0] && p.echanges[0].date >= new Date(p.rappelAt!.getTime() - 30 * 60_000), qui: p.commercial ? teamName(p.commercial) : null,
     })),
     ...rdvs.filter((r) => r.debut < end).map((r) => ({
-      id: `v-${r.id}`, at: r.debut, kind: "rdv" as const, prospectId: r.prospect.id, nom: contactName(r.prospect.contacts[0]) ?? r.prospect.societe,
-      detail: [contactName(r.prospect.contacts[0]) ? r.prospect.societe : null, r.lieu ?? "Rendez-vous"].filter(Boolean).join(" · "),
-      phone: r.prospect.contacts[0]?.telephone ?? r.prospect.telephone, fait: false, qui: r.commercial ? teamName(r.commercial) : null,
+      id: `v-${r.id}`, at: r.debut, kind: "rdv" as const, prospectId: r.prospect!.id, nom: contactName(r.prospect!.contacts[0]) ?? r.prospect!.societe,
+      detail: [contactName(r.prospect!.contacts[0]) ? r.prospect!.societe : null, r.lieu ?? "Rendez-vous"].filter(Boolean).join(" · "),
+      phone: r.prospect!.contacts[0]?.telephone ?? r.prospect!.telephone, fait: false, qui: r.commercial ? teamName(r.commercial) : null,
     })),
   ].sort((a, b) => a.at.getTime() - b.at.getTime());
 
@@ -173,11 +173,11 @@ export default async function MaJournee({ searchParams }: { searchParams: Promis
         <ul className="divide-y divide-border rounded-card border border-border bg-surface">
           {rdvs.map((r) => (
             <li key={r.id}>
-              <Link href={`/crm/prospects/${r.prospect.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-surface-2">
+              <Link href={`/crm/prospects/${r.prospect!.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-surface-2">
                 <span className="w-24 shrink-0 text-xs text-text capitalize">{fmtDay(r.debut)}<br /><span className="font-semibold text-title">{fmtTime(r.debut)}</span></span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold text-title">{contactName(r.prospect.contacts[0]) ?? r.prospect.societe}</span>
-                  <span className="block truncate text-xs text-text">{r.prospect.societe}{r.lieu ? ` · ${r.lieu}` : ""}</span>
+                  <span className="block truncate text-sm font-semibold text-title">{contactName(r.prospect!.contacts[0]) ?? r.prospect!.societe}</span>
+                  <span className="block truncate text-xs text-text">{r.prospect!.societe}{r.lieu ? ` · ${r.lieu}` : ""}</span>
                 </span>
               </Link>
             </li>

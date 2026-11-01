@@ -52,13 +52,13 @@ export async function syncAgendaForUser(userId: string): Promise<{ ok: boolean; 
   if (!(await userGoogleClient(userId))) return { ok: false, rdv: 0, echeances: 0, error: "Compte Google non connecté." };
   const depuis = new Date(Date.now() - 86400_000);
   const [rdvs, sites] = await Promise.all([
-    prisma.rendezVous.findMany({ where: { commercialId: userId, resultat: "PREVU", debut: { gte: depuis } }, include: { prospect: { select: { id: true, societe: true, telephone: true, contacts: { orderBy: [{ principal: "desc" }, { createdAt: "asc" }], take: 1, select: { prenom: true, nom: true, telephone: true } } } } } }),
+    prisma.rendezVous.findMany({ where: { commercialId: userId, prospectId: { not: null }, resultat: "PREVU", debut: { gte: depuis } }, include: { prospect: { select: { id: true, societe: true, telephone: true, contacts: { orderBy: [{ principal: "desc" }, { createdAt: "asc" }], take: 1, select: { prenom: true, nom: true, telephone: true } } } } } }),
     prisma.site.findMany({ where: { status: "EN_CREATION", OR: [{ developpeurId: userId }, { client: { commercialId: userId } }] }, select: { id: true, name: true, deadlineV1: true, deadlineV2: true, deadlineLivraison: true, client: { select: { name: true } } } }),
   ]);
   const voulus = new Map<string, Ev>();
   for (const r of rdvs) {
-    const qui = contactName(r.prospect.contacts[0]);
-    voulus.set(`rdv:${r.id}`, { titre: `RDV ${qui ?? r.prospect.societe}${qui ? ` · ${r.prospect.societe}` : ""}`, debut: r.debut, fin: new Date(r.debut.getTime() + r.dureeMin * 60_000), lieu: r.lieu, description: `${r.prospect.contacts[0]?.telephone ?? r.prospect.telephone ?? ""}\n${APP}/crm/prospects/${r.prospect.id}` });
+    const qui = contactName(r.prospect!.contacts[0]);
+    voulus.set(`rdv:${r.id}`, { titre: `RDV ${qui ?? r.prospect!.societe}${qui ? ` · ${r.prospect!.societe}` : ""}`, debut: r.debut, fin: new Date(r.debut.getTime() + r.dureeMin * 60_000), lieu: r.lieu, description: `${r.prospect!.contacts[0]?.telephone ?? r.prospect!.telephone ?? ""}\n${APP}/crm/prospects/${r.prospect!.id}` });
   }
   for (const s of sites) {
     const libelle = { v1: "Présentation V1", v2: "V2", livraison: "Livraison" } as const;
