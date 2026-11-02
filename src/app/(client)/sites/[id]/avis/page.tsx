@@ -2,7 +2,6 @@ import { Lock, Star, MessageSquareText } from "lucide-react";
 import { requireClientSite, monthRange } from "@/lib/sites";
 import { activePromo, hasModule } from "@/lib/offers";
 import { prisma } from "@/lib/prisma";
-import { syncReviews } from "@/lib/reviews";
 import { Button } from "@/components/ui/button";
 import { MoreList } from "@/components/ui/more-list";
 import { Card, SectionTitle } from "@/components/ui/card";
@@ -13,7 +12,6 @@ import { fmtDateShort, fmtPrice } from "@/lib/format";
 import { ReplyForm } from "./reply-form";
 import { DemandeAvis } from "./demande";
 import { refreshReviews } from "./actions";
-import { isStale } from "@/lib/reviews";
 import { CircleCheckIcon, MessageSquareIcon } from "lucide-react";
 
 export const metadata = { title: "Avis" };
@@ -21,12 +19,8 @@ export const metadata = { title: "Avis" };
 export default async function AvisPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { site } = await requireClientSite(id);
-  if (!(await hasModule(site.id, "AVIS"))) return <LockedAvis siteId={site.id} />;
-
-  // Première ouverture ou données de plus de 6 h : on synchronise à la volée.
-  if (isStale(site.reviewsSyncedAt)) {
-    try { await syncReviews(site.id, { notify: false }); } catch (e) { console.warn("[avis] synchro impossible :", (e as Error).message); }
-  }
+  if (!(await hasModule(site.id, "AVIS"))) return <Empty icon={Star} title="Pas d’avis à afficher ici" text="Le suivi des avis Google n’est pas inclus dans vos prestations actuelles." />;
+  // Aucune synchronisation au chargement (00.8) : les avis arrivent par la tâche planifiée ou sur « Actualiser ».
   const fresh = await prisma.site.findUniqueOrThrow({ where: { id: site.id }, select: { reviewAverage: true, reviewTotal: true, reviewsSyncedAt: true } });
   const { start, end } = monthRange();
   const [reviews, monthCount] = await Promise.all([
@@ -37,7 +31,6 @@ export default async function AvisPage({ params }: { params: Promise<{ id: strin
   const answered = reviews.filter((r) => r.reply);
   const avg = fresh.reviewAverage ?? (reviews.length ? reviews.reduce((a, r) => a + r.rating, 0) / reviews.length : null);
   const total = fresh.reviewTotal ?? reviews.length;
-  const isDemo = reviews.some((r) => r.source === "DEMO");
 
   return (
     <div>
@@ -49,7 +42,6 @@ export default async function AvisPage({ params }: { params: Promise<{ id: strin
         </div>
         <form action={refreshReviews.bind(null, site.id)} className="ml-auto"><SubmitButton variant="ghost" size="sm" pendingLabel="…">Actualiser</SubmitButton></form>
       </Card>
-      {isDemo && <p className="mt-2 text-xs text-muted">Aperçu avec des avis d’exemple : vos vrais avis Google apparaîtront dès que Google aura validé l’accès de votre fiche.</p>}
 
       <SectionTitle icon={MessageSquareIcon}>À répondre {unanswered.length > 0 && <span className="text-sm font-normal text-text">({unanswered.length})</span>}</SectionTitle>
       {unanswered.length === 0 ? (

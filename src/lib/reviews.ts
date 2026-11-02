@@ -3,16 +3,19 @@ import { getReviewsProvider } from "@/lib/reviews-provider";
 import { suggestReviewReply } from "@/lib/ai";
 import { notifyClient } from "@/lib/notify";
 import { hasModule } from "@/lib/offers";
+import { journal, marquerSync } from "@/lib/connecteurs";
 
 /** Synchronise les avis d'un site (module AVIS actif). Notifie chaque nouvel avis et prépare une réponse. */
 export async function syncReviews(siteId: string, opts: { notify?: boolean } = { notify: true }) {
   const site = await prisma.site.findUniqueOrThrow({ where: { id: siteId }, include: { client: { select: { name: true } } } });
   const provider = await getReviewsProvider();
-  const locationId = provider.mode === "google" ? site.googleLocationId : `demo/${site.siteKey}`;
+  if (!provider) return { mode: "aucun" as const, created: 0, skipped: "API Business Profile non activée" as const };
+  const locationId = site.googleLocationId;
   if (!locationId) return { mode: provider.mode, created: 0, skipped: "pas de fiche Google liée" as const };
 
-  const page = await provider.fetchReviews(locationId);
-  const source = provider.mode === "google" ? "GOOGLE" : "DEMO";
+  let page;
+  try { page = await provider.fetchReviews(locationId); } catch (e) { await journal("business_profile", "erreur", `${site.name} : ${(e as Error).message}`); throw e; }
+  const source = "GOOGLE";
   let created = 0;
   for (const r of page.reviews) {
     const existing = await prisma.review.findUnique({ where: { siteId_externalId: { siteId, externalId: r.externalId } } });
@@ -20,6 +23,7 @@ export async function syncReviews(siteId: string, opts: { notify?: boolean } = {
       if ((r.reply ?? null) !== existing.reply) await prisma.review.update({ where: { id: existing.id }, data: { reply: r.reply, repliedAt: r.repliedAt } });
       continue;
     }
+    // Réponse gabarit (sans IA) ; une rédaction Claude se demande sur clic (proposerReponseAvis).
     const suggestedReply = r.reply ? null : await suggestReviewReply({ businessName: site.client.name, authorName: r.authorName, rating: r.rating, text: r.text });
     await prisma.review.create({ data: { siteId, source, externalId: r.externalId, authorName: r.authorName, authorPhotoUrl: r.authorPhotoUrl ?? null, rating: r.rating, text: r.text, reply: r.reply, repliedAt: r.repliedAt, suggestedReply, publishedAt: r.publishedAt } });
     created++;
@@ -33,16 +37,25 @@ export async function syncReviews(siteId: string, opts: { notify?: boolean } = {
     }
   }
   await prisma.site.update({ where: { id: siteId }, data: { reviewsSyncedAt: new Date(), reviewAverage: page.averageRating, reviewTotal: page.totalReviewCount } });
+  await marquerSync("business_profile");
   return { mode: provider.mode, created };
+}
+
+/** Sur clic (client ou équipe) : réponse rédigée par Claude, sous interrupteur et plafond ; sinon le gabarit reste. */
+export async function proposerReponseAvis(siteId: string, reviewId: string, userId?: string | null) {
+  const [site, review] = await Promise.all([prisma.site.findUniqueOrThrow({ where: { id: siteId }, include: { client: { select: { name: true } } } }), prisma.review.findFirstOrThrow({ where: { id: reviewId, siteId } })]);
+  const texte = await suggestReviewReply({ businessName: site.client.name, authorName: review.authorName, rating: review.rating, text: review.text, ia: true, userId });
+  await prisma.review.update({ where: { id: review.id }, data: { suggestedReply: texte } });
+  return texte;
 }
 
 /** Publie une réponse (Google ou démo) et l'enregistre. */
 export async function publishReply(siteId: string, reviewId: string, text: string) {
   const [site, review] = await Promise.all([prisma.site.findUniqueOrThrow({ where: { id: siteId } }), prisma.review.findFirstOrThrow({ where: { id: reviewId, siteId } })]);
   const provider = await getReviewsProvider();
-  const locationId = provider.mode === "google" ? site.googleLocationId : `demo/${site.siteKey}`;
-  if (provider.mode === "google" && (!locationId || review.source !== "GOOGLE")) throw new Error("Cet avis ne peut pas recevoir de réponse Google.");
-  if (review.externalId && locationId) await provider.reply(locationId, review.externalId, text);
+  const locationId = site.googleLocationId;
+  if (!provider || !locationId || review.source !== "GOOGLE") throw new Error("Cet avis ne peut pas recevoir de réponse Google (API non activée ou fiche non liée).");
+  if (review.externalId) await provider.reply(locationId, review.externalId, text);
   return prisma.review.update({ where: { id: review.id }, data: { reply: text, repliedAt: new Date() } });
 }
 

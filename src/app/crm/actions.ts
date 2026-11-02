@@ -268,13 +268,13 @@ export async function setRdvResultat(id: string, resultat: "FAIT" | "ANNULE" | "
 }
 
 /** « Générer les infos » : enrichit la fiche (registre officiel, audit du site, recherche web si clé Anthropic). */
-export async function enrichProspect(id: string): Promise<{ ok?: boolean; error?: string; web?: boolean }> {
-  await requireProspection();
+export async function enrichProspect(id: string): Promise<{ ok?: boolean; error?: string; web?: boolean; info?: string }> {
+  const me = await requireProspection();
   const { enrichirProspect } = await import("@/lib/enrichir");
-  const r = await enrichirProspect(id);
+  const r = await enrichirProspect(id, me.id);
   if (!r.ok) return { error: r.error };
   refresh(id);
-  return { ok: true, web: r.web };
+  return { ok: true, web: r.web, info: r.info };
 }
 
 /** Bouton « Actualiser » de l'historique : appels Aircall et emails de la fiche, tout de suite. */

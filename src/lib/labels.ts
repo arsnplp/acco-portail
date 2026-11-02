@@ -9,10 +9,11 @@ export const SITE_STATUS: Record<SiteStatus, { label: string; tone: Tone }> = {
 
 /** Les 6 étapes de production (colonnes du kanban « Sites en cours »), avec le texte montré au client et l'échéance qui compte. */
 export const PROJECT_STEPS: Array<{ key: ProjectStep; label: string; court: string; client: string; deadline: "deadlineV1" | "deadlineV2" | "deadlineLivraison" }> = [
-  { key: "MAQUETTE", label: "Maquette", court: "Maquette", client: "Nous préparons la maquette de votre site à partir de notre échange.", deadline: "deadlineV1" },
-  { key: "ATTENTE_VALIDATION", label: "Attente de validation", court: "Validation", client: "Votre maquette est prête : regardez-la et validez-la pour que nous passions aux modifications.", deadline: "deadlineV1" },
-  { key: "MODIFICATION", label: "Modification", court: "Modifs", client: "Nous modifions votre site à partir de vos retours.", deadline: "deadlineV2" },
-  { key: "ATTENTE_VALIDATION_FINITION", label: "Attente de validation et finition", court: "Finition", client: "La nouvelle version vous attend : vérifiez-la et dites-nous si tout est bon, nous finalisons ensuite.", deadline: "deadlineV2" },
+  { key: "CREER_MAQUETTE", label: "Créer maquette", court: "Maquette", client: "Nous préparons la maquette de votre site à partir de notre échange.", deadline: "deadlineV1" },
+  { key: "VALIDER_MAQUETTE", label: "Valider maquette", court: "Validation", client: "Votre maquette est en cours de validation ; elle vous sera présentée en rendez-vous.", deadline: "deadlineV1" },
+  { key: "MODIFIER", label: "Modifier", court: "Modifs", client: "Nous modifions votre site à partir de vos retours.", deadline: "deadlineV2" },
+  { key: "VALIDER_MODIFICATION", label: "Valider modification", court: "Validation", client: "La nouvelle version vous attend : vérifiez-la et dites-nous si tout est bon.", deadline: "deadlineV2" },
+  { key: "FINIR", label: "Finir", court: "Finition", client: "Dernières finitions avant la livraison.", deadline: "deadlineLivraison" },
   { key: "A_LIVRER", label: "À livrer", court: "Livraison", client: "Dernières vérifications avant la mise en ligne.", deadline: "deadlineLivraison" },
 ];
 export const stepLabel = (s: ProjectStep) => PROJECT_STEPS.find((p) => p.key === s)?.label ?? s;

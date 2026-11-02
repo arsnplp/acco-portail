@@ -4,13 +4,12 @@ import { FilterIcon, SearchIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { MODULES } from "@/lib/roles";
 import { requireProspection } from "@/lib/auth";
-import { isAircallMeta } from "@/lib/echange-meta";
 import { CLOS, MOTIFS_ABANDON, MOTIFS_PERTE, PIPELINE, SEQUENCE_APPELS, STATUT, TOUS_STATUTS, contactName, formatTel, teamName, todayBounds } from "@/lib/crm";
 import { Liste, type Row } from "./liste";
 
 export const metadata = { title: "Tous les prospects" };
 
-type SP = { q?: string; s?: string; c?: string; cible?: string; appels?: string; motif?: string; rec?: string; notes?: string; j?: string; p?: string };
+type SP = { q?: string; s?: string; c?: string; cible?: string; appels?: string; motif?: string; notes?: string; j?: string; p?: string };
 const PAGE = 100;
 const APPELS_TYPES = ["NRP", "APPEL", "PRISE_RDV"] as const;
 
@@ -36,7 +35,6 @@ export default async function ProspectsPage({ searchParams }: { searchParams: Pr
     ...(sp.cible ? { cible: { nom: sp.cible } } : {}),
     ...(sp.motif ? { motifPerte: sp.motif } : {}),
     ...(jours ? { updatedAt: { gte: new Date(end.getTime() - (jours + 1) * 86400_000) } } : {}),
-    ...(sp.rec === "1" ? { echanges: { some: { meta: { path: ["enregistrement"], equals: true } } } } : {}),
     ...(sp.notes === "1" ? { echanges: { some: { origine: { in: ["saisie", "import"] }, type: { not: "NRP" }, notes: { not: null } } } } : {}),
     ...(q ? {
       OR: [
@@ -69,35 +67,23 @@ export default async function ProspectsPage({ searchParams }: { searchParams: Pr
   });
   const total = filtres.length;
   const slice = filtres.slice((page - 1) * PAGE, page * PAGE);
-  // Enregistrements Aircall des fiches affichées (pour les réécouter sans ouvrir la fiche).
-  const recs = slice.length ? await prisma.echange.findMany({
-    where: { prospectId: { in: slice.map((p) => p.id) }, meta: { path: ["enregistrement"], equals: true } },
-    orderBy: { date: "desc" }, select: { id: true, prospectId: true, date: true, meta: true },
-  }) : [];
-  const recsBy = new Map<string, Row["enregistrements"]>();
-  for (const r of recs) {
-    if (!isAircallMeta(r.meta) || !r.prospectId) continue;
-    recsBy.set(r.prospectId, [...(recsBy.get(r.prospectId) ?? []), { id: r.id, date: r.date.toISOString(), meta: r.meta }]);
-  }
 
   const rows: Row[] = slice.map((p) => ({
     id: p.id, societe: p.societe, contact: contactName(p.contacts[0]), telephone: formatTel(p.contacts[0]?.telephone ?? p.telephone), siteWeb: p.siteWeb, statut: p.statut,
     relanceAt: p.relanceAt?.toISOString() ?? null, rappelAt: p.rappelAt?.toISOString() ?? null, commercialId: p.commercialId, cible: p.cible?.nom ?? null, motif: p.motifPerte,
     appels: p._count.echanges, updatedAt: p.updatedAt.toISOString(), client: !!p.clientId,
     derniers: p.echanges.map((e) => ({ id: e.id, type: e.type, date: e.date.toISOString(), notes: e.notes, origine: e.origine, auteur: e.auteur ? teamName(e.auteur) : e.auteurNom, meta: e.meta })),
-    enregistrements: recsBy.get(p.id) ?? [],
   }));
 
   const href = (patch: Partial<SP>) => {
-    const base: Record<string, string> = { q, s, c: sp.c ?? "all", cible: sp.cible ?? "", appels: sp.appels ?? "", motif: sp.motif ?? "", rec: sp.rec ?? "", notes: sp.notes ?? "", j: sp.j ?? "", ...patch } as Record<string, string>;
+    const base: Record<string, string> = { q, s, c: sp.c ?? "all", cible: sp.cible ?? "", appels: sp.appels ?? "", motif: sp.motif ?? "", notes: sp.notes ?? "", j: sp.j ?? "", ...patch } as Record<string, string>;
     return `/crm/prospects?${new URLSearchParams(Object.fromEntries(Object.entries(base).filter(([k, v]) => v && !(k === "c" && v === "all"))))}`;
   };
   const sel = "h-10 w-full appearance-none rounded-full border border-border bg-surface px-3 text-sm text-title outline-none hover:border-text";
   const raccourcis: { label: string; patch: Partial<SP>; hint: string }[] = [
     { label: "Abandons à repêcher", patch: { s: "ABANDON" }, hint: "fiches écartées par erreur ?" },
     { label: "Séquence incomplète", patch: { s: "ouverts", appels: "enc" }, hint: `moins de ${SEQUENCE_APPELS} appels` },
-    { label: "Pas intéressés", patch: { s: "PERDU", motif: "Pas intéressé", notes: "1" }, hint: "relire les notes, analyser les refus" },
-    { label: "Avec enregistrement", patch: { rec: "1" }, hint: "réécouter les appels Aircall" },
+    { label: "Pas intéressés", patch: { s: "PERDU", motif: "Pas intéressé", notes: "1" }, hint: "relire les notes des refus" },
   ];
 
   return (
@@ -108,7 +94,7 @@ export default async function ProspectsPage({ searchParams }: { searchParams: Pr
           <p className="mt-1 text-sm text-text">{total} fiche{total > 1 ? "s" : ""}{total !== all.length ? ` (sur ${all.length})` : ""} · cochez-en plusieurs pour changer le statut, la relance ou le commercial d’un coup.</p>
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {raccourcis.map((r) => <Link key={r.label} href={href({ q: "", s: "", c: "all", cible: "", appels: "", motif: "", rec: "", notes: "", j: "", ...r.patch })} title={r.hint} className="rounded-full border border-border px-3 py-1 text-xs text-text hover:border-text hover:text-title">{r.label}</Link>)}
+          {raccourcis.map((r) => <Link key={r.label} href={href({ q: "", s: "", c: "all", cible: "", appels: "", motif: "", notes: "", j: "", ...r.patch })} title={r.hint} className="rounded-full border border-border px-3 py-1 text-xs text-text hover:border-text hover:text-title">{r.label}</Link>)}
         </div>
       </div>
 
@@ -138,7 +124,6 @@ export default async function ProspectsPage({ searchParams }: { searchParams: Pr
         <select name="j" defaultValue={sp.j ?? ""} aria-label="Période" className={sel}>
           <option value="">Modifiés : toujours</option><option value="7">Modifiés depuis 7 jours</option><option value="30">30 jours</option><option value="90">3 mois</option><option value="365">12 mois</option>
         </select>
-        <label className="flex h-10 items-center gap-2 px-1 text-sm text-text-strong"><input type="checkbox" name="rec" value="1" defaultChecked={sp.rec === "1"} className="size-4 accent-white" /> Avec enregistrement</label>
         <label className="flex h-10 items-center gap-2 px-1 text-sm text-text-strong"><input type="checkbox" name="notes" value="1" defaultChecked={sp.notes === "1"} className="size-4 accent-white" /> Avec notes écrites</label>
         <div className="flex gap-2 sm:col-span-3 lg:col-span-1 lg:justify-end">
           <button type="submit" className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full bg-title px-4 text-sm font-semibold text-bg lg:flex-none"><FilterIcon size={14} aria-hidden /> Filtrer</button>

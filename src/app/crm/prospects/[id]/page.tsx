@@ -12,7 +12,6 @@ import { requireProspection } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { Logo } from "@/components/crm/logo";
 import { ETAPE_IMAGE, STATUT, contactName, fmtDayTime, fmtTime, logoUrl, relanceInfo, teamName, parisDay, todayBounds } from "@/lib/crm";
-import { syncProspect } from "@/lib/crm-sync";
 import { EchangeForm, ProspectForm, Contacts, Historique, AssignControl, RdvList } from "./forms";
 
 export const metadata = { title: "Fiche prospect" };
@@ -22,8 +21,8 @@ export default async function ProspectPage({ params, searchParams }: { params: P
   const { id } = await params;
   const sp = await searchParams;
   const sess = sp.session === "1" ? readSession(sp) : null;
-  // Appels Aircall et emails de la fiche : au plus une fois toutes les 10 minutes (bouton « Actualiser » pour forcer).
-  const sync = await syncProspect(id).catch((e) => ({ calls: 0, emails: 0, errors: [(e as Error).message] }));
+  // Aucune synchronisation au chargement (00.8) : les appels et emails arrivent par les tâches planifiées, ou sur « Actualiser ».
+  const sync = null as { errors: string[] } | null;
   const [p, team, cibles] = await Promise.all([
     prisma.prospect.findUnique({
       where: { id },

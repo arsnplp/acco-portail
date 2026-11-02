@@ -29,7 +29,7 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
     <div>
       <SectionTitle icon={ConstructionIcon}>Avancement</SectionTitle>
       <Card>
-        <ol className="grid grid-cols-5 gap-1">
+        <ol className="grid grid-cols-6 gap-1">
           {PROJECT_STEPS.map((s, i) => {
             const done = i < stepIndex;
             const current = i === stepIndex;
@@ -45,7 +45,7 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
         {site.deadlineLivraison && <p className="mt-1 text-xs text-text">Livraison prévue : <span className="font-semibold text-title">{fmtDateShort(site.deadlineLivraison)}</span></p>}
       </Card>
 
-      {site.previewUrl && (
+      {site.previewUrl && site.maquetteEnvoyeeAt && (
         <Card className="mt-3 flex items-center justify-between gap-3">
           <div>
             <p className="font-semibold text-title">Voir l’avancée du site</p>
@@ -57,10 +57,10 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
         </Card>
       )}
 
-      {(site.projectStep === "ATTENTE_VALIDATION" || site.projectStep === "ATTENTE_VALIDATION_FINITION") && (
+      {site.maquetteEnvoyeeAt && (site.projectStep === "VALIDER_MAQUETTE" || site.projectStep === "VALIDER_MODIFICATION") && (
         <form action={validateMockup.bind(null, site.id)} className="mt-3">
           <SubmitButton size="lg" className="w-full" pendingLabel="Validation…">
-            <FileCheck2 size={18} /> {site.projectStep === "ATTENTE_VALIDATION" ? "Valider la maquette" : "Valider la version finale"}
+            <FileCheck2 size={18} /> {site.projectStep === "VALIDER_MAQUETTE" ? "Valider la maquette" : "Valider cette version"}
           </SubmitButton>
           <p className="mt-2 text-center text-xs text-muted">Une remarque ? Écrivez-nous dans Messages avant de valider.</p>
         </form>

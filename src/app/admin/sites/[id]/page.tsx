@@ -45,7 +45,7 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
   const [googleOn, googleEmail, properties] = gestion && site.status === "EN_LIGNE" ? await Promise.all([searchConsoleConfigured(), connectedGoogleEmail(), listProperties()]) : [false, null, []];
   const avisActive = site.subscriptions.some((x) => x.module === "AVIS");
   const [bizApi, aiOn, turnstileSiteKey] = await Promise.all([businessApiEnabled(), aiConfigured(), getSecret("turnstile_site_key")]);
-  const locations = gestion && avisActive && bizApi ? await (await getReviewsProvider()).listLocations().catch(() => []) : [];
+  const locations = gestion && avisActive && bizApi ? await ((await getReviewsProvider())?.listLocations().catch(() => []) ?? []) : [];
   // Récap mensuel : vert si le mois écoulé est synchronisé et l'envoi automatique actif.
   const cible = moisDuRecap();
   const last = site.searchStats[0];

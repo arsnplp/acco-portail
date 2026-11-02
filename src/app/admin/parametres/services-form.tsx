@@ -11,17 +11,17 @@ import { BotIcon, WrenchIcon, ShieldCheckIcon, MailIcon, PhoneCallIcon, StarIcon
 type Status = Record<SecretKey, { masked: string | null; source: "base" | "env" | null }>;
 
 const SERVICES: Array<{ title: string; icon: LucideIcon; feature?: FeatureKey; featureLabel?: string; keys: Array<{ key: SecretKey; label: string; help: string }>; note?: string }> = [
-  { title: "Claude (IA)", icon: BotIcon, feature: "feature_ai", featureLabel: "Rédiger les récaps mensuels et les réponses aux avis avec Claude",
-    keys: [{ key: "anthropic_api_key", label: "Clé API Anthropic", help: "console.anthropic.com → API keys. Sans clé : gabarits en français." }] },
+  { title: "Claude (IA)", icon: BotIcon,
+    keys: [{ key: "anthropic_api_key", label: "Clé API Anthropic", help: "console.anthropic.com → API keys. L’activation se fait dans « IA et intégrations »." }] },
   { title: "Claude Code (modifications des sites)", icon: WrenchIcon, feature: "feature_claude_code", featureLabel: "Bouton « Confier à Claude » sur les demandes de modification (worker lancé sur le Mac)",
     keys: [{ key: "claude_code_api_key", label: "Clé API Anthropic pour Claude Code", help: "console.anthropic.com → API keys. Peut être la même que celle du dessus ; une clé dédiée permet de suivre son coût à part." }] },
   { title: "Cloudflare Turnstile", icon: ShieldCheckIcon, feature: "feature_turnstile", featureLabel: "Vérifier le captcha sur les formulaires des sites clients",
     keys: [{ key: "turnstile_site_key", label: "Site key (publique)", help: "À coller aussi dans le snippet des sites." }, { key: "turnstile_secret_key", label: "Secret key", help: "dash.cloudflare.com → Turnstile." }] },
   { title: "Resend (emails)", icon: MailIcon, keys: [{ key: "resend_api_key", label: "Clé API Resend", help: "resend.com → API Keys. Domaine acco-lab.fr déjà vérifié." }] },
-  { title: "Aircall (téléphonie)", icon: PhoneCallIcon, feature: "feature_aircall", featureLabel: "Appels, enregistrements, résumés IA, sujets et sentiment Aircall dans l’historique des fiches prospects (synchronisation toutes les 5 minutes)",
-    keys: [{ key: "aircall_api_id", label: "API ID", help: "dashboard.aircall.io → Intégrations → API Keys." }, { key: "aircall_api_token", label: "API token", help: "Les analyses IA demandent une licence AI Assist sur l’utilisateur Aircall." }] },
-  { title: "Avis Google", icon: StarIcon, feature: "feature_business_api", featureLabel: "Lire et répondre aux vrais avis via l’API Business Profile", keys: [],
-    note: "À cocher seulement une fois l’accès à l’API validé par Google et le compte Google connecté ci-dessus. Sinon les avis restent en mode démo." },
+  { title: "Aircall (téléphonie)", icon: PhoneCallIcon,
+    keys: [{ key: "aircall_api_id", label: "API ID", help: "dashboard.aircall.io → Intégrations → API Keys." }, { key: "aircall_api_token", label: "API token", help: "Métadonnées d’appels seulement ; l’activation se fait dans « IA et intégrations »." }] },
+  { title: "Avis Google", icon: StarIcon, keys: [],
+    note: "L’API Business Profile s’active dans « IA et intégrations », une fois l’accès validé par Google et le compte Google connecté. Sans elle, aucun avis n’est affiché (pas de données fictives)." },
 ];
 
 export function ServicesForm({ secrets, toggles, googleConnected }: { secrets: Status; toggles: Record<FeatureKey, boolean>; googleConnected: boolean }) {

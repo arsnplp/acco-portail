@@ -1,6 +1,7 @@
 /**
- * Aircall (téléphonie) : les appels passés et reçus arrivent dans l'historique des fiches prospects, avec
- * l'enregistrement et les analyses IA d'Aircall (résumé, sujets, sentiment, transcription).
+ * Aircall (téléphonie) : les appels passés et reçus arrivent dans l'historique des fiches, MÉTADONNÉES SEULEMENT
+ * (date, durée, sens, répondu ou non, numéro, collaborateur, ligne). Ni enregistrement, ni transcription, ni analyse
+ * IA (sections 00.3 et 00.7 du prompt maître).
  * - Synchronisation générale toutes les 5 minutes (instrumentation.ts) ou par cron (/api/cron/aircall) ;
  * - synchronisation d'une fiche à son ouverture (recherche par numéro) ;
  * - un appel déjà noté à la main (NRP, Appel…) dans les 20 minutes autour de l'appel est enrichi, pas dupliqué.
@@ -12,6 +13,7 @@ import { MODULES } from "@/lib/roles";
 import { featureEnabled, getSecret } from "@/lib/settings";
 import { normPhone } from "@/lib/crm";
 import { fmtDuree, isAircallMeta, type AircallMeta } from "@/lib/echange-meta";
+import { journal, marquerSync } from "@/lib/connecteurs";
 
 export { fmtDuree, isAircallMeta, type AircallMeta };
 
@@ -28,6 +30,7 @@ type Utterance = { text: string; participant_type: "internal" | "external"; star
 
 
 export const aircallConfigured = () => featureEnabled("feature_aircall");
+export { journal, marquerSync };
 
 async function headers() {
   const [id, token] = await Promise.all([getSecret("aircall_api_id"), getSecret("aircall_api_token")]);
@@ -73,54 +76,19 @@ export async function searchCalls(tel: string) {
   return res?.calls ?? [];
 }
 
-/** Lien d'écoute frais (les liens Aircall expirent au bout d'une heure environ). */
-export async function recordingUrl(callId: number) {
-  const res = await get<{ call: AircallCall }>(`/calls/${callId}`);
-  return res?.call.recording ?? res?.call.voicemail ?? null;
-}
-
-/** Analyses IA d'Aircall (AI Assist) : résumé, sujets, sentiment, transcription. Chacune peut manquer (404). */
-async function insights(callId: number) {
-  const [t, s, se, to] = await Promise.all([
-    get<{ transcription: { content: { utterances: Utterance[] } } }>(`/calls/${callId}/transcription`).catch(() => null),
-    get<{ summary: { content: string } }>(`/calls/${callId}/summary`).catch(() => null),
-    get<{ sentiment: { participants: { value: string; type: string }[] } }>(`/calls/${callId}/sentiments`).catch(() => null),
-    get<{ topic: { content: string[] } }>(`/calls/${callId}/topics`).catch(() => null),
-  ]);
-  // Transcription compactée : on regroupe les phrases consécutives du même interlocuteur.
-  const transcription: AircallMeta["transcription"] = t ? [] : null;
-  for (const u of t?.transcription.content.utterances ?? []) {
-    const qui = u.participant_type === "internal" ? "nous" : "prospect";
-    const last = transcription![transcription!.length - 1];
-    if (last && last.qui === qui) last.texte += ` ${u.text}`; else transcription!.push({ qui, texte: u.text });
-  }
-  const ext = se?.sentiment.participants.find((p) => p.type === "external") ?? se?.sentiment.participants[0];
-  return { resume: s?.summary.content?.trim() || null, sujets: to?.topic.content ?? [], sentiment: ext?.value ?? null, transcription: transcription && transcription.length ? transcription : null };
-}
 
 function baseMeta(c: AircallCall): AircallMeta {
   const repondu = !!c.answered_at;
   return {
     source: "aircall", aircallId: c.id, direction: c.direction, repondu, dureeSec: repondu && c.answered_at && c.ended_at ? Math.max(0, c.ended_at - c.answered_at) : 0,
     motifManque: c.missed_call_reason, agent: c.user?.name ?? null, numero: c.raw_digits, ligne: c.number?.name ?? null,
-    enregistrement: !!c.recording, messagerie: !!c.voicemail, resume: null, sujets: [], sentiment: null, transcription: null, analysePending: false,
   };
-}
-
-/** Analyses IA : seulement pour les appels répondus d'au moins 20 s ; « en attente » tant qu'elles manquent (elles arrivent après l'appel). */
-async function withInsights(meta: AircallMeta, c: AircallCall): Promise<AircallMeta> {
-  if (!meta.repondu || meta.dureeSec < 20) return meta;
-  const endedMs = (c.ended_at ?? c.started_at) * 1000;
-  const i = await insights(c.id);
-  const complet = !!(i.resume && i.transcription);
-  return { ...meta, ...i, analysePending: !complet && Date.now() - endedMs < 48 * 3600_000 };
 }
 
 /** Note lisible de l'appel (pour l'historique général, les stats et la recherche). */
 export function noteAppel(m: AircallMeta) {
-  if (m.resume) return m.resume;
-  if (m.repondu) return `${m.direction === "outbound" ? "Appel sortant" : "Appel entrant"} de ${fmtDuree(m.dureeSec)} (Aircall)${m.enregistrement ? " · enregistré" : ""}`;
-  if (m.direction === "inbound") return `Appel entrant manqué (Aircall)${m.messagerie ? " · message vocal" : ""}`;
+  if (m.repondu) return `${m.direction === "outbound" ? "Appel sortant" : "Appel entrant"} de ${fmtDuree(m.dureeSec)} (Aircall)`;
+  if (m.direction === "inbound") return "Appel entrant manqué (Aircall)";
   return `Appel sans réponse (Aircall)${m.motifManque ? ` · ${m.motifManque.replace(/_/g, " ")}` : ""}`;
 }
 
@@ -145,15 +113,9 @@ async function buildIndex(prospectIds?: string[]): Promise<Index> {
 /** Enregistre (ou enrichit) l'échange correspondant à un appel. Renvoie true si quelque chose a été écrit. */
 async function upsertCall(c: AircallCall, prospectId: string, idx: Index) {
   const externalId = `aircall:${c.id}`;
-  const existing = await prisma.echange.findUnique({ where: { externalId }, select: { id: true, meta: true } });
-  if (existing) {
-    const m = existing.meta as AircallMeta | null;
-    if (!m?.analysePending) return false;
-    const meta = await withInsights({ ...m, enregistrement: !!c.recording || m.enregistrement }, c);
-    await prisma.echange.update({ where: { id: existing.id }, data: { meta: meta as unknown as Prisma.InputJsonObject, ...(meta.resume && !m.resume ? { notes: await notesWithResume(existing.id, meta) } : {}) } });
-    return true;
-  }
-  const meta = await withInsights(baseMeta(c), c);
+  const existing = await prisma.echange.findUnique({ where: { externalId }, select: { id: true } });
+  if (existing) return false;
+  const meta = baseMeta(c);
   const date = new Date(c.started_at * 1000);
   const auteurId = c.user?.email ? idx.userByEmail.get(c.user.email.toLowerCase()) ?? null : null;
   // Déjà noté à la main autour de l'appel (NRP, Appel, Prise de RDV, RDV) : on rattache l'appel à cette note au lieu d'en créer une deuxième.
@@ -167,11 +129,6 @@ async function upsertCall(c: AircallCall, prospectId: string, idx: Index) {
   }
   await prisma.echange.create({ data: { prospectId, type: typeAppel(meta), notes: noteAppel(meta), date, auteurId, auteurNom: auteurId ? null : c.user?.name ?? null, origine: "aircall", externalId, meta: meta as unknown as Prisma.InputJsonObject } });
   return true;
-}
-/** Note enrichie du résumé IA arrivé après coup (pour une note créée par la synchro, pas une note écrite à la main). */
-async function notesWithResume(echangeId: string, meta: AircallMeta) {
-  const e = await prisma.echange.findUnique({ where: { id: echangeId }, select: { notes: true, origine: true } });
-  return e?.origine === "aircall" ? noteAppel(meta) : e?.notes ?? null;
 }
 
 /** Synchronisation d'une fiche : appels Aircall de ses numéros. Renvoie le nombre d'échanges écrits. */
@@ -211,18 +168,12 @@ export async function syncAircall() {
       if (!prospectId) continue;
       try { if (await upsertCall(c, prospectId, idx)) matched++; } catch (e) { console.warn("[aircall]", c.id, (e as Error).message); }
     }
-    // Analyses IA arrivées depuis : on repasse sur les appels récents encore « en attente » (30 par passage).
-    const pending = await prisma.echange.findMany({ where: { externalId: { startsWith: "aircall:" }, date: { gte: new Date(Date.now() - 48 * 3600_000) }, meta: { path: ["analysePending"], equals: true } }, select: { id: true, meta: true, prospectId: true }, take: 30 });
-    for (const e of pending) {
-      const m = e.meta as AircallMeta;
-      if (calls.some((c) => c.id === m.aircallId) || !e.prospectId) continue; // déjà traité ci-dessus
-      try {
-        const c = (await get<{ call: AircallCall }>(`/calls/${m.aircallId}`))?.call;
-        if (c) await upsertCall(c, e.prospectId, idx);
-      } catch (err) { console.warn("[aircall] analyse", m.aircallId, (err as Error).message); }
-    }
     await prisma.setting.upsert({ where: { key: "aircall_sync_from" }, create: { key: "aircall_sync_from", value: String(last) }, update: { value: String(last) } });
+    await marquerSync("aircall");
     return { calls: calls.length, matched, skipped: false };
+  } catch (e) {
+    await journal("aircall", "erreur", (e as Error).message);
+    throw e;
   } finally {
     g.__accoAircallBusy = false;
   }

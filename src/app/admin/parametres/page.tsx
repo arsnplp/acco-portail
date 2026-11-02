@@ -13,6 +13,9 @@ import { isGestionnaire, requireTeam } from "@/lib/auth";
 import { secretsStatus, featureToggles } from "@/lib/settings";
 import { KeyRoundIcon, Link2Icon, SettingsIcon } from "lucide-react";
 import { GOOGLE_MSG, MesParametres } from "./moi";
+import { IaIntegrationsForm } from "./ia-form";
+import { can } from "@/lib/permissions";
+import { BotIcon } from "lucide-react";
 
 export const metadata = { title: "Paramètres" };
 
@@ -20,9 +23,9 @@ export default async function ParametresPage({ searchParams }: { searchParams: P
   const { google } = await searchParams;
   const admin = await requireTeam();
   const moi = <MesParametres user={admin} google={google} next="/admin/parametres" />;
-  // Clés API, Google de l'agence (Search Console, avis) et réglages de l'agence : réservés au gestionnaire (Arsène).
-  // Les autres admins et les commerciaux ont leurs paramètres personnels (compte Google à eux, notifications, accès).
-  if (!isGestionnaire(admin)) return <AdminPage title="Paramètres">{moi}</AdminPage>;
+  // IA et intégrations (00.6) : Bilel et Arsène (droit ia_admin). Clés API et Google de l'agence : gestionnaire seulement.
+  const ia = can(admin, "ia_admin") ? <><SectionTitle icon={BotIcon}>IA et intégrations</SectionTitle><IaIntegrationsForm /></> : null;
+  if (!isGestionnaire(admin)) return <AdminPage title="Paramètres">{ia}{moi}</AdminPage>;
 
   const [settings, email, secrets, toggles] = await Promise.all([prisma.setting.findMany(), connectedGoogleEmail(), secretsStatus(), featureToggles()]);
   const get = (k: string) => settings.find((s) => s.key === k)?.value ?? "";
@@ -59,7 +62,9 @@ export default async function ParametresPage({ searchParams }: { searchParams: P
         )}
       </Card>
 
-      <SectionTitle icon={KeyRoundIcon}>Clés et services</SectionTitle>
+      {ia}
+
+      <SectionTitle icon={KeyRoundIcon}>Clés API</SectionTitle>
       <ServicesForm secrets={secrets} toggles={toggles} googleConnected={Boolean(email)} />
 
       {moi}

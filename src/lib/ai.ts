@@ -1,8 +1,18 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { featureEnabled, getSecret } from "@/lib/settings";
+import { MODELE_LEGER, enregistrerUsageIA, iaAutorisee, type FonctionIA } from "@/lib/ia";
 
 export const aiConfigured = () => featureEnabled("feature_ai");
 async function anthropic() { return new Anthropic({ apiKey: (await getSecret("anthropic_api_key")) ?? undefined }); }
+/** Appel court à Claude (modèle léger), uniquement sur clic et sous plafond (00.6) ; null si l'IA n'est pas autorisée. */
+export async function texteIA(fonction: FonctionIA, system: string, user: string, maxTokens = 400, userId?: string | null): Promise<string | null> {
+  const ok = await iaAutorisee(fonction);
+  if (!ok.ok) return null;
+  const client = await anthropic();
+  const res = await client.messages.create({ model: MODELE_LEGER, max_tokens: maxTokens, system, messages: [{ role: "user", content: user }] });
+  await enregistrerUsageIA(fonction, MODELE_LEGER, res.usage, userId);
+  return res.content.filter((c) => c.type === "text").map((c) => c.text).join(" ").trim() || null;
+}
 
 export type RecapInput = {
   siteName: string; monthLabel: string;
@@ -12,18 +22,14 @@ export type RecapInput = {
 
 const pct = (a: number, b: number | null) => (b === null || b === 0 ? null : Math.round(((a - b) / b) * 100));
 
-/** Résumé de 3 phrases, en français simple. Claude si la clé est présente, sinon un gabarit (mode développement). */
-export async function summarizeMonth(d: RecapInput): Promise<string> {
-  if (!(await aiConfigured())) return templateSummary(d);
+/** Résumé de 3 phrases en français simple. Par défaut le gabarit (sans IA) ; Claude seulement sur clic (opts.ia) et sous plafond. */
+export async function summarizeMonth(d: RecapInput, opts: { ia?: boolean; userId?: string | null } = {}): Promise<string> {
+  if (!opts.ia) return templateSummary(d);
   try {
-    const client = await anthropic();
-    const res = await client.messages.create({
-      model: "claude-sonnet-5-5",
-      max_tokens: 300,
-      system: "Tu écris pour un commerçant ou artisan français, pas du tout technique. Exactement 3 phrases courtes, chaleureuses, sans jargon (jamais « CTR », « impressions », « SEO », « dashboard »). Dis « visites depuis Google », « apparitions dans les résultats », « demandes de clients ». Pas de liste, pas d'emoji, pas de titre.",
-      messages: [{ role: "user", content: `Site : ${d.siteName}. Mois : ${d.monthLabel}.\nVisites depuis Google : ${d.clicks} (mois précédent : ${d.prevClicks ?? "inconnu"}).\nApparitions dans Google : ${d.impressions} (précédent : ${d.prevImpressions ?? "inconnu"}).\nPosition moyenne : ${d.position} (précédent : ${d.prevPosition ?? "inconnu"}).\nDemandes de clients reçues via le site : ${d.contactCount}.\nNouveaux avis Google : ${d.reviewCount}.\nRecherches qui amènent le plus de visites : ${d.topQueries.slice(0, 3).map((q) => `« ${q.query} »`).join(", ") || "aucune"}.\n\nRédige le résumé du mois.` }],
-    });
-    const text = res.content.filter((c) => c.type === "text").map((c) => c.text).join(" ").trim();
+    const text = await texteIA("recap",
+      "Tu écris pour un commerçant ou artisan français, pas du tout technique. Exactement 3 phrases courtes, chaleureuses, sans jargon (jamais « CTR », « impressions », « SEO », « dashboard »). Dis « visites depuis Google », « apparitions dans les résultats », « demandes de clients ». Pas de liste, pas d'emoji, pas de titre.",
+      `Site : ${d.siteName}. Mois : ${d.monthLabel}.\nVisites depuis Google : ${d.clicks} (mois précédent : ${d.prevClicks ?? "inconnu"}).\nApparitions dans Google : ${d.impressions} (précédent : ${d.prevImpressions ?? "inconnu"}).\nPosition moyenne : ${d.position} (précédent : ${d.prevPosition ?? "inconnu"}).\nDemandes de clients reçues via le site : ${d.contactCount}.\nNouveaux avis Google : ${d.reviewCount}.\nRecherches qui amènent le plus de visites : ${d.topQueries.slice(0, 3).map((q) => `« ${q.query} »`).join(", ") || "aucune"}.\n\nRédige le résumé du mois.`,
+      300, opts.userId);
     return text || templateSummary(d);
   } catch (e) {
     console.warn("[ai] résumé impossible, gabarit utilisé :", (e as Error).message);
@@ -54,21 +60,17 @@ function prevLabel(monthLabel: string) {
   return i === 0 ? `décembre ${Number(y) - 1}` : `${months[i - 1]} ${y}`;
 }
 
-/** Réponse proposée à un avis (étape 7). */
-export async function suggestReviewReply(opts: { businessName: string; authorName: string; rating: number; text: string | null }) {
+/** Réponse proposée à un avis : gabarit par défaut ; Claude seulement sur clic (opts.ia) et sous plafond. */
+export async function suggestReviewReply(opts: { businessName: string; authorName: string; rating: number; text: string | null; ia?: boolean; userId?: string | null }) {
   const fallback = opts.rating >= 4
     ? `Merci beaucoup ${opts.authorName} pour votre retour ! Toute l’équipe de ${opts.businessName} est ravie de vous avoir accueilli·e. À très bientôt !`
     : `Bonjour ${opts.authorName}, merci d’avoir pris le temps de nous écrire. Nous sommes désolés que votre expérience n’ait pas été à la hauteur. N’hésitez pas à nous contacter directement pour que nous puissions arranger cela. L’équipe de ${opts.businessName}.`;
-  if (!(await aiConfigured())) return fallback;
+  if (!opts.ia) return fallback;
   try {
-    const client = await anthropic();
-    const res = await client.messages.create({
-      model: "claude-sonnet-5-5",
-      max_tokens: 250,
-      system: "Tu réponds aux avis Google au nom d'un commerçant français. Ton chaleureux, simple, 2 à 4 phrases, tutoiement interdit, pas d'emoji, pas de promesse commerciale. Si l'avis est négatif : excuses sincères, proposition de contact direct, jamais de justification agressive.",
-      messages: [{ role: "user", content: `Commerce : ${opts.businessName}\nAuteur : ${opts.authorName}\nNote : ${opts.rating}/5\nAvis : ${opts.text ?? "(sans texte)"}\n\nRédige la réponse.` }],
-    });
-    return res.content.filter((c) => c.type === "text").map((c) => c.text).join(" ").trim() || fallback;
+    const text = await texteIA("avis_reponse",
+      "Tu réponds aux avis Google au nom d'un commerçant français. Ton chaleureux, simple, 2 à 4 phrases, tutoiement interdit, pas d'emoji, pas de promesse commerciale. Si l'avis est négatif : excuses sincères, proposition de contact direct, jamais de justification agressive.",
+      `Commerce : ${opts.businessName}\nAuteur : ${opts.authorName}\nNote : ${opts.rating}/5\nAvis : ${opts.text ?? "(sans texte)"}\n\nRédige la réponse.`, 250, opts.userId);
+    return text || fallback;
   } catch {
     return fallback;
   }

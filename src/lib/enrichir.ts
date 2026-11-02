@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { lookupRegistre } from "@/lib/leads/registre";
 import { auditSite } from "@/lib/leads/audit";
 import { anthropicKey, row, type Trouve } from "@/lib/leads/generate";
+import { enregistrerUsageIA } from "@/lib/ia";
 import type { LeadRow } from "@/lib/leads/colonnes";
 
 const MODEL = process.env.LEADS_MODEL ?? "claude-sonnet-5-5";
@@ -17,8 +18,8 @@ const PROMPT = `Tu es chargé de recherche B2B pour une agence web française. O
 Termine par un unique bloc \`\`\`json :
 {"entreprise":"nom commercial","secteur":"métier en minuscules","code_postal":"13100","ville":"Aix-en-Provence","adresse":"numéro, rue, code postal ville","telephone":"06 12 34 56 78","email":null,"site_web":"https://… ou null (le site propre de l'entreprise uniquement)","note_google":4.8,"avis_google":120,"facebook":"URL ou null","instagram":"URL ou null","fiche_google":"lien exact de la fiche Google Maps ou null","google_ads":null,"presence":"sans site | site faible | site correct","source":"pages consultées et remarque utile"}`;
 
-async function rechercheWeb(p: { societe: string; adresse: string | null; telephone: string | null; siteWeb: string | null }): Promise<Trouve | null> {
-  const key = await anthropicKey();
+async function rechercheWeb(p: { societe: string; adresse: string | null; telephone: string | null; siteWeb: string | null }, userId?: string | null): Promise<Trouve | null> {
+  const key = await anthropicKey("enrichissement");
   if (!key) return null;
   const client = new Anthropic({ apiKey: key, timeout: 4 * 60_000 });
   const messages: Anthropic.MessageParam[] = [{ role: "user", content: `Entreprise : ${p.societe}\nAdresse connue : ${p.adresse ?? "inconnue"}\nTéléphone connu : ${p.telephone ?? "inconnu"}\nSite connu : ${p.siteWeb ?? "inconnu"}` }];
@@ -32,6 +33,7 @@ async function rechercheWeb(p: { societe: string; adresse: string | null; teleph
       if (tour === 0 && /web_search|tool|invalid_request/i.test((e as Error).message) && !/credit|authentication|api.key/i.test((e as Error).message)) { tools = outil("web_search_20250305"); res = await client.messages.create({ model: MODEL, max_tokens: 4000, system: PROMPT, tools, messages }); }
       else throw e;
     }
+    await enregistrerUsageIA("enrichissement", MODEL, res.usage, userId, (res.usage as { server_tool_use?: { web_search_requests?: number } }).server_tool_use?.web_search_requests ?? 0);
     text = res.content.filter((c) => c.type === "text").map((c) => (c as Anthropic.TextBlock).text).join("\n");
     if (res.stop_reason !== "pause_turn") break;
     messages.push({ role: "assistant", content: res.content });
@@ -40,13 +42,13 @@ async function rechercheWeb(p: { societe: string; adresse: string | null; teleph
   try { const t = JSON.parse(block) as Trouve; return t?.entreprise ? t : null; } catch { return null; }
 }
 
-export async function enrichirProspect(id: string): Promise<{ ok: true; infos: LeadRow; web: boolean } | { ok: false; error: string }> {
+export async function enrichirProspect(id: string, userId?: string | null): Promise<{ ok: true; infos: LeadRow; web: boolean; info?: string } | { ok: false; error: string }> {
   const p = await prisma.prospect.findUnique({ where: { id }, include: { contacts: { orderBy: [{ principal: "desc" }, { createdAt: "asc" }], take: 1 } } });
   if (!p) return { ok: false, error: "Fiche introuvable." };
   const cp = /\b(\d{5})\b/.exec(p.adresse ?? "")?.[1] ?? null;
   const ville = cp ? (p.adresse ?? "").split(cp)[1]?.replace(/[,\s]+/g, " ").trim() || null : null;
-  let web: Trouve | null = null;
-  try { web = await rechercheWeb(p); } catch (e) { console.warn("[enrichir] recherche web :", (e as Error).message); }
+  let web: Trouve | null = null, info: string | undefined;
+  try { web = await rechercheWeb(p, userId); } catch (e) { info = (e as Error).message; console.warn("[enrichir] recherche web :", info); }
   const t: Trouve = {
     entreprise: p.societe, secteur: web?.secteur ?? p.cibleId ? (await prisma.cible.findUnique({ where: { id: p.cibleId! } }))?.nom.toLowerCase() ?? null : null,
     code_postal: cp ?? web?.code_postal ?? null, ville: ville ?? web?.ville ?? null, adresse: p.adresse ?? web?.adresse ?? null,
@@ -69,5 +71,5 @@ export async function enrichirProspect(id: string): Promise<{ ok: true; infos: L
     },
   });
   if (!p.contacts[0]?.email && web?.email && p.contacts[0]) await prisma.prospectContact.update({ where: { id: p.contacts[0].id }, data: { email: web.email.toLowerCase() } });
-  return { ok: true, infos, web: !!web };
+  return { ok: true, infos, web: !!web, info };
 }

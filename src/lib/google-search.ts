@@ -63,16 +63,3 @@ export async function fetchMonthStats(property: string, year: number, month: num
   };
 }
 
-/** Données de démonstration plausibles et stables (sans accès Google). */
-export function demoMonthStats(seed: string, year: number, month: number): MonthStats {
-  let h = 0;
-  for (const c of `${seed}-${year}-${month}`) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  const rnd = () => { h = (h * 1664525 + 1013904223) >>> 0; return h / 2 ** 32; };
-  const growth = 1 + ((year - 2025) * 12 + month) * 0.02;
-  const clicks = Math.round((120 + rnd() * 80) * growth);
-  const impressions = Math.round(clicks * (14 + rnd() * 6));
-  const position = Math.round((9 + rnd() * 6 - growth) * 10) / 10;
-  const base = seed.includes("traiteur") ? ["traiteur paris 9", "traiteur mariage paris", "buffet entreprise", "plateaux repas", "traiteur événement"] : ["boulangerie paris 9", "boulangerie rue des martyrs", "meilleure baguette paris", "pâtisserie paris 9", "pain au levain paris"];
-  const topQueries = base.map((q, i) => { const c = Math.round(clicks * (0.22 - i * 0.035) * (0.8 + rnd() * 0.4)); return { query: q, clicks: c, impressions: Math.round(c * (8 + rnd() * 10)), position: Math.round((2 + i * 1.6 + rnd() * 2) * 10) / 10 }; });
-  return { clicks, impressions, position, topQueries };
-}

@@ -55,7 +55,7 @@ export function ProductionBoard({ initial, devs, meId, initialDev }: { initial: 
         <ChevronDownIcon size={15} className="pointer-events-none absolute right-3.5 text-text" aria-hidden />
       </label>
       <DndContext sensors={sensors} onDragStart={(e: DragStartEvent) => setDragging(cards.find((c) => c.id === e.active.id) ?? null)} onDragEnd={onEnd} onDragCancel={() => setDragging(null)}>
-        <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-4 lg:mx-0 lg:grid lg:grid-cols-5 lg:overflow-visible lg:px-0">
+        <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-4 lg:mx-0 lg:grid lg:grid-cols-6 lg:overflow-visible lg:px-0">
           {PROJECT_STEPS.map((s) => <Column key={s.key} etape={s.key} label={s.label} cards={visible.filter((c) => c.etape === s.key)} onOpen={(id) => router.push(`/admin/sites/${id}`)} />)}
         </div>
         {dragging && (

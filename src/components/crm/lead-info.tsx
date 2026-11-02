@@ -42,7 +42,7 @@ export function LeadInfoButton({ prospectId, lead }: { prospectId: string; lead:
   const generer = () => start(async () => {
     setMsg(null);
     const r = await enrichProspect(prospectId);
-    setMsg(r.error ?? (r.web ? "Infos générées (registre officiel, audit du site, recherche web)." : "Infos générées (registre officiel et audit du site ; ajoutez une clé Anthropic dans Paramètres pour la recherche web : fiche Google, avis, réseaux)."));
+    setMsg(r.error ?? (r.web ? "Infos générées (registre officiel, audit du site, recherche web)." : `Infos générées (registre officiel et audit du site). ${r.info ?? "La recherche web est désactivée (Administration → IA et intégrations)."}`));
     router.refresh();
   });
   const bouton = (

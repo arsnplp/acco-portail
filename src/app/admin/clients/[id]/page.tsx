@@ -16,7 +16,6 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { AircallBloc, AircallTitre, GmailBloc, isAircallMeta, isGmailMeta } from "@/components/crm/echange-detail";
 import { ECHANGE, contactName, fmtDayTime, parisDay, teamName, todayBounds } from "@/lib/crm";
 import { MODULES } from "@/lib/roles";
-import { syncProspect } from "@/lib/crm-sync";
 import { appareil } from "@/lib/login-log";
 import {
   ChevronRight, CreditCardIcon, ExternalLinkIcon, FileTextIcon, FolderOpen, GlobeIcon, HistoryIcon, KeyRoundIcon, MapPinIcon, MessageSquareIcon,
@@ -45,8 +44,6 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
     },
   });
   if (!client) notFound();
-  // Appels Aircall et emails : via la fiche prospect liée (au plus une fois toutes les 10 minutes).
-  if (client.crmProspect) await syncProspect(client.crmProspect.id).catch(() => null);
 
   const pendingDocs = client._count.documentRequests;
   const [offers, orders, echanges, equipe] = await Promise.all([
@@ -177,7 +174,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
                   {(e.auteur || e.auteurNom) && !(call && e.origine === "aircall") && <span>· {e.auteur ? teamName(e.auteur) : e.auteurNom}</span>}
                 </div>
                 {e.notes && e.origine !== "aircall" && !mail && <p className="mt-1 text-sm whitespace-pre-line text-text-strong">{e.notes.length > 600 ? e.notes.slice(0, 600) + "…" : e.notes}</p>}
-                {call && <AircallBloc echangeId={e.id} m={call} />}
+                {call && <AircallBloc m={call} />}
                 {mail && <GmailBloc m={mail} />}
               </li>
             );

@@ -152,7 +152,7 @@ export function Historique({ prospectId, items, meId, isAdmin, syncInfo }: { pro
   return (
     <section>
       <SectionTitle icon={HistoryIcon} action={
-        <button type="button" onClick={actualiser} disabled={pending} title="Récupérer les appels Aircall et les emails de cette fiche" className="flex items-center gap-1.5 text-sm text-text hover:text-title disabled:opacity-50">
+        <button type="button" onClick={actualiser} disabled={pending} title="Récupérer les appels Aircall (métadonnées) et les emails de cette fiche" className="flex items-center gap-1.5 text-sm text-text hover:text-title disabled:opacity-50">
           <RefreshCwIcon size={14} className={pending ? "animate-spin" : undefined} aria-hidden /> {pending ? "Synchronisation…" : "Actualiser"}
         </button>
       }>Historique <span className="text-sm font-normal text-text">{items.length}</span></SectionTitle>
@@ -173,7 +173,7 @@ export function Historique({ prospectId, items, meId, isAdmin, syncInfo }: { pro
                   {canDelete(e) && <button type="button" onClick={() => confirm("Supprimer cet échange ?") && start(() => deleteEchange(e.id))} className="ml-auto hidden text-muted hover:text-pink group-hover:inline" aria-label="Supprimer"><Trash2Icon size={13} /></button>}
                 </div>
                 {e.notes && e.origine !== "aircall" && !mail && <p className="mt-1 text-sm whitespace-pre-line text-text-strong">{e.notes.length > 600 ? e.notes.slice(0, 600) + "…" : e.notes}</p>}
-                {call && <AircallBloc echangeId={e.id} m={call} />}
+                {call && <AircallBloc m={call} />}
                 {mail && <GmailBloc m={mail} />}
               </li>
             );

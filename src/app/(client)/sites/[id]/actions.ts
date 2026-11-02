@@ -22,9 +22,11 @@ export async function uploadAsset(siteId: string, assetId: string, formData: For
 export async function validateMockup(siteId: string) {
   const { site, user } = await requireClientSite(siteId);
   // Le client valide la V1 (étape Présentation V1) ou la V2 (étape Validation client) : le site avance d'une colonne.
-  const suite = site.projectStep === "ATTENTE_VALIDATION" ? "MODIFICATION" : site.projectStep === "ATTENTE_VALIDATION_FINITION" ? "A_LIVRER" : null;
+  // Rien n'est validable tant que la maquette n'a pas été envoyée explicitement (10.4 : clic « Envoyer maquette »).
+  if (!site.maquetteEnvoyeeAt) return;
+  const suite = site.projectStep === "VALIDER_MAQUETTE" ? "MODIFIER" : site.projectStep === "VALIDER_MODIFICATION" ? "FINIR" : null;
   if (!suite) return;
-  const quoi = site.projectStep === "ATTENTE_VALIDATION" ? "Maquette validée" : "Version finale validée";
+  const quoi = site.projectStep === "VALIDER_MAQUETTE" ? "Maquette validée" : "Version validée";
   await prisma.$transaction([
     prisma.site.update({ where: { id: site.id }, data: { mockupValidatedAt: new Date(), projectStep: suite, etapeAt: new Date() } }),
     prisma.siteHistoryEntry.create({

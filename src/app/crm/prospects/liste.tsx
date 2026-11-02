@@ -4,13 +4,12 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { EchangeType, ProspectStatut } from "@prisma/client";
-import { ChevronDownIcon, HeadphonesIcon, PhoneIcon } from "lucide-react";
+import { ChevronDownIcon, PhoneIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Badge } from "@/components/ui/badge";
 import { Logo } from "@/components/crm/logo";
 import { DateInput, TimeInput } from "@/components/ui/date-time";
 import { AircallBloc, AircallTitre, GmailBloc, isAircallMeta, isGmailMeta } from "@/components/crm/echange-detail";
-import type { AircallMeta } from "@/lib/echange-meta";
 import { ECHANGE, MOTIFS_ABANDON, MOTIFS_PERTE, SEQUENCE_APPELS, STATUT, fmtDayTime, fmtTime, initialsOf, logoUrl, relanceInfo } from "@/lib/crm";
 import { StatutPicker } from "@/components/crm/statut-picker";
 import { bulkProspects, type BulkInput } from "../actions";
@@ -19,7 +18,6 @@ export type Row = {
   id: string; societe: string; contact: string | null; telephone: string | null; siteWeb: string | null; statut: ProspectStatut; relanceAt: string | null; rappelAt: string | null;
   commercialId: string | null; cible: string | null; motif: string | null; appels: number; updatedAt: string; client: boolean;
   derniers: { id: string; type: EchangeType; date: string; notes: string | null; origine: string; auteur: string | null; meta: unknown }[];
-  enregistrements: { id: string; date: string; meta: AircallMeta }[];
 };
 type Member = { id: string; name: string };
 
@@ -114,8 +112,8 @@ export function Liste({ rows, team, isAdmin }: { rows: Row[]; team: Member[]; is
                   <span className="hidden w-24 sm:block"><Sequence n={r.appels} /></span>
                   <span className={cn("hidden w-28 truncate text-xs sm:block", rel.state === "late" ? "text-pink" : rel.state === "today" ? "text-yellow" : "text-text")}>{rel.label}{r.rappelAt ? ` ${fmtTime(r.rappelAt)}` : ""}</span>
                   <span className="hidden w-40 truncate text-xs text-text sm:block">{last ? `${isAircallMeta(last.meta) ? "Appel Aircall" : isGmailMeta(last.meta) ? "Mail" : ECHANGE[last.type].short} · ${fmtDayTime(last.date)}` : "—"}</span>
-                  <button type="button" onClick={() => toggleOpen(r.id)} aria-expanded={isOpen} aria-label="Notes et enregistrements" className={cn("flex size-8 shrink-0 items-center justify-center rounded-full border border-border text-text hover:text-title", r.enregistrements.length > 0 && "text-green")}>
-                    {r.enregistrements.length ? <HeadphonesIcon size={14} /> : <ChevronDownIcon size={14} className={cn("transition-transform", isOpen && "rotate-180")} />}
+                  <button type="button" onClick={() => toggleOpen(r.id)} aria-expanded={isOpen} aria-label="Dernières notes" className="flex size-8 shrink-0 items-center justify-center rounded-full border border-border text-text hover:text-title">
+                    <ChevronDownIcon size={14} className={cn("transition-transform", isOpen && "rotate-180")} />
                   </button>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 px-3 pb-2 sm:hidden">
@@ -135,21 +133,11 @@ export function Liste({ rows, team, isAdmin }: { rows: Row[]; team: Member[]; is
                             {call && <AircallTitre m={call} />}<span>{fmtDayTime(e.date)}</span>{e.auteur && !(call && e.origine === "aircall") && <span>· {e.auteur}</span>}
                           </p>
                           {e.notes && e.origine !== "aircall" && !mail && <p className="mt-0.5 whitespace-pre-line text-text-strong">{e.notes.length > 400 ? e.notes.slice(0, 400) + "…" : e.notes}</p>}
-                          {call && <AircallBloc echangeId={e.id} m={call} compact />}
+                          {call && <AircallBloc m={call} compact />}
                           {mail && <GmailBloc m={mail} />}
                         </div>
                       );
                     })}
-                    {r.enregistrements.filter((x) => !r.derniers.some((d) => d.id === x.id)).length > 0 && (
-                      <div>
-                        <p className="mb-1 text-xs font-semibold text-text">Autres enregistrements</p>
-                        <div className="space-y-2">
-                          {r.enregistrements.filter((x) => !r.derniers.some((d) => d.id === x.id)).slice(0, 5).map((x) => (
-                            <div key={x.id} className="text-sm"><p className="text-xs text-text"><AircallTitre m={x.meta} /> · {fmtDayTime(x.date)}</p><AircallBloc echangeId={x.id} m={x.meta} compact /></div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                     <Link href={`/crm/prospects/${r.id}`} className="inline-block text-xs font-semibold text-title hover:underline">Ouvrir la fiche</Link>
                   </div>
                 )}

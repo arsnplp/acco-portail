@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { fetchMonthStats, demoMonthStats, searchConsoleConfigured } from "@/lib/google-search";
+import { fetchMonthStats, searchConsoleConfigured } from "@/lib/google-search";
+import { connecteurActif, journal, marquerSync } from "@/lib/connecteurs";
 import { summarizeMonth } from "@/lib/ai";
 import { notifyClient } from "@/lib/notify";
 import { appUrl } from "@/lib/email";
@@ -16,20 +17,17 @@ export function previousMonth(d = new Date()) {
   return m === 0 ? { year: d.getFullYear() - 1, month: 12 } : { year: d.getFullYear(), month: m };
 }
 
-/** Synchronise les chiffres Search Console d'un mois pour un site. Mode démo si Google n'est pas configuré. */
+/** Synchronise les chiffres Search Console d'un mois pour un site. Sans Google : rien (aucun chiffre inventé). */
 export async function syncSiteMonth(siteId: string, year: number, month: number) {
   const site = await prisma.site.findUniqueOrThrow({ where: { id: siteId } });
   const property = site.searchConsoleProp;
+  if (!property || !(await searchConsoleConfigured()) || !(await connecteurActif("search_console"))) return null;
   let stats = null;
-  if (property && (await searchConsoleConfigured())) {
-    try {
-      stats = await fetchMonthStats(property, year, month);
-    } catch (e) {
-      console.warn(`[search-console] ${site.name} (${property}) : ${(e as Error).message}`);
-      return null; // propriété inaccessible : pas de chiffres inventés pour un vrai site
-    }
-  } else {
-    stats = demoMonthStats(site.siteKey, year, month);
+  try {
+    stats = await fetchMonthStats(property, year, month);
+  } catch (e) {
+    await journal("search_console", "erreur", `${site.name} (${property}) : ${(e as Error).message}`);
+    return null; // propriété inaccessible : pas de chiffres inventés
   }
   if (!stats) return null;
   return prisma.searchStatsMonthly.upsert({
@@ -52,11 +50,8 @@ export async function syncSiteMonths(siteId: string, count = 12): Promise<SyncRe
   const list: { year: number; month: number }[] = [];
   for (let i = 0; i < count; i++) { list.push({ year, month }); month -= 1; if (month === 0) { month = 12; year -= 1; } }
 
-  const real = Boolean(site.searchConsoleProp && (await searchConsoleConfigured()));
-  if (!real) {
-    for (const m of list) await syncSiteMonth(siteId, m.year, m.month);
-    return { real: false, months: list.length };
-  }
+  const real = Boolean(site.searchConsoleProp && (await searchConsoleConfigured()) && (await connecteurActif("search_console")));
+  if (!real) return { real: false, months: 0, error: "Google Search Console non connecté ou connecteur désactivé." };
   const rows = [];
   for (const m of list) {
     try {
@@ -73,11 +68,37 @@ export async function syncSiteMonths(siteId: string, count = 12): Promise<SyncRe
     prisma.searchStatsMonthly.deleteMany({ where: { siteId } }),
     ...rows.map((r) => prisma.searchStatsMonthly.create({ data: { siteId, ...r } })),
   ]);
+  await marquerSync("search_console");
   return { real: true, months: rows.length };
 }
 
+/**
+ * Tâche quotidienne (00.7) : pour chaque site en ligne relié à une propriété, met à jour le mois en cours et le mois
+ * précédent si la dernière synchro date de plus de 24 h. Les pages du portail ne lisent que la base.
+ */
+export async function syncSearchConsoleQuotidienne(now = new Date()) {
+  if (!(await connecteurActif("search_console")) || !(await searchConsoleConfigured())) return { sites: 0, maj: 0 };
+  const last = await prisma.setting.findUnique({ where: { key: "connecteur_search_console_sync_at" } });
+  if (last && now.getTime() - new Date(last.value).getTime() < 23 * 3600_000) return { sites: 0, maj: 0 };
+  const sites = await prisma.site.findMany({ where: { status: "EN_LIGNE", searchConsoleProp: { not: null } }, select: { id: true } });
+  const prev = previousMonth(now), cur = { year: now.getFullYear(), month: now.getMonth() + 1 };
+  let maj = 0;
+  for (const s of sites) {
+    for (const m of [prev, cur]) { try { if (await syncSiteMonth(s.id, m.year, m.month)) maj++; } catch { /* journalisé dans syncSiteMonth */ } }
+  }
+  await marquerSync("search_console");
+  return { sites: sites.length, maj };
+}
+export function startSearchConsoleTicker() {
+  const g = globalThis as { __scTicker?: NodeJS.Timeout };
+  if (g.__scTicker) return;
+  const tick = () => syncSearchConsoleQuotidienne().catch((e) => console.warn("[search-console]", (e as Error).message));
+  setTimeout(tick, 120_000);
+  g.__scTicker = setInterval(tick, 3600_000);
+}
+
 /** Génère (ou régénère) le récap d'un mois : chiffres + résumé + notification + email. */
-export async function buildRecap(siteId: string, year: number, month: number, opts: { notify?: boolean } = {}) {
+export async function buildRecap(siteId: string, year: number, month: number, opts: { notify?: boolean; garderTexte?: boolean } = {}) {
   const site = await prisma.site.findUniqueOrThrow({ where: { id: siteId } });
   const stats = (await prisma.searchStatsMonthly.findUnique({ where: { siteId_year_month: { siteId, year, month } } })) ?? (await syncSiteMonth(siteId, year, month));
   if (!stats) return null;
@@ -89,7 +110,9 @@ export async function buildRecap(siteId: string, year: number, month: number, op
     prisma.review.count({ where: { siteId, publishedAt: { gte: start, lt: end } } }),
   ]);
   const topQueries = (stats.topQueries as { query: string; clicks: number }[]) ?? [];
-  const summary = await summarizeMonth({
+  // Rédaction : gabarit sans IA en automatique (00.6) ; Claude seulement via redigerRecapIA (sur clic).
+  const existant = await prisma.monthlyRecap.findUnique({ where: { siteId_year_month: { siteId, year, month } }, select: { summary: true, sentAt: true } });
+  const summary = existant?.summary && opts.garderTexte !== false ? existant.summary : await summarizeMonth({
     siteName: site.name, monthLabel: monthLabel(year, month),
     clicks: stats.clicks, prevClicks: prev?.clicks ?? null, impressions: stats.impressions, prevImpressions: prev?.impressions ?? null,
     position: stats.position, prevPosition: prev?.position ?? null, contactCount, reviewCount, topQueries,
@@ -114,6 +137,19 @@ export async function buildRecap(siteId: string, year: number, month: number, op
     if (isPositive) await maybeCreateReviewPrompt(site.clientId, "RECAP_POSITIF");
   }
   return recap;
+}
+
+/** Sur clic « Rédiger avec l'IA » (équipe) : remplace le texte du récap du mois par une rédaction Claude, sous plafond. */
+export async function redigerRecapIA(siteId: string, year: number, month: number, userId: string) {
+  const site = await prisma.site.findUniqueOrThrow({ where: { id: siteId } });
+  const stats = await prisma.searchStatsMonthly.findUnique({ where: { siteId_year_month: { siteId, year, month } } });
+  const recap = await prisma.monthlyRecap.findUnique({ where: { siteId_year_month: { siteId, year, month } } });
+  if (!stats || !recap) return { ok: false as const, error: "Pas de récap pour ce mois." };
+  const prevYm = month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 };
+  const prev = await prisma.searchStatsMonthly.findUnique({ where: { siteId_year_month: { siteId, ...prevYm } } });
+  const texte = await summarizeMonth({ siteName: site.name, monthLabel: monthLabel(year, month), clicks: stats.clicks, prevClicks: prev?.clicks ?? null, impressions: stats.impressions, prevImpressions: prev?.impressions ?? null, position: stats.position, prevPosition: prev?.position ?? null, contactCount: recap.contactCount, reviewCount: recap.reviewCount, topQueries: (stats.topQueries as { query: string; clicks: number }[]) ?? [] }, { ia: true, userId });
+  await prisma.monthlyRecap.update({ where: { id: recap.id }, data: { summary: texte } });
+  return { ok: true as const, texte };
 }
 
 const emailFields = (e: { subject: string; html: string; text: string } | null) => (e ? { emailSubject: e.subject, emailHtml: e.html, emailText: e.text } : {});

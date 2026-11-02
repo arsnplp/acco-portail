@@ -9,6 +9,7 @@ import { readFileSync } from "node:fs";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSecret } from "@/lib/settings";
+import { enregistrerUsageIA, iaAutorisee } from "@/lib/ia";
 import { lookupRegistre, type Registre } from "./registre";
 import { auditSite, type Audit } from "./audit";
 import { fmtPhone, hostOf, norm, normPhone, similarity } from "./texte";
@@ -89,8 +90,11 @@ ${contraintes.length ? `\nContraintes impératives :\n${contraintes.join("\n")}\
 Déjà connues (à exclure) : ${connues.length ? connues.join(" ; ") : "aucune"}`;
 }
 
-export async function anthropicKey() {
-  return (await getSecret("anthropic_api_key")) ?? (await getSecret("claude_code_api_key"));
+/** Clé IA : uniquement la clé Anthropic (jamais celle du worker Claude Code), et seulement si la fonction est autorisée (00.6). */
+export async function anthropicKey(fonction: "leads" | "enrichissement" = "leads") {
+  const ok = await iaAutorisee(fonction);
+  if (!ok.ok) throw new Error(ok.raison);
+  return getSecret("anthropic_api_key");
 }
 
 function parseJson(text: string): Reponse {
@@ -123,8 +127,10 @@ async function rechercher(n: number, secteur: string, region: string, connues: s
         res = await client.messages.stream({ model: MODEL, max_tokens: 32_000, system: SYSTEM_PROMPT, tools, messages }).finalMessage();
       } else throw e;
     }
-    recherches += (res.usage as { server_tool_use?: { web_search_requests?: number } }).server_tool_use?.web_search_requests ?? 0;
+    const rech = (res.usage as { server_tool_use?: { web_search_requests?: number } }).server_tool_use?.web_search_requests ?? 0;
+    recherches += rech;
     inTok += res.usage.input_tokens; outTok += res.usage.output_tokens;
+    await enregistrerUsageIA("leads", MODEL, res.usage, null, rech); // 1 cent par recherche web en plus des jetons
     text = res.content.filter((c) => c.type === "text").map((c) => (c as Anthropic.TextBlock).text).join("\n");
     if (res.stop_reason !== "pause_turn") break;
     messages.push({ role: "assistant", content: res.content });

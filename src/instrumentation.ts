@@ -9,4 +9,8 @@ export async function register() {
   startAircallTicker();
   const { startAlertesTicker } = await import("./lib/alertes");
   startAlertesTicker();
+  const { startSyncTicker } = await import("./lib/crm-sync");
+  startSyncTicker();
+  const { startSearchConsoleTicker } = await import("./lib/recaps");
+  startSearchConsoleTicker();
 }

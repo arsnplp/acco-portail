@@ -178,7 +178,7 @@ async function main() {
       clientId: plombier.id,
       name: "benali-plomberie.fr",
       status: "EN_CREATION",
-      projectStep: "ATTENTE_VALIDATION",
+      projectStep: "VALIDER_MAQUETTE",
       previewUrl: "https://preprod.acco-lab.fr/benali",
       siteKey: "demo-benali-plomberie",
       assets: {

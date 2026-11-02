@@ -74,37 +74,9 @@ class GoogleBusinessProvider implements ReviewsProvider {
   }
 }
 
-const DEMO_REVIEWS: Array<[string, number, string | null, number]> = [
-  ["Sophie M.", 5, "Accueil chaleureux et produits de qualité. Je recommande les yeux fermés !", 2],
-  ["Karim B.", 4, "Très bien dans l’ensemble, un peu d’attente le samedi matin mais ça vaut le coup.", 6],
-  ["Julie R.", 5, "Toujours un plaisir, l’équipe est adorable.", 12],
-  ["Marc D.", 2, "Déçu cette fois-ci, commande incomplète et pas d’excuses.", 19],
-  ["Nadia L.", 5, null, 27],
-  ["Thomas P.", 5, "Le meilleur du quartier, tout simplement.", 41],
-  ["Inès C.", 3, "Correct sans plus, les prix ont augmenté.", 58],
-  ["Paul G.", 5, "Service impeccable, je reviendrai avec plaisir.", 75],
-];
-
-class DemoProvider implements ReviewsProvider {
-  readonly mode = "demo" as const;
-  private replies = new Map<string, string>();
-  async listLocations() { return [{ id: "demo/location", title: "Fiche Google (démo)" }]; }
-  async fetchReviews(locationId: string): Promise<ReviewsPage> {
-    const reviews = DEMO_REVIEWS.map(([authorName, rating, text, daysAgo], i) => {
-      const externalId = `demo-${locationId.slice(-6)}-${i}`;
-      const reply = this.replies.get(externalId) ?? (i >= 4 ? "Merci beaucoup pour votre retour, à très bientôt !" : null);
-      return { externalId, authorName, authorPhotoUrl: null, rating, text, publishedAt: new Date(Date.now() - daysAgo * 86400_000), reply, repliedAt: reply ? new Date(Date.now() - (daysAgo - 1) * 86400_000) : null };
-    });
-    return { reviews, averageRating: 4.4, totalReviewCount: 127 };
-  }
-  async reply(_locationId: string, externalId: string, text: string) { this.replies.set(externalId, text); }
-}
-
-const demo = new DemoProvider();
-
-/** Fournisseur à utiliser : Google si l'API est validée et le compte connecté, sinon démo. */
-export async function getReviewsProvider(): Promise<ReviewsProvider> {
-  if (!(await businessApiEnabled())) return demo;
+/** Fournisseur à utiliser : Google si l'API est validée et le compte connecté ; sinon null (aucune donnée inventée, 00.7). */
+export async function getReviewsProvider(): Promise<ReviewsProvider | null> {
+  if (!(await businessApiEnabled())) return null;
   const client = await connectedGoogleClient();
-  return client ? new GoogleBusinessProvider(client) : demo;
+  return client ? new GoogleBusinessProvider(client) : null;
 }

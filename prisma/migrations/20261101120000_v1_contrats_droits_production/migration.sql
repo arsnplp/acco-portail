@@ -467,3 +467,20 @@ UPDATE "ProspectContact" pc SET "clientId" = p."clientId" FROM "Prospect" p WHER
 -- Interrupteurs IA : désactivés par défaut (00.6). Les valeurs déjà enregistrées sont conservées.
 INSERT INTO "Setting" ("key", "value", "updatedAt") VALUES ('feature_ai', 'false', now()) ON CONFLICT ("key") DO NOTHING;
 INSERT INTO "Setting" ("key", "value", "updatedAt") VALUES ('ia_plafond_cents', '2000', now()) ON CONFLICT ("key") DO NOTHING;
+
+-- Kanban Production : les six libellés exacts du prompt maître (10.2).
+ALTER TYPE "ProjectStep" RENAME TO "ProjectStep_old";
+CREATE TYPE "ProjectStep" AS ENUM ('CREER_MAQUETTE', 'VALIDER_MAQUETTE', 'MODIFIER', 'VALIDER_MODIFICATION', 'FINIR', 'A_LIVRER');
+ALTER TABLE "Site" ALTER COLUMN "projectStep" DROP DEFAULT;
+ALTER TABLE "Site" ALTER COLUMN "projectStep" TYPE "ProjectStep" USING (
+  CASE "projectStep"::text
+    WHEN 'MAQUETTE' THEN 'CREER_MAQUETTE'
+    WHEN 'ATTENTE_VALIDATION' THEN 'VALIDER_MAQUETTE'
+    WHEN 'MODIFICATION' THEN 'MODIFIER'
+    WHEN 'ATTENTE_VALIDATION_FINITION' THEN 'VALIDER_MODIFICATION'
+    WHEN 'A_LIVRER' THEN 'A_LIVRER'
+    ELSE 'CREER_MAQUETTE'
+  END
+)::"ProjectStep";
+ALTER TABLE "Site" ALTER COLUMN "projectStep" SET DEFAULT 'CREER_MAQUETTE';
+DROP TYPE "ProjectStep_old";
