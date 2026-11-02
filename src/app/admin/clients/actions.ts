@@ -6,6 +6,11 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireTeam } from "@/lib/auth";
 import { ensureAuthUser, sendInvitationEmail } from "@/lib/invitations";
+import { can } from "@/lib/permissions";
+import { requireClientAcces } from "@/lib/perimetre";
+import { agitCommeReferent } from "@/lib/delegations";
+import { logActivite } from "@/lib/activite";
+import { teamName } from "@/lib/crm";
 
 export type ActionState = { error?: string };
 
@@ -66,10 +71,154 @@ export async function updateClient(clientId: string, _prev: ActionState, formDat
   if (!d.name?.trim()) return { error: "Nom requis" };
   await prisma.client.update({
     where: { id: clientId },
-    data: { name: d.name.trim(), address: d.address?.trim() || null, phone: d.phone?.trim() || null, email: d.email?.trim() || null, siren: d.siren?.trim() || null },
+    data: { name: d.name.trim(), address: d.address?.trim() || null, phone: d.phone?.trim() || null, email: d.email?.trim() || null, siren: d.siren?.trim() || null, secteur: d.secteur?.trim() || null },
   });
   revalidatePath(`/admin/clients/${clientId}`);
   return {};
+}
+
+// ─── Logo (00.1) ─────────────────
+export async function uploadLogo(clientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const me = await requireTeam();
+  await requireClientAcces(me, clientId);
+  const file = formData.get("logo");
+  if (!(file instanceof File) || file.size === 0) return { error: "Choisissez un fichier." };
+  try { const { enregistrerLogo } = await import("@/lib/logo"); await enregistrerLogo(clientId, file); }
+  catch (e) { return { error: (e as Error).message }; }
+  revalidatePath(`/admin/clients/${clientId}`); revalidatePath("/admin/clients");
+  return {};
+}
+export async function removeLogo(clientId: string) {
+  const me = await requireTeam();
+  await requireClientAcces(me, clientId);
+  const { supprimerLogo } = await import("@/lib/logo");
+  await supprimerLogo(clientId);
+  revalidatePath(`/admin/clients/${clientId}`); revalidatePath("/admin/clients");
+}
+
+// ─── Contacts (plusieurs interlocuteurs par client, section 4.2) ─────────────────
+export async function saveClientContact(clientId: string, contactId: string | null, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const me = await requireTeam();
+  await requireClientAcces(me, clientId);
+  const d = Object.fromEntries(formData) as Record<string, string>;
+  const prenom = d.prenom?.trim() || null, nom = d.nom?.trim() || null, email = d.email?.trim().toLowerCase() || null, telephone = d.telephone?.trim() || null;
+  if (!prenom && !nom && !email && !telephone) return { error: "Renseignez au moins un nom, un email ou un téléphone." };
+  if (email && !z.string().email().safeParse(email).success) return { error: "Email invalide." };
+  const client = await prisma.client.findUnique({ where: { id: clientId }, select: { crmProspect: { select: { id: true } } } });
+  const data = { prenom, nom, fonction: d.fonction?.trim() || null, email, telephone, principal: d.principal === "on", optOutCommercial: d.optOut === "on" };
+  await prisma.$transaction(async (tx) => {
+    if (data.principal) await tx.prospectContact.updateMany({ where: { OR: [{ clientId }, ...(client?.crmProspect ? [{ prospectId: client.crmProspect.id }] : [])] }, data: { principal: false } });
+    if (contactId) await tx.prospectContact.update({ where: { id: contactId }, data: { ...data, clientId } });
+    else await tx.prospectContact.create({ data: { ...data, clientId, prospectId: client?.crmProspect?.id ?? null } });
+  });
+  revalidatePath(`/admin/clients/${clientId}`);
+  return {};
+}
+export async function deleteClientContact(clientId: string, contactId: string) {
+  const me = await requireTeam();
+  await requireClientAcces(me, clientId);
+  await prisma.prospectContact.deleteMany({ where: { id: contactId, OR: [{ clientId }, { prospect: { clientId } }] } });
+  revalidatePath(`/admin/clients/${clientId}`);
+}
+
+// ─── Référent : réattribution définitive (section 3.3), journalisée ─────────────────
+export async function reattribuerClient(clientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const me = await requireTeam();
+  const client = await prisma.client.findUnique({ where: { id: clientId }, include: { commercial: { select: { firstName: true, email: true } } } });
+  if (!client) return { error: "Client introuvable." };
+  if (!can(me, "attribuer") && !(await agitCommeReferent(me.id, client))) return { error: "Réservé au référent, à son délégataire ou à la Direction." };
+  const nouveauId = String(formData.get("commercialId") ?? "") || null;
+  const motif = String(formData.get("motif") ?? "").trim() || null;
+  if (nouveauId === client.commercialId) return { error: "C’est déjà le référent." };
+  const nouveau = nouveauId ? await prisma.user.findUnique({ where: { id: nouveauId }, select: { id: true, firstName: true, email: true, role: true } }) : null;
+  if (nouveauId && (!nouveau || nouveau.role === "CLIENT")) return { error: "Membre introuvable." };
+  await prisma.$transaction([
+    prisma.client.update({ where: { id: clientId }, data: { commercialId: nouveauId } }),
+    // Tâches à faire et RDV à venir suivent le nouveau référent (transfert cohérent, section 3.3).
+    prisma.tacheClient.updateMany({ where: { clientId, statut: "A_FAIRE", responsableId: client.commercialId }, data: { responsableId: nouveauId } }),
+    prisma.rendezVous.updateMany({ where: { clientId, resultat: "PREVU", debut: { gte: new Date() }, commercialId: client.commercialId }, data: { commercialId: nouveauId } }),
+  ]);
+  await logActivite({ kind: "reattribution", texte: `Référent : ${client.commercial ? teamName(client.commercial) : "personne"} → ${nouveau ? teamName(nouveau) : "personne"}${motif ? ` · ${motif}` : ""}`, href: `/admin/clients/${clientId}`, userId: me.id, clientId });
+  revalidatePath(`/admin/clients/${clientId}`); revalidatePath("/admin/clients");
+  return {};
+}
+
+// ─── Archivage (section 20.3) : jamais de suppression ─────────────────
+export async function archiverClient(clientId: string, restaurer = false) {
+  const me = await requireTeam();
+  if (!can(me, "archiver")) return;
+  await prisma.client.update({ where: { id: clientId }, data: restaurer ? { statut: "ACTIF", archivedAt: null } : { statut: "ARCHIVE", archivedAt: new Date() } });
+  await logActivite({ kind: "archivage", texte: restaurer ? "Client restauré" : "Client archivé (données conservées)", href: `/admin/clients/${clientId}`, userId: me.id, clientId });
+  revalidatePath(`/admin/clients/${clientId}`); revalidatePath("/admin/clients");
+}
+
+// ─── Tâches et rendez-vous post-signature (section 7) ─────────────────
+const TYPES_TACHE = ["RELANCE", "RDV_A_PLANIFIER", "APPEL", "EMAIL", "DOCUMENT", "MAINTENANCE", "AUTRE"] as const;
+export async function creerTacheClientAction(clientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const me = await requireTeam();
+  await requireClientAcces(me, clientId);
+  const d = Object.fromEntries(formData) as Record<string, string>;
+  if (!d.titre?.trim()) return { error: "Donnez un titre à la tâche." };
+  const type = TYPES_TACHE.includes(d.type as (typeof TYPES_TACHE)[number]) ? (d.type as (typeof TYPES_TACHE)[number]) : "AUTRE";
+  const { creerTache } = await import("@/lib/taches-client");
+  await creerTache({ clientId, siteId: d.siteId || null, type, titre: d.titre.trim(), description: d.description?.trim() || null, echeance: d.echeance ? new Date(`${d.echeance}T09:00:00`) : null, responsableId: d.responsableId || me.id, source: "saisie", createdById: me.id, notifier: !!d.responsableId && d.responsableId !== me.id });
+  revalidatePath(`/admin/clients/${clientId}`);
+  return {};
+}
+export async function terminerTacheAction(clientId: string, tacheId: string, statut: "FAIT" | "ANNULEE" | "A_FAIRE") {
+  const me = await requireTeam();
+  await requireClientAcces(me, clientId);
+  await prisma.tacheClient.updateMany({ where: { id: tacheId, clientId }, data: { statut, faitAt: statut === "FAIT" ? new Date() : null } });
+  revalidatePath(`/admin/clients/${clientId}`); revalidatePath("/admin");
+}
+export async function creerRdvClientAction(clientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const me = await requireTeam();
+  await requireClientAcces(me, clientId);
+  const d = Object.fromEntries(formData) as Record<string, string>;
+  if (!d.date || !d.heure) return { error: "Date et heure requises." };
+  const { parisDateTime } = await import("@/lib/crm");
+  const debut = parisDateTime(d.date, d.heure);
+  if (Number.isNaN(debut.getTime())) return { error: "Date invalide." };
+  const dureeMin = Math.max(15, parseInt(d.duree || "60", 10) || 60);
+  const client = await prisma.client.findUnique({ where: { id: clientId }, select: { name: true } });
+  const rdv = await prisma.rendezVous.create({ data: { clientId, siteId: d.siteId || null, commercialId: d.commercialId || me.id, titre: d.titre?.trim() || null, debut, dureeMin, lieu: d.lieu?.trim() || null } });
+  // Dans l'agenda Google du membre si son compte est connecté (silencieux sinon).
+  const { upsertAgendaEvent } = await import("@/lib/agenda");
+  await upsertAgendaEvent(rdv.commercialId!, `rdv-client:${rdv.id}`, { titre: `${d.titre?.trim() || "RDV"} · ${client?.name ?? "client"}`, debut, fin: new Date(debut.getTime() + dureeMin * 60_000), lieu: rdv.lieu, description: `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/admin/clients/${clientId}` }).catch(() => null);
+  // Une tâche « RDV à planifier » encore ouverte est close.
+  await prisma.tacheClient.updateMany({ where: { clientId, type: "RDV_A_PLANIFIER", statut: "A_FAIRE", ...(d.siteId ? { OR: [{ siteId: d.siteId }, { siteId: null }] } : {}) }, data: { statut: "FAIT", faitAt: new Date() } });
+  await logActivite({ kind: "rdv", texte: `RDV fixé le ${debut.toLocaleDateString("fr-FR")}${d.titre ? ` : ${d.titre.trim()}` : ""}`, href: `/admin/clients/${clientId}?onglet=taches`, userId: me.id, clientId, siteId: d.siteId || null });
+  revalidatePath(`/admin/clients/${clientId}`);
+  return {};
+}
+export async function setRdvClientResultat(clientId: string, rdvId: string, resultat: "FAIT" | "ANNULE" | "NO_SHOW" | "PREVU") {
+  const me = await requireTeam();
+  await requireClientAcces(me, clientId);
+  const rdv = await prisma.rendezVous.findFirst({ where: { id: rdvId, clientId } });
+  if (!rdv) return;
+  await prisma.rendezVous.update({ where: { id: rdvId }, data: { resultat } });
+  if (resultat === "ANNULE" && rdv.commercialId) { const { deleteAgendaEvent } = await import("@/lib/agenda"); await deleteAgendaEvent(rdv.commercialId, `rdv-client:${rdv.id}`).catch(() => null); }
+  revalidatePath(`/admin/clients/${clientId}`);
+}
+
+// ─── Synthèse IA courte (4.2 bloc 10, sur clic, 00.6) ─────────────────
+export async function genererSyntheseClient(clientId: string): Promise<{ ok?: boolean; error?: string }> {
+  const me = await requireTeam();
+  await requireClientAcces(me, clientId);
+  const { iaAutorisee } = await import("@/lib/ia");
+  const a = await iaAutorisee("synthese_client");
+  if (!a.ok) return { error: a.raison };
+  const { enBref } = await import("@/lib/en-bref");
+  const { texteIA } = await import("@/lib/ai");
+  const bref = await enBref(clientId);
+  const faits = [...bref.faits, ...bref.alertes.map((x) => `Alerte : ${x}`), ...bref.opportunites.map((x) => `Opportunité possible : ${x}`), ...bref.dernieres.map((x) => `Interaction : ${x}`)].join("\n");
+  const texte = await texteIA("synthese_client",
+    "Tu es l’assistant d’une agence web (ACCO LAB). Rédige en français une synthèse courte d’un client pour un commercial. Deux parties obligatoires, titrées exactement « Faits » et « Hypothèses ». Dans « Faits », ne reprends que ce qui est dans les données ; dans « Hypothèses », formule prudemment risques et opportunités. 120 mots maximum, pas de chiffres inventés.",
+    faits, 450, me.id);
+  if (!texte) return { error: "Synthèse indisponible (IA coupée ou plafond atteint)." };
+  await prisma.setting.upsert({ where: { key: `synthese_client:${clientId}` }, create: { key: `synthese_client:${clientId}`, value: JSON.stringify({ texte, at: new Date().toISOString(), par: teamName(me) }) }, update: { value: JSON.stringify({ texte, at: new Date().toISOString(), par: teamName(me) }) } });
+  revalidatePath(`/admin/clients/${clientId}`);
+  return { ok: true };
 }
 
 export async function addMember(clientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -198,7 +347,8 @@ export async function updateClientSuivi(clientId: string, _prev: ActionState, fo
   const date = (v?: string) => (v ? new Date(`${v}T12:00:00`) : null);
   const gmb = d.gmbUrl?.trim() || null;
   if (gmb && !/^https?:\/\//.test(gmb)) return { error: "Le lien de la fiche Google doit commencer par https://" };
-  const peutAttribuer = me.role === "ADMIN" || me.role === "COMMERCIAL";
+  const avant = await prisma.client.findUnique({ where: { id: clientId }, select: { commercialId: true } });
+  const peutAttribuer = can(me, "attribuer") || (avant ? await agitCommeReferent(me.id, avant) : false);
   await prisma.client.update({
     where: { id: clientId },
     data: {

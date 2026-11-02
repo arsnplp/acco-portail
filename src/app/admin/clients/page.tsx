@@ -11,6 +11,8 @@ import { cn } from "@/lib/cn";
 import { derniersContacts, JOURS_SANS_CONTACT } from "@/lib/alertes";
 import { MODULES } from "@/lib/roles";
 import { matchRecherche, teamName, todayBounds } from "@/lib/crm";
+import { LogoClient } from "@/components/ui/logo-client";
+import { whereClientsPour } from "@/lib/perimetre";
 
 export const metadata = { title: "Clients" };
 
@@ -23,14 +25,14 @@ type SP = { vue?: string; q?: string; c?: string };
 export default async function ClientsPage({ searchParams }: { searchParams: Promise<SP> }) {
   const me = await requireTeam();
   const sp = await searchParams;
-  const vue = sp.vue === "tous" ? "tous" : sp.vue === "me" ? "me" : me.role === "ADMIN" ? "tous" : "me";
+  const vue = sp.vue === "tous" ? "tous" : sp.vue === "archives" ? "archives" : sp.vue === "me" ? "me" : me.role === "ADMIN" ? "tous" : "me";
   const q = (sp.q ?? "").trim();
   const who = sp.c && sp.c !== "all" ? sp.c : null;
   const [clients, equipe] = await Promise.all([
     prisma.client.findMany({
-      where: vue === "me" ? { OR: [{ commercialId: me.id }, { developpeurId: me.id }, { sites: { some: { developpeurId: me.id } } }] } : who ? { commercialId: who } : {},
+      where: { AND: [whereClientsPour(me), vue === "archives" ? { archivedAt: { not: null } } : { archivedAt: null }, vue === "me" ? { OR: [{ commercialId: me.id }, { developpeurId: me.id }, { sites: { some: { developpeurId: me.id } } }] } : who ? { commercialId: who } : {}] },
       orderBy: [{ reference: "desc" }, { createdAt: "desc" }],
-      include: { sites: { select: { id: true, name: true, status: true } }, memberships: { include: { user: true } }, commercial: { select: { firstName: true, email: true } }, crmProspect: { select: { telephone: true } } },
+      select: { id: true, name: true, email: true, phone: true, reference: true, formule: true, createdAt: true, logoMiniPath: true, secteur: true, sites: { select: { id: true, name: true, status: true } }, memberships: { include: { user: true } }, commercial: { select: { firstName: true, email: true } }, crmProspect: { select: { telephone: true } } },
     }),
     prisma.user.findMany({ where: { role: { in: MODULES.prospection } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true } }),
   ]);
@@ -48,6 +50,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
         <div className="flex rounded-full border border-border p-0.5 text-sm">
           <Link href={href({ vue: "me" })} className={cn("rounded-full px-3 py-1.5", vue === "me" ? "bg-title font-semibold text-bg" : "text-text hover:text-title")}>Mes clients</Link>
           <Link href={href({ vue: "tous" })} className={cn("rounded-full px-3 py-1.5", vue === "tous" ? "bg-title font-semibold text-bg" : "text-text hover:text-title")}>Tous les clients</Link>
+          <Link href={href({ vue: "archives" })} className={cn("rounded-full px-3 py-1.5", vue === "archives" ? "bg-title font-semibold text-bg" : "text-text hover:text-title")}>Archivés</Link>
         </div>
         <form method="get" action="/admin/clients" className="flex flex-1 flex-wrap items-center gap-2">
           <input type="hidden" name="vue" value={vue} />
@@ -55,7 +58,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
             <SearchIcon size={15} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted" aria-hidden />
             <input name="q" defaultValue={q} placeholder="Nom, gérant, email, téléphone" className="h-10 w-full rounded-full border border-border bg-surface pr-3 pl-9 text-sm text-title placeholder:text-muted outline-none focus:border-blue" />
           </label>
-          {vue === "tous" && (
+          {vue !== "me" && (
             <select name="c" defaultValue={who ?? "all"} aria-label="Commercial" className={sel}>
               <option value="all">Tous les commerciaux</option>{equipe.map((u) => <option key={u.id} value={u.id}>{teamName(u)}</option>)}
             </select>
@@ -72,9 +75,12 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
           return (
             <Card key={c.id} href={`/admin/clients/${c.id}`} className="py-3">
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="flex items-center gap-1.5 font-semibold text-title">{c.reference && <StarIcon size={13} className="shrink-0 fill-yellow text-yellow" aria-label="Client référence" />}{c.name}{c.formule && <Badge tone={FORMULE[c.formule].tone} className="ml-1">{FORMULE[c.formule].label}</Badge>}</p>
-                  <p className="text-xs text-text">{[owner ? `${owner.firstName ?? ""} ${owner.lastName ?? ""} · ${owner.email}`.trim() : "Aucun gérant", c.commercial ? `suivi par ${c.commercial.firstName ?? c.commercial.email}` : null].filter(Boolean).join(" · ")}</p>
+                <div className="flex min-w-0 items-center gap-3">
+                  <LogoClient id={c.id} name={c.name} logo={c.logoMiniPath} size={40} />
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-1.5 font-semibold text-title">{c.reference && <StarIcon size={13} className="shrink-0 fill-yellow text-yellow" aria-label="Client référence" />}{c.name}{c.formule && <Badge tone={FORMULE[c.formule].tone} className="ml-1">{FORMULE[c.formule].label}</Badge>}</p>
+                    <p className="text-xs text-text">{[c.secteur, owner ? `${owner.firstName ?? ""} ${owner.lastName ?? ""} · ${owner.email}`.trim() : "Aucun gérant", c.commercial ? `suivi par ${c.commercial.firstName ?? c.commercial.email}` : null].filter(Boolean).join(" · ")}</p>
+                  </div>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1">
                   <div className="flex items-center gap-1">

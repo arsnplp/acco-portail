@@ -165,14 +165,9 @@ export function contactName(c?: { prenom: string | null; nom: string | null } | 
 export const initialsOf = (s: string) => s.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join("");
 
 /** Icône du site (service Google, gratuit et sans clé). Clearbit a fermé son API de logos en 2025. */
-export function logoUrl(siteWeb: string | null) {
-  if (!siteWeb) return null;
-  try {
-    const host = new URL(/^https?:\/\//.test(siteWeb) ? siteWeb : `https://${siteWeb}`).hostname;
-    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=128`;
-  } catch {
-    return null;
-  }
+/** 00.1 : aucun service externe pour les logos (plus de favicons Google) ; les listes affichent les initiales. */
+export function logoUrl(_siteWeb: string | null): string | null {
+  return null;
 }
 
 // ─── Doublons ────────────────────────────────────────────────
