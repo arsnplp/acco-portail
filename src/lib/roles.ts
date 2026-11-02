@@ -1,4 +1,4 @@
-import type { Role } from "@prisma/client";
+import type { Mode, Role } from "@prisma/client";
 
 /**
  * Rôles et modules.
@@ -22,11 +22,15 @@ export const MODULES = {
 export type Module = keyof typeof MODULES;
 export const canAccess = (role: Role, module: Module) => MODULES[module].includes(role);
 export const isEquipe = (role: Role) => role !== "CLIENT";
-/** Page d'accueil selon le rôle. */
-export function homeFor(role: Role) {
+/** Modes de travail (section 2.2) : une vue de démarrage, jamais un droit. */
+export const MODE_LABEL: Record<Mode, string> = { COMMERCIAL: "Commercial", DIRECTION: "Direction", PRODUCTION: "Production", ADMIN: "Admin" };
+export const MODE_HOME: Record<Mode, string> = { COMMERCIAL: "/crm", DIRECTION: "/admin/pilotage", PRODUCTION: "/admin/production", ADMIN: "/admin" };
+/** Page d'accueil selon le rôle, ou selon le mode de démarrage s'il est réglé. */
+export function homeFor(role: Role, mode?: Mode | null) {
+  if (role === "CLIENT") return "/";
+  if (mode) return MODE_HOME[mode];
   if (role === "ADMIN") return "/admin";
   if (role === "COMMERCIAL") return "/crm";
-  if (role === "CLIENT") return "/";
   return "/admin/suivi";
 }
 

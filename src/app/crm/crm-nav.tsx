@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  CalendarDaysIcon, ChartColumnIcon, ChevronDownIcon, EllipsisIcon, HistoryIcon, KanbanSquareIcon, ListChecksIcon, PlusIcon, SunIcon,
+  CalendarDaysIcon, ChartColumnIcon, ChevronDownIcon, EllipsisIcon, GaugeIcon, HistoryIcon, KanbanSquareIcon, ListChecksIcon, PlusIcon, SunIcon,
   UsersIcon, VaultIcon, XIcon, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -18,20 +18,22 @@ const PRINCIPAUX: Item[] = [
   { href: "/crm/prospects/nouveau", label: "Nouveau", icon: PlusIcon },
   { href: "/crm/calendrier", label: "Calendrier", icon: CalendarDaysIcon },
 ];
-/** Vues secondaires, regroupées dans « Plus ». */
-function secondaires(admin: boolean): Item[] {
+/** Vues secondaires, regroupées dans « Plus ». `admin` : droit equipe ; `direction` : droit pilotage (Lucas inclus). */
+export type NavDroits = { admin: boolean; direction?: boolean };
+function secondaires({ admin, direction }: NavDroits): Item[] {
   return [
     { href: "/crm/prospects", label: "Tous les prospects", icon: ListChecksIcon, exact: true, hint: "Filtres avancés, repêchage, actions en masse" },
     { href: "/crm/leads", label: "Coffre à leads", icon: VaultIcon, hint: "Générer et utiliser des listes" },
     { href: "/crm/stats", label: "Stats", icon: ChartColumnIcon, hint: "Chiffres de l’équipe et graphiques" },
-    ...(admin ? [
+    ...(direction ? [
       { href: "/crm/historique", label: "Historique", icon: HistoryIcon, hint: "Tous les échanges notés" },
-      { href: "/crm/equipe", label: "Équipe", icon: UsersIcon, hint: "Comptes des commerciaux" },
+      { href: "/admin/pilotage", label: "Pilotage", icon: GaugeIcon, hint: "Direction : MRR, activité, projection" },
     ] : []),
+    ...(admin ? [{ href: "/crm/equipe", label: "Équipe", icon: UsersIcon, hint: "Comptes, rôles, droits et délégations" }] : []),
   ];
 }
 
-function useNav(admin: boolean) {
+function useNav(admin: NavDroits) {
   const pathname = usePathname();
   const production = pathname.startsWith("/crm/production");
   const active = (i: Item) => (i.exact ? pathname === i.href : pathname.startsWith(i.href)) || (i.href === "/crm/pipeline" && pathname.startsWith("/crm/prospects/") && !pathname.endsWith("/nouveau"));
@@ -55,7 +57,7 @@ function PlusList({ items, active, onPick }: { items: Item[]; active: (i: Item) 
 }
 
 /** Choix du mode + onglets (ordinateur), dans l'en-tête. Prospection et Production sont deux modes séparés. */
-export function CrmNav({ admin }: { admin: boolean }) {
+export function CrmNav({ admin }: { admin: NavDroits }) {
   const { pathname, production, active, plus, plusActive } = useNav(admin);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -97,7 +99,7 @@ export function CrmNav({ admin }: { admin: boolean }) {
 }
 
 /** Barre du bas sur téléphone (hors de l'en-tête : son flou d'arrière-plan piégerait la position fixe) + tiroir « Plus ». */
-export function CrmBottomNav({ admin }: { admin: boolean }) {
+export function CrmBottomNav({ admin }: { admin: NavDroits }) {
   const { pathname, production, active, plus, plusActive } = useNav(admin);
   const [open, setOpen] = useState(false);
   useEffect(() => { const t = setTimeout(() => setOpen(false), 0); return () => clearTimeout(t); }, [pathname]);

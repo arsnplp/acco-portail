@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { EQUIPE, canAccess, homeFor, type Module } from "@/lib/roles";
+import { can, type Droit } from "@/lib/permissions";
 import type { Role } from "@prisma/client";
 
 export const CLIENT_COOKIE = "acco_client";
@@ -46,11 +47,21 @@ export async function requireUser() {
 /** Accès à un module ; sinon renvoi vers l'accueil du rôle. */
 export async function requireModule(module: Module) {
   const user = await requireUser();
-  if (!canAccess(user.role, module)) redirect(homeFor(user.role));
+  if (!canAccess(user.role, module)) redirect(homeFor(user.role, user.modeDefaut));
   return user;
 }
-/** Direction uniquement (Pilotage, équipe, réglages sensibles). */
-export const requireAdmin = () => requireModule("pilotage");
+/** Direction (droit `pilotage` : les admins, et Lucas sans administration). */
+export async function requireAdmin() {
+  const user = await requireUser();
+  if (!can(user, "pilotage")) redirect(homeFor(user.role, user.modeDefaut));
+  return user;
+}
+/** Un droit unitaire précis (section 20.1) ; sinon renvoi vers l'accueil de l'équipe. */
+export async function requireDroit(droit: Droit) {
+  const user = await requireModule("suivi");
+  if (!can(user, droit)) redirect("/admin");
+  return user;
+}
 /** Prospection (CRM) : Direction et Commerciaux. */
 export const requireProspection = () => requireModule("prospection");
 
@@ -69,7 +80,7 @@ export const requireTeam = () => requireModule("suivi");
 /** Client (entreprise) actif pour un utilisateur côté client. */
 export async function requireClientContext() {
   const user = await requireUser();
-  if (user.role !== "CLIENT") redirect(homeFor(user.role));
+  if (user.role !== "CLIENT") redirect(homeFor(user.role, user.modeDefaut));
   if (user.memberships.length === 0) redirect("/connexion?erreur=aucun-compte");
 
   const cookieStore = await cookies();

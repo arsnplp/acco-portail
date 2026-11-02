@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 const PUBLIC_PREFIXES = ["/connexion", "/mot-de-passe-oublie", "/auth", "/r/", "/mentions-legales", "/confidentialite", "/api/forms", "/api/cron", "/api/claude"];
 
 export async function proxy(request: NextRequest) {
+  request.headers.set("x-pathname", request.nextUrl.pathname);
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(

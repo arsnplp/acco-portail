@@ -43,3 +43,11 @@ export const estDirection = (u: U | null | undefined) => can(u, "pilotage");
 /** Prestataires et spécialistes : périmètre limité aux projets attribués (section 13). */
 export const estExterne = (u: U | null | undefined) => !!u && (u.role === "EXPERT" || u.role === "SPECIALISTE");
 export const droitsDe = (u: U) => (Object.keys(DROITS) as Droit[]).filter((d) => can(u, d));
+
+/** Réglages par défaut (sections 2.2 et 20.1), applicables en un clic depuis la page Équipe. */
+export const PRESETS = {
+  bilel: { label: "Bilel : Direction commerciale, administrateur global, démarre en mode Commercial", role: "ADMIN", modeDefaut: "COMMERCIAL", droits: [] as Droit[] },
+  lucas: { label: "Lucas : Direction commerciale sans administration ni mode Admin, démarre en mode Commercial", role: "COMMERCIAL", modeDefaut: "COMMERCIAL", droits: ["pilotage", "validation_commerciale", "finance", "attribuer", "campagnes", "archiver"] as Droit[] },
+  arsene: { label: "Arsène : Production, administrateur global, démarre en mode Production", role: "ADMIN", modeDefaut: "PRODUCTION", droits: ["validation_technique", "go_live", "dates_production"] as Droit[] },
+} as const;
+export type Preset = keyof typeof PRESETS;
