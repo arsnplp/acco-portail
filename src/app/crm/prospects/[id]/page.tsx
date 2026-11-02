@@ -12,6 +12,8 @@ import { requireProspection } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { Logo } from "@/components/crm/logo";
 import { ETAPE_IMAGE, STATUT, contactName, fmtDayTime, fmtTime, logoUrl, relanceInfo, teamName, parisDay, todayBounds } from "@/lib/crm";
+import { CONTRAT_STATUT } from "@/lib/contrats";
+import { FileSignatureIcon } from "lucide-react";
 import { EchangeForm, ProspectForm, Contacts, Historique, AssignControl, RdvList } from "./forms";
 
 export const metadata = { title: "Fiche prospect" };
@@ -50,6 +52,7 @@ export default async function ProspectPage({ params, searchParams }: { params: P
   const remaining = sess ? await prisma.prospect.count({ where: sessionWhere(sess, me.id, todayBounds().start) }) : 0;
   const nrp = p.echanges.filter((e) => e.type === "NRP").length;
   const echanges = [...p.echanges, ...clientEchanges].sort((a, b) => b.date.getTime() - a.date.getTime());
+  const contrats = await prisma.contrat.findMany({ where: { prospectId: p.id }, orderBy: { createdAt: "desc" }, select: { id: true, reference: true, titre: true, statut: true, signeAt: true } });
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-4">
@@ -94,9 +97,13 @@ export default async function ProspectPage({ params, searchParams }: { params: P
         </div>
       </div>
 
-      <div className="mt-3 flex items-center gap-2 text-sm text-text">
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-text">
         Suivi par <span className="font-semibold text-text-strong">{p.commercial ? teamName(p.commercial) : "personne"}</span>
         <AssignControl id={p.id} current={p.commercialId} meId={me.id} isAdmin={me.role === "ADMIN"} team={team.map((u) => ({ id: u.id, name: teamName(u) }))} />
+        <span className="ml-auto flex flex-wrap items-center gap-2">
+          {contrats.map((c) => <Link key={c.id} href={`/admin/contrats/${c.id}`} className="rounded-full border border-border px-2.5 py-1 text-xs text-title hover:border-text">{c.reference} · {CONTRAT_STATUT[c.statut].label}</Link>)}
+          <Link href={`/admin/contrats/nouveau?prospect=${p.id}`} className="inline-flex h-8 items-center gap-1 rounded-full bg-title px-3 text-xs font-semibold text-bg"><FileSignatureIcon size={13} aria-hidden /> Nouveau contrat</Link>
+        </span>
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
