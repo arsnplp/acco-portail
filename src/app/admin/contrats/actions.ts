@@ -183,6 +183,9 @@ export async function deposerScan(contratId: string, _prev: ContratState, fd: Fo
   const c = await prisma.contrat.findUnique({ where: { id: contratId } });
   if (!c) return { error: "Contrat introuvable." };
   if (c.statut === "SIGNE" || c.statut === "TERMINE") return { error: "Ce contrat est déjà signé." };
+  if (c.statut === "REFUSE") return { error: "Ce contrat a été refusé : créez une nouvelle version." };
+  const exception = await prisma.validation.findFirst({ where: { contratId, type: "EXCEPTION_TARIFAIRE", statut: { in: ["EN_ATTENTE", "REFUSEE"] } } });
+  if (exception) return { error: "Exception tarifaire non validée (Bilel ou Lucas) : impossible d’enregistrer la signature." };
   const file = fd.get("scan");
   if (!(file instanceof File) || file.size === 0) return { error: "Choisissez le PDF ou l’image du contrat signé." };
   if (!/^(application\/pdf|image\/)/.test(file.type)) return { error: "PDF ou image uniquement." };

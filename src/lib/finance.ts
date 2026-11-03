@@ -64,7 +64,7 @@ export async function rentabiliteParClient() {
   const [{ parClient }, clients, couts] = await Promise.all([
     mrrActuel(),
     prisma.client.findMany({ where: { archivedAt: null }, select: { id: true, name: true, logoMiniPath: true, commercial: { select: { firstName: true, email: true } }, createdAt: true, contrats: { where: { statut: "SIGNE" }, select: { impayeAt: true, regulariseAt: true, montantPonctuelHt: true } }, sites: { select: { status: true } } } }),
-    prisma.charge.groupBy({ by: ["clientId"], where: { archivedAt: null, clientId: { not: null } }, _sum: { montantCents: true } }),
+    prisma.charge.groupBy({ by: ["clientId"], where: { archivedAt: null, clientId: { not: null }, type: "MENSUELLE", OR: [{ fin: null }, { fin: { gte: new Date() } }] }, _sum: { montantCents: true } }),
   ]);
   const coutPar = new Map(couts.map((c) => [c.clientId!, c._sum.montantCents ?? 0]));
   return clients.map((c) => {

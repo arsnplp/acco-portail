@@ -106,6 +106,7 @@ export async function updateSite(siteId: string, _prev: ActionState, formData: F
 
 export async function addHistoryEntry(siteId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
   const admin = await requireTeam();
+  await requireSiteAcces(admin, siteId);
   const title = String(formData.get("title") ?? "").trim();
   if (!title) return { error: "Titre requis" };
   const items = String(formData.get("items") ?? "").split("\n").map((s) => s.trim()).filter(Boolean);
@@ -122,7 +123,8 @@ export async function addHistoryEntry(siteId: string, _prev: ActionState, formDa
 }
 
 export async function addAssetRequest(siteId: string, formData: FormData) {
-  await requireTeam();
+  const me = await requireTeam();
+  await requireSiteAcces(me, siteId);
   const label = String(formData.get("label") ?? "").trim();
   if (!label) return;
   const kind = (["LOGO", "TEXTE", "PHOTO", "AUTRE"].includes(String(formData.get("kind"))) ? formData.get("kind") : "AUTRE") as "LOGO" | "TEXTE" | "PHOTO" | "AUTRE";
@@ -157,7 +159,8 @@ export async function syncReviewsAction(siteId: string) {
 }
 
 export async function checkSiteNow(siteId: string) {
-  await requireTeam();
+  const me = await requireTeam();
+  await requireSiteAcces(me, siteId);
   const site = await prisma.site.findUnique({ where: { id: siteId } });
   if (!site?.url) return;
   const { checkSite } = await import("@/lib/monitor");

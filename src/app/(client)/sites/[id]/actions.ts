@@ -44,6 +44,9 @@ export async function saveBriefSectionClient(siteId: string, key: string, formDa
   const { site, user } = await requireClientSite(siteId);
   const { BRIEF_SECTIONS, majSection } = await import("@/lib/brief");
   if (!BRIEF_SECTIONS.some((s) => s.key === key && s.client)) return;
+  const { chargerBrief, lireContenu, sectionDe } = await import("@/lib/brief");
+  const b = await chargerBrief(site.id);
+  if (b.etat === "VALIDE" || sectionDe(lireContenu(b.contenu), key).etat === "VALIDE") return;
   await majSection(site.id, key, { texte: String(formData.get("texte") ?? "").slice(0, 8000), etat: "RECU" }, `${user.firstName ?? user.email} (client)`);
   after(() => notifyAdmins({ pref: "documents", tag: `brief-${site.id}-${key}`, href: `/admin/sites/${site.id}/brief`, title: `Brief complété · ${site.name}`, body: key }));
   revalidatePath(`/sites/${site.id}/brief`);

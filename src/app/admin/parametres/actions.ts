@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireGestionnaire, requireTeam } from "@/lib/auth";
+import { isGestionnaire, requireGestionnaire, requireTeam } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { FONCTION_LABEL, type FonctionIA } from "@/lib/ia";
 import { disconnectGoogle, disconnectUserGoogle } from "@/lib/google-oauth";
@@ -24,8 +24,10 @@ export async function saveIaIntegrations(formData: FormData) {
   const set = (key: string, value: string) => prisma.setting.upsert({ where: { key }, create: { key, value }, update: { value } });
   await set("feature_ai", formData.get("feature_ai") === "on" ? "true" : "false");
   for (const f of Object.keys(FONCTION_LABEL) as FonctionIA[]) await set(`ia_${f}`, formData.get(`ia_${f}`) === "on" ? "true" : "false");
-  const plafond = Math.round(Number(String(formData.get("plafond_euros") ?? "20").replace(",", ".")) * 100);
-  await set("ia_plafond_cents", String(Number.isFinite(plafond) && plafond >= 0 ? plafond : 2000));
+  if (isGestionnaire(me) && formData.has("plafond_euros")) {
+    const plafond = Math.round(Number(String(formData.get("plafond_euros") ?? "20").replace(",", ".")) * 100);
+    await set("ia_plafond_cents", String(Number.isFinite(plafond) && plafond >= 0 ? plafond : 2000));
+  }
   for (const c of ["feature_gmail", "feature_calendar", "feature_aircall", "feature_search_console", "feature_business_api"]) await set(c, formData.get(c) === "on" ? "true" : "false");
   await set("feature_financier", "false"); // bientôt disponible : jamais activé en V1
   const { logActivite } = await import("@/lib/activite");

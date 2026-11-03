@@ -62,7 +62,7 @@ function wrap(font: PDFFont, text: string, size: number, width: number) {
   return out;
 }
 /** Caractères hors WinAnsi (emoji, guillemets rares) remplacés : pdf-lib n'embarque que les polices standard. */
-const ascii = (s: string) => s.replace(/[’‘]/g, "'").replace(/[“”«»]/g, '"').replace(/…/g, "...").replace(/[^\x00-\xFF]/g, "?");
+const ascii = (s: string) => s.replace(/[’‘]/g, "'").replace(/[“”«»]/g, '"').replace(/…/g, "...").replace(/€/g, "EUR").replace(/[\u202f\u00a0]/g, " ").replace(/[^\x00-\xFF]/g, "?");
 
 export function clausesParDefaut(c: Contrat) {
   return [
@@ -168,7 +168,13 @@ export async function accepterContrat(token: string, d: { nom: string; email: st
   if (!d.accepte) return { ok: false as const, error: "Cochez « J'ai lu et j'accepte »." };
   if (!d.nom.trim()) return { ok: false as const, error: "Indiquez votre nom." };
   if (!c.otpHash || !c.otpExpiresAt || c.otpExpiresAt < new Date()) return { ok: false as const, error: "Code expiré : demandez-en un nouveau." };
-  if (otpHash(d.code.trim(), token) !== c.otpHash) return { ok: false as const, error: "Code incorrect." };
+  if (c.signataireEmail && c.signataireEmail !== d.email.trim().toLowerCase()) return { ok: false as const, error: "L’adresse ne correspond pas à celle qui a reçu le code." };
+  if (otpHash(d.code.trim(), token) !== c.otpHash) {
+    // 5 essais au plus par code : au-delà, le code est invalidé (il faut en redemander un).
+    const essais = Number((c.contenu as { otpEssais?: number } | null)?.otpEssais ?? 0) + 1;
+    await prisma.contrat.update({ where: { id: c.id }, data: essais >= 5 ? { otpHash: null, otpExpiresAt: null, contenu: { ...((c.contenu as object) ?? {}), otpEssais: 0 } as Prisma.InputJsonValue } : { contenu: { ...((c.contenu as object) ?? {}), otpEssais: essais } as Prisma.InputJsonValue } });
+    return { ok: false as const, error: essais >= 5 ? "Trop d’essais : demandez un nouveau code." : "Code incorrect." };
+  }
   if (!c.pdfPath || !c.pdfSha256) return { ok: false as const, error: "PDF du contrat absent." };
   // Empreinte du PDF exact accepté : on relit le fichier déposé et on la recalcule.
   const { data } = await createSupabaseAdmin().storage.from("documents").download(c.pdfPath);
@@ -315,9 +321,9 @@ export async function demanderDerogationPaiement(contratId: string, userId: stri
 }
 /** La production peut-elle démarrer ? Premier paiement reçu, ou dérogation commerciale ET technique validées. */
 export async function productionAutorisee(contratId: string | null | undefined) {
-  if (!contratId) return { ok: true, raison: null as string | null };
+  if (!contratId) return { ok: false, raison: "Aucun contrat lié au site" as string | null };
   const c = await prisma.contrat.findUnique({ where: { id: contratId }, select: { premierPaiementAt: true, statut: true } });
-  if (!c) return { ok: true, raison: null };
+  if (!c) return { ok: false, raison: "Contrat introuvable" };
   if (c.statut !== "SIGNE") return { ok: false, raison: "Contrat non signé" };
   if (c.premierPaiementAt) return { ok: true, raison: null };
   const [com, tech] = await Promise.all([prisma.validation.findFirst({ where: { contratId, type: "DEROGATION_PAIEMENT_COMMERCIALE", statut: "VALIDEE" } }), prisma.validation.findFirst({ where: { contratId, type: "DEROGATION_PAIEMENT_TECHNIQUE", statut: "VALIDEE" } })]);

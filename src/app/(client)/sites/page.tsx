@@ -28,7 +28,7 @@ export default async function SitesPage() {
             <div className="p-4 flex items-center justify-between">
               <div>
                 <p className="font-semibold text-title">{s.name}</p>
-                <p className="text-sm text-text">{s.url ?? s.previewUrl ?? "En préparation"}</p>
+                <p className="text-sm text-text">{s.url ?? (s.maquetteEnvoyeeAt ? s.previewUrl : null) ?? "En préparation"}</p>
               </div>
               {s.status === "EN_LIGNE" ? <Badge tone="green">En ligne</Badge> : <Badge tone="yellow">En création</Badge>}
             </div>

@@ -25,8 +25,13 @@ const SECRET = () => process.env.CRON_SECRET ?? process.env.SUPABASE_SERVICE_ROL
 export const jetonDesinscription = (contactId: string) => createHash("sha256").update(`${contactId}:${SECRET()}`).digest("hex").slice(0, 24);
 export const lienDesinscription = (contactId: string) => appUrl(`/desinscription?c=${contactId}&t=${jetonDesinscription(contactId)}`);
 
-/** Variables d'un destinataire (contact + client + premier site + référent). */
+const echapper = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+/** Variables d'un destinataire (contact + client + premier site + référent), échappées pour le HTML. */
 async function variablesPour(clientId: string, contactId: string | null): Promise<Variables> {
+  const v = await variablesBrutes(clientId, contactId);
+  return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, echapper(String(x ?? ""))]));
+}
+async function variablesBrutes(clientId: string, contactId: string | null): Promise<Variables> {
   const [client, contact] = await Promise.all([
     prisma.client.findUnique({ where: { id: clientId }, select: { name: true, commercial: { select: { firstName: true, lastName: true, email: true } }, sites: { orderBy: { createdAt: "asc" }, take: 1, select: { name: true } }, subscriptions: { where: { status: "ACTIF" }, take: 1, select: { label: true } } } }),
     contactId ? prisma.prospectContact.findUnique({ where: { id: contactId }, select: { prenom: true, nom: true } }) : null,
@@ -57,7 +62,7 @@ export async function preparerDestinataires(campagneId: string, clientIds: strin
 
 function corpsFinal(c: { corpsHtml: string; commercial: boolean }, vars: Variables, contactId: string | null) {
   const html = remplacerVariables(c.corpsHtml, vars);
-  const pied = c.commercial && contactId ? `<p style="font-size:12px;color:#71717a;margin-top:24px">Vous ne souhaitez plus recevoir nos messages d’information ? <a href="${lienDesinscription(contactId)}">Se désinscrire</a> ou répondez « STOP ».</p>` : "";
+  const pied = c.commercial ? `<p style="font-size:12px;color:#71717a;margin-top:24px">Vous ne souhaitez plus recevoir nos messages d’information ? ${contactId ? `<a href="${lienDesinscription(contactId)}">Se désinscrire</a> ou ` : ""}répondez « STOP » à cet email.</p>` : "";
   return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#18181b;max-width:600px">${html}${pied}</div>`;
 }
 
@@ -96,6 +101,12 @@ export async function lancerCampagne(campagneId: string, userId: string) {
 
 /** Traite la file : au plus `lot` envois par passage, par la boîte de l'auteur ; chaque envoi devient un échange sur la fiche client. */
 export async function traiterCampagnes(lot = 5) {
+  const g = globalThis as { __campagnesBusy?: boolean };
+  if (g.__campagnesBusy) return { envoyes: 0, campagnes: 0 };
+  g.__campagnesBusy = true;
+  try { return await traiterCampagnesInterne(lot); } finally { g.__campagnesBusy = false; }
+}
+async function traiterCampagnesInterne(lot: number) {
   const enCours = await prisma.campagne.findMany({ where: { statut: "EN_COURS" }, include: { auteur: { select: { id: true, firstName: true, email: true } } } });
   let envoyes = 0;
   for (const c of enCours) {

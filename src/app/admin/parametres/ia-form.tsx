@@ -14,7 +14,7 @@ const euros = (c: number) => (c / 100).toLocaleString("fr-FR", { style: "currenc
  * Administration > IA et intégrations (00.6, 00.7) : tout ce qui consomme des crédits est désactivé par défaut et se
  * déclenche sur clic ; plafond mensuel ; compteur ; chaque connecteur avec son état, sa dernière synchro et ses erreurs.
  */
-export async function IaIntegrationsForm() {
+export async function IaIntegrationsForm({ gestionnaire = false }: { gestionnaire?: boolean }) {
   const [toggles, plafond, usage, connecteurs, flags] = await Promise.all([featureToggles(), plafondCents(), usageDuMois(), etatConnecteurs(), prisma.setting.findMany({ where: { key: { startsWith: "ia_" } } })]);
   const on = (f: FonctionIA) => flags.find((x) => x.key === `ia_${f}`)?.value === "true";
   const fonctions = Object.keys(FONCTION_LABEL) as FonctionIA[];
@@ -27,7 +27,7 @@ export async function IaIntegrationsForm() {
           {fonctions.map((f) => <Toggle key={f} name={`ia_${f}`} label={FONCTION_LABEL[f]} defaultChecked={on(f)} />)}
         </div>
         <div className="grid gap-3 border-t border-border p-4 sm:grid-cols-2">
-          <Field label="Plafond mensuel de dépense (€)" hint="0 = sans plafond"><Input name="plafond_euros" inputMode="decimal" defaultValue={(plafond / 100).toString()} /></Field>
+          {gestionnaire ? <Field label="Plafond mensuel de dépense (€)" hint="0 = sans plafond, réglé par Arsène"><Input name="plafond_euros" inputMode="decimal" defaultValue={(plafond / 100).toString()} /></Field> : <div className="rounded-card border border-border bg-surface-2 p-3 text-sm text-text">Plafond mensuel : <span className="font-semibold text-title">{plafond ? euros(plafond) : "sans plafond"}</span> (réglé par Arsène)</div>}
           <div className="rounded-card border border-border bg-surface-2 p-3 text-sm">
             <p className="font-semibold text-title">Ce mois-ci : {euros(usage.total)} · {usage.appels} appel{usage.appels > 1 ? "s" : ""}</p>
             {atteint && <p className="mt-1 text-xs text-pink">Plafond atteint : l’IA est coupée jusqu’au mois prochain, le reste de l’application fonctionne normalement.</p>}

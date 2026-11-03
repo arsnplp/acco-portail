@@ -138,6 +138,9 @@ export async function decideesRecentes(userId: string) {
 
 /** Toutes les validations d'un type sont-elles acquises pour cet objet ? (ex. maquette : Bilel ET Arsène). */
 export async function estValide(type: ValidationType, where: { siteId?: string; contratId?: string; objetId?: string }) {
-  const rows = await prisma.validation.findMany({ where: { type, ...where }, select: { statut: true } });
-  return rows.length > 0 && rows.every((r) => r.statut === "VALIDEE");
+  // Seule la dernière ligne de chaque validateur compte : une nouvelle demande efface un refus antérieur.
+  const rows = await prisma.validation.findMany({ where: { type, ...where }, orderBy: { createdAt: "desc" }, select: { assigneId: true, statut: true } });
+  const derniere = new Map<string, string>();
+  for (const r of rows) if (!derniere.has(r.assigneId)) derniere.set(r.assigneId, r.statut);
+  return derniere.size > 0 && [...derniere.values()].every((s) => s === "VALIDEE");
 }

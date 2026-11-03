@@ -182,9 +182,11 @@ export async function creerRdvClientAction(clientId: string, _prev: ActionState,
   if (Number.isNaN(debut.getTime())) return { error: "Date invalide." };
   const dureeMin = Math.max(15, parseInt(d.duree || "60", 10) || 60);
   const client = await prisma.client.findUnique({ where: { id: clientId }, select: { name: true } });
-  const rdv = await prisma.rendezVous.create({ data: { clientId, siteId: d.siteId || null, commercialId: d.commercialId || me.id, titre: d.titre?.trim() || null, debut, dureeMin, lieu: d.lieu?.trim() || null } });
+  const organisateur = d.commercialId && d.commercialId !== me.id && !can(me, "attribuer") ? me.id : d.commercialId || me.id;
+  const rdv = await prisma.rendezVous.create({ data: { clientId, siteId: d.siteId || null, commercialId: organisateur, titre: d.titre?.trim() || null, debut, dureeMin, lieu: d.lieu?.trim() || null } });
   // Dans l'agenda Google du membre si son compte est connecté (silencieux sinon) ; invités = contacts cochés ; Meet sur demande.
-  const invites = formData.getAll("invites").map(String).filter((e) => e.includes("@"));
+  const contactsClient = new Set((await prisma.prospectContact.findMany({ where: { OR: [{ clientId }, { prospect: { clientId } }], email: { not: null } }, select: { email: true } })).map((c) => c.email!.toLowerCase()));
+  const invites = formData.getAll("invites").map((e) => String(e).toLowerCase()).filter((e) => contactsClient.has(e));
   const { upsertAgendaEvent } = await import("@/lib/agenda");
   const g = await upsertAgendaEvent(rdv.commercialId!, `rdv-client:${rdv.id}`, { titre: `${d.titre?.trim() || "RDV"} · ${client?.name ?? "client"}`, debut, fin: new Date(debut.getTime() + dureeMin * 60_000), lieu: rdv.lieu, description: `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/admin/clients/${clientId}`, invites, meet: d.meet === "on" }).catch(() => ({ ok: false, meetUrl: null }));
   if (g.meetUrl) await prisma.rendezVous.update({ where: { id: rdv.id }, data: { meetUrl: g.meetUrl } });

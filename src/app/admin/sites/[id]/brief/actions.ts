@@ -6,7 +6,7 @@ import { requireTeam } from "@/lib/auth";
 import { requireSiteAcces } from "@/lib/perimetre";
 import { can, estExterne } from "@/lib/permissions";
 import { chargerBrief, completude, lireContenu, majSection, type EtatSection } from "@/lib/brief";
-import { demanderValidation } from "@/lib/validations";
+import { demanderValidation, peutDecider } from "@/lib/validations";
 import { logActivite } from "@/lib/activite";
 import { teamName } from "@/lib/crm";
 
@@ -31,9 +31,12 @@ export async function demanderValidationBrief(siteId: string): Promise<BriefStat
   const b = await chargerBrief(siteId);
   const c = completude(lireContenu(b.contenu), !!b.derogationAt);
   if (!c.complet) return { error: `Brief incomplet : ${c.manquantes.map((s) => s.label).slice(0, 3).join(", ")}${c.manquantes.length > 3 ? "…" : ""}. Les points non essentiels peuvent être levés par Arsène (carte blanche).` };
-  const site = await prisma.site.findUniqueOrThrow({ where: { id: siteId }, select: { name: true, clientId: true, client: { select: { commercialId: true } } } });
+  const site = await prisma.site.findUniqueOrThrow({ where: { id: siteId }, select: { name: true, clientId: true, client: { select: { commercial: { select: { id: true, role: true, email: true, droits: true } } } } } });
+  // Le référent ne reçoit la ligne que s'il peut la décider ; sinon les validateurs commerciaux par défaut (Bilel, Lucas).
+  const ref = site.client.commercial;
+  const assigneId = ref && peutDecider(ref, "BRIEF_COMMERCIAL") ? ref.id : undefined;
   if (b.validCommercialAt) return { ok: "Validation commerciale déjà acquise : accord technique d’Arsène en attente." };
-  const n = await demanderValidation({ type: "BRIEF_COMMERCIAL", siteId, clientId: site.clientId, demandeParId: me.id, commentaire: `${site.name} : brief complet`, href: `/admin/sites/${siteId}/brief`, ...(site.client.commercialId && { assigneId: site.client.commercialId }) });
+  const n = await demanderValidation({ type: "BRIEF_COMMERCIAL", siteId, clientId: site.clientId, demandeParId: me.id, commentaire: `${site.name} : brief complet`, href: `/admin/sites/${siteId}/brief`, ...(assigneId && { assigneId }) });
   await prisma.brief.update({ where: { siteId }, data: { etat: "COMPLET" } });
   await logActivite({ kind: "validation", texte: `${site.name} : brief complet, validation commerciale demandée`, href: `/admin/sites/${siteId}/brief`, userId: me.id, clientId: site.clientId, siteId });
   revalidatePath(`/admin/sites/${siteId}/brief`); revalidatePath("/admin");

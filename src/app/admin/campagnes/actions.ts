@@ -33,7 +33,7 @@ export async function creerCampagne(_prev: CampState, fd: FormData): Promise<Cam
   const titre = String(fd.get("titre") ?? "").trim(), objet = String(fd.get("objet") ?? "").trim(), corpsHtml = String(fd.get("corpsHtml") ?? "").trim();
   if (!titre || !objet || !corpsHtml) return { error: "Titre, objet et contenu sont requis." };
   const plafond = Math.min(200, Math.max(1, parseInt(String(fd.get("plafond") ?? "50"), 10) || 50));
-  const c = await prisma.campagne.create({ data: { titre, objet, corpsHtml, commercial: fd.get("commercial") !== "off", plafond, auteurId: me.id } });
+  const c = await prisma.campagne.create({ data: { titre, objet, corpsHtml, commercial: fd.get("commercial") === "on", plafond, auteurId: me.id } });
   const ids = await ciblerClients(fd);
   const r = await preparerDestinataires(c.id, ids);
   await logActivite({ kind: "campagne", texte: `Campagne « ${titre} » créée (${r.total} destinataires)`, href: `/admin/campagnes/${c.id}`, userId: me.id });
@@ -47,7 +47,7 @@ export async function modifierCampagne(id: string, _prev: CampState, fd: FormDat
   if (!c || c.statut !== "BROUILLON") return { error: "Seul un brouillon se modifie." };
   const titre = String(fd.get("titre") ?? "").trim(), objet = String(fd.get("objet") ?? "").trim(), corpsHtml = String(fd.get("corpsHtml") ?? "").trim();
   if (!titre || !objet || !corpsHtml) return { error: "Titre, objet et contenu sont requis." };
-  await prisma.campagne.update({ where: { id }, data: { titre, objet, corpsHtml, commercial: fd.get("commercial") !== "off", plafond: Math.min(200, Math.max(1, parseInt(String(fd.get("plafond") ?? "50"), 10) || 50)) } });
+  await prisma.campagne.update({ where: { id }, data: { titre, objet, corpsHtml, commercial: fd.get("commercial") === "on", plafond: Math.min(200, Math.max(1, parseInt(String(fd.get("plafond") ?? "50"), 10) || 50)) } });
   if (fd.get("recibler") === "on") await preparerDestinataires(id, await ciblerClients(fd));
   rafraichir(id);
   return { ok: "Enregistré." };

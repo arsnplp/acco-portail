@@ -78,10 +78,15 @@ export async function syncAgendaForUser(userId: string): Promise<{ ok: boolean; 
   }
   let rdv = 0, echeances = 0;
   try {
-    for (const [cle, ev] of voulus) { await upsertAgendaEvent(userId, cle, ev); if (cle.startsWith("rdv:")) rdv++; else echeances++; }
-    // Plus à venir (RDV annulé, passé, échéance retirée) : on retire de l'agenda.
     const connus = await prisma.agendaEvent.findMany({ where: { userId } });
-    for (const c of connus) if (!voulus.has(c.cle)) await deleteAgendaEvent(userId, c.cle);
+    for (const [cle, ev] of voulus) {
+      // Un RDV client déjà poussé garde son lien Meet et ses invités : on ne le réécrit pas ici (le pull Google → app le suit).
+      if (cle.startsWith("rdv-client:") && connus.some((c) => c.cle === cle)) { rdv++; continue; }
+      await upsertAgendaEvent(userId, cle, ev); if (cle.startsWith("rdv")) rdv++; else echeances++;
+    }
+    // Plus à venir (RDV annulé, échéance retirée) : on retire de l'agenda. Les RDV passés restent dans l'historique Google.
+    const passes = new Set((await prisma.rendezVous.findMany({ where: { commercialId: userId, debut: { lt: depuis }, resultat: { in: ["PREVU", "FAIT"] } }, select: { id: true, prospectId: true } })).map((r) => `${r.prospectId ? "rdv" : "rdv-client"}:${r.id}`));
+    for (const c of connus) if (!voulus.has(c.cle) && !passes.has(c.cle)) await deleteAgendaEvent(userId, c.cle);
     return { ok: true, rdv, echeances };
   } catch (err) {
     const e = err as { response?: { status?: number; data?: { error?: { message?: string } } }; message?: string };

@@ -24,7 +24,7 @@ export default async function ParametresPage({ searchParams }: { searchParams: P
   const admin = await requireTeam();
   const moi = <MesParametres user={admin} google={google} next="/admin/parametres" />;
   // IA et intégrations (00.6) : Bilel et Arsène (droit ia_admin). Clés API et Google de l'agence : gestionnaire seulement.
-  const ia = can(admin, "ia_admin") ? <><SectionTitle icon={BotIcon}>IA et intégrations</SectionTitle><IaIntegrationsForm /></> : null;
+  const ia = can(admin, "ia_admin") ? <><SectionTitle icon={BotIcon}>IA et intégrations</SectionTitle><IaIntegrationsForm gestionnaire={isGestionnaire(admin)} /></> : null;
   if (!isGestionnaire(admin)) return <AdminPage title="Paramètres">{ia}{moi}</AdminPage>;
 
   const [settings, email, secrets, toggles] = await Promise.all([prisma.setting.findMany(), connectedGoogleEmail(), secretsStatus(), featureToggles()]);
