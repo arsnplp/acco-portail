@@ -22,9 +22,14 @@ import { getSecret } from "@/lib/settings";
 import { monthLabel, moisDuRecap, prochainEnvoi } from "@/lib/recaps";
 import { ActivityIcon, ChartColumnIcon, ClockIcon, KeyRoundIcon, NewspaperIcon, PaperclipIcon, PuzzleIcon, StarIcon, WrenchIcon } from "lucide-react";
 import { ArticleForm, ArticleStatutSelect, DeleteArticleButton } from "@/app/admin/production/blogs";
+import { requireSiteAcces } from "@/lib/perimetre";
+import { can, estExterne } from "@/lib/permissions";
+import { ProductionBloc } from "./production";
 
 export default async function SiteAdminPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const me = await requireTeam();
+  await requireSiteAcces(me, id);
   const site = await prisma.site.findUnique({
     where: { id },
     include: {
@@ -40,7 +45,8 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
     },
   });
   if (!site) notFound();
-  const gestion = isGestionnaire(await requireTeam());
+  const gestion = isGestionnaire(me);
+  const externe = estExterne(me);
   const devs = await prisma.user.findMany({ where: { role: { in: ["ADMIN", "DEV", "EXPERT", "SPECIALISTE"] } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true } });
   const [googleOn, googleEmail, properties] = gestion && site.status === "EN_LIGNE" ? await Promise.all([searchConsoleConfigured(), connectedGoogleEmail(), listProperties()]) : [false, null, []];
   const avisActive = site.subscriptions.some((x) => x.module === "AVIS");
@@ -63,6 +69,8 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
 
   return (
     <AdminPage title={site.name} back={{ href: `/admin/clients/${site.clientId}`, label: site.client.name }} action={<Badge tone={SITE_STATUS[site.status].tone}>{SITE_STATUS[site.status].label}</Badge>}>
+      <ProductionBloc siteId={site.id} externe={externe} />
+
       {site.status === "EN_LIGNE" && site.url && (
         <>
           <SectionTitle icon={ActivityIcon}>État du site</SectionTitle>
@@ -164,7 +172,7 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
         </ul>
       )}
 
-      <SiteForms gestion={gestion} properties={properties} locations={locations} devs={devs.map((u) => ({ id: u.id, name: teamName(u) }))} site={{ id: site.id, name: site.name, url: site.url, previewUrl: site.previewUrl, screenshotUrl: site.screenshotUrl, status: site.status, projectStep: site.projectStep, searchConsoleProp: site.searchConsoleProp, googleLocationId: site.googleLocationId, repoUrl: site.repoUrl, repoBranch: site.repoBranch, repoRoot: site.repoRoot, developpeurId: site.developpeurId, deadlineV1: site.deadlineV1 ? parisDay(site.deadlineV1) : "", deadlineV2: site.deadlineV2 ? parisDay(site.deadlineV2) : "", deadlineLivraison: site.deadlineLivraison ? parisDay(site.deadlineLivraison) : "" }} />
+      <SiteForms gestion={gestion} datesOk={can(me, "dates_production")} properties={properties} locations={locations} devs={devs.map((u) => ({ id: u.id, name: teamName(u) }))} site={{ id: site.id, name: site.name, url: site.url, previewUrl: site.previewUrl, screenshotUrl: site.screenshotUrl, status: site.status, projectStep: site.projectStep, searchConsoleProp: site.searchConsoleProp, googleLocationId: site.googleLocationId, repoUrl: site.repoUrl, repoBranch: site.repoBranch, repoRoot: site.repoRoot, developpeurId: site.developpeurId, deadlineV1: site.deadlineV1 ? parisDay(site.deadlineV1) : "", deadlineV2: site.deadlineV2 ? parisDay(site.deadlineV2) : "", deadlineLivraison: site.deadlineLivraison ? parisDay(site.deadlineLivraison) : "" }} />
 
       {site.status === "EN_CREATION" && (
         <>
