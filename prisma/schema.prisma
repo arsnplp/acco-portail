@@ -637,6 +637,24 @@ model Charge {
   @@index([type, archivedAt])
 }
 
+/// Retours de création (phase maquette) : notés par l'équipe pendant les réunions avec le client, cochés par le développeur.
+/// Distincts des demandes de modification après livraison (ChangeRequest), que le client ne peut faire qu'une fois le site en ligne.
+model RetourCreation {
+  id        String    @id @default(cuid())
+  siteId    String
+  version   Int       @default(1) // version de maquette concernée (V1, V2…)
+  texte     String
+  page      String?
+  fait      Boolean   @default(false)
+  faitAt    DateTime?
+  auteurId  String?
+  createdAt DateTime  @default(now())
+
+  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([siteId, fait])
+}
+
 model UsageIA {
   id           String   @id @default(cuid())
   fonction     String // recap, conseils, enrichissement, leads, synthese_client, brouillon_email…
@@ -822,6 +840,7 @@ model Site {
   validations      Validation[]
   taches           TacheClient[]
   rendezVous       RendezVous[]
+  retours          RetourCreation[]
   assets           SiteAsset[]
   history          SiteHistoryEntry[]
   healthChecks     SiteHealthCheck[]

@@ -52,20 +52,6 @@ export async function saveBriefSectionClient(siteId: string, key: string, formDa
   revalidatePath(`/sites/${site.id}/brief`);
 }
 
-/** Retour sur la maquette (10.4, 14.3) : une demande de retouche, visible de l'équipe, seulement après « Envoyer maquette ». */
-export async function demanderRetouche(siteId: string, formData: FormData) {
-  const { site, user } = await requireClientSite(siteId);
-  if (!site.maquetteEnvoyeeAt || site.status !== "EN_CREATION") return;
-  const title = String(formData.get("title") ?? "").trim().slice(0, 140);
-  const description = String(formData.get("description") ?? "").trim().slice(0, 4000);
-  if (!title) return;
-  const cr = await prisma.changeRequest.create({ data: { siteId: site.id, title, description: description || title, page: String(formData.get("page") ?? "").trim() || null } });
-  const { logActivite } = await import("@/lib/activite");
-  await logActivite({ kind: "modification", texte: `${site.name} : retour du client sur la maquette V${site.version} (${title})`, href: `/admin/sites/${site.id}`, clientId: site.clientId, siteId: site.id });
-  after(() => notifyAdmins({ pref: "changes", tag: `retouche-${cr.id}`, href: `/admin/sites/${site.id}`, title: `Retour maquette · ${site.name}`, body: `${user.firstName ?? user.email} : ${excerpt(title)}` }));
-  revalidatePath(`/sites/${site.id}`);
-}
-
 /** Commande d'article de blog (14.4) : titre, consignes, option de relecture avant publication. Réservé aux offres de contenu. */
 export async function commanderArticle(siteId: string, formData: FormData) {
   const { site, user } = await requireClientSite(siteId);

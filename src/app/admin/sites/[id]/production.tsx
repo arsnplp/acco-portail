@@ -9,16 +9,19 @@ import { fmtDate } from "@/lib/format";
 import { fmtDayTime, teamName } from "@/lib/crm";
 import { VALIDATION_LABEL } from "@/lib/validations";
 import { lienPdf } from "@/lib/contrats";
-import { DemanderValidationMaquetteButton, EnvoyerMaquetteButton, GoLiveForm, ReceptionForm } from "./prod-forms";
+import { DemanderValidationMaquetteButton, EnvoyerMaquetteButton, GoLiveForm, ReceptionForm, RetoursCreation, VerifierButton } from "./prod-forms";
+import { dernierRapportQA } from "@/lib/qa";
 
 /** Bloc Production d'un site (10.3 à 10.7) : prérequis, validations, maquette, modifications par version, go-live, réception. */
 export async function ProductionBloc({ siteId, externe }: { siteId: string; externe: boolean }) {
   const e = await etatProduction(siteId);
   const s = e.site;
-  const [validations, modifs, receptionUrl] = await Promise.all([
+  const [validations, modifs, receptionUrl, retours, rapport] = await Promise.all([
     prisma.validation.findMany({ where: { siteId, type: { in: ["MAQUETTE", "GO_LIVE", "BRIEF_COMMERCIAL", "BRIEF_TECHNIQUE"] } }, orderBy: { createdAt: "desc" }, take: 12, include: { assigne: { select: { firstName: true, email: true } }, decidePar: { select: { firstName: true, email: true } } } }),
     prisma.changeRequest.findMany({ where: { siteId }, orderBy: { createdAt: "desc" }, take: 40, select: { id: true, title: true, status: true, createdAt: true, completedAt: true, confirmedAt: true, assignee: { select: { firstName: true, email: true } } } }),
     lienPdf(s.receptionPath),
+    prisma.retourCreation.findMany({ where: { siteId }, orderBy: [{ fait: "asc" }, { createdAt: "asc" }], select: { id: true, texte: true, page: true, fait: true, version: true } }),
+    dernierRapportQA(siteId),
   ]);
   const enCreation = s.status === "EN_CREATION";
   return (
@@ -41,7 +44,10 @@ export async function ProductionBloc({ siteId, externe }: { siteId: string; exte
           </div>
         )}
         {enCreation && s.projectStep === "A_LIVRER" && !s.goLiveAutoriseAt && !e.goLiveEnAttente && (
-          <div className="border-t border-border pt-3"><p className="mb-2 text-sm font-semibold text-title">Checklist avant mise en ligne</p><GoLiveForm siteId={siteId} checklist={CHECKLIST_GO_LIVE} /></div>
+          <div className="border-t border-border pt-3"><p className="mb-2 text-sm font-semibold text-title">Checklist avant mise en ligne</p><GoLiveForm siteId={siteId} checklist={CHECKLIST_GO_LIVE} rapport={rapport} /></div>
+        )}
+        {enCreation && s.projectStep !== "A_LIVRER" && (s.previewUrl || s.url) && (
+          <div className="border-t border-border pt-3"><p className="mb-2 text-sm font-semibold text-title">Vérification automatique du site</p><VerifierButton siteId={siteId} rapport={rapport} /></div>
         )}
         {validations.length > 0 && (
           <ul className="space-y-1 border-t border-border pt-3 text-xs text-text">
@@ -50,13 +56,20 @@ export async function ProductionBloc({ siteId, externe }: { siteId: string; exte
         )}
       </Card>
 
-      {modifs.length > 0 && (
+      {enCreation && (
         <>
-          <SectionTitle>Modifications {enCreation ? "avant livraison" : "après livraison"} ({modifs.length})</SectionTitle>
+          <SectionTitle>Retours de création · V{s.version} <span className="text-sm font-normal text-text">{retours.filter((r) => !r.fait).length} à faire</span></SectionTitle>
+          <RetoursCreation siteId={siteId} retours={retours} version={s.version} etapeModifier={s.projectStep === "MODIFIER"} externe={externe} />
+          <p className="mt-1 text-xs text-muted">Le client ne demande pas de modification depuis son portail tant que le site n’est pas en ligne : ses retours se notent ici, pendant les réunions.</p>
+        </>
+      )}
+      {!enCreation && modifs.length > 0 && (
+        <>
+          <SectionTitle>Modifications après livraison ({modifs.length})</SectionTitle>
           <ul className="divide-y divide-border rounded-card border border-border bg-surface text-sm">
             {modifs.map((m) => <li key={m.id} className="flex items-center gap-2 px-4 py-2"><span className="min-w-0 flex-1 truncate text-title">{m.title}</span><span className="text-xs text-text">{fmtDate(m.createdAt)}{m.assignee ? ` · ${teamName(m.assignee)}` : ""}{m.completedAt ? ` · faite le ${fmtDate(m.completedAt)}` : ""}{m.confirmedAt ? " · confirmée par le client" : ""}</span><Badge tone={CHANGE_STATUS[m.status].tone}>{CHANGE_STATUS[m.status].label}</Badge></li>)}
           </ul>
-          <p className="mt-1 text-xs text-muted">{enCreation ? "Retouches de maquette (V1 → V2 → V3) : la liste terminée fait avancer l’étape et crée l’action commerciale." : "Crédit de modifications contractuel après livraison : traité selon l’offre (Essentiel : 2 allers-retours ; autres : 5 sur 24 mois, règles à confirmer)."}</p>
+          <p className="mt-1 text-xs text-muted">Crédit de modifications contractuel après livraison : traité selon l’offre (Essentiel : 2 allers-retours ; autres : 5 sur 24 mois, règles à confirmer).</p>
         </>
       )}
 

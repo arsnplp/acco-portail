@@ -281,3 +281,40 @@ export async function livrerSite(siteId: string): Promise<{ error?: string }> {
   revalidatePath(`/sites/${siteId}`, "layout");
   return {};
 }
+
+// ─── Retours de création (phase maquette) : notés pendant les réunions, cochés par le développeur ───
+export async function ajouterRetour(siteId: string, _prev: ActionState, fd: FormData): Promise<ActionState> {
+  const me = await requireTeam(); await requireSiteAcces(me, siteId);
+  const texte = String(fd.get("texte") ?? "").trim().slice(0, 500);
+  if (!texte) return { error: "Écrivez le retour." };
+  const site = await prisma.site.findUniqueOrThrow({ where: { id: siteId }, select: { version: true, name: true, clientId: true } });
+  await prisma.retourCreation.create({ data: { siteId, version: site.version, texte, page: String(fd.get("page") ?? "").trim() || null, auteurId: me.id } });
+  revalidatePath(`/admin/sites/${siteId}`); revalidatePath(`/sites/${siteId}`); revalidatePath("/admin/production");
+  return { ok: true };
+}
+export async function cocherRetour(siteId: string, id: string, fait: boolean) {
+  const me = await requireTeam(); await requireSiteAcces(me, siteId);
+  await prisma.retourCreation.updateMany({ where: { id, siteId }, data: { fait, faitAt: fait ? new Date() : null } });
+  revalidatePath(`/admin/sites/${siteId}`); revalidatePath(`/sites/${siteId}`); revalidatePath("/admin/production");
+}
+export async function supprimerRetour(siteId: string, id: string) {
+  const me = await requireTeam(); await requireSiteAcces(me, siteId);
+  await prisma.retourCreation.deleteMany({ where: { id, siteId } });
+  revalidatePath(`/admin/sites/${siteId}`); revalidatePath(`/sites/${siteId}`);
+}
+/** « Tout est fait » : la liste de retours terminée fait avancer la carte (nouvelle version à présenter, RDV à planifier). */
+export async function retoursTerminesAction(siteId: string): Promise<ActionState> {
+  const me = await requireTeam(); await requireSiteAcces(me, siteId);
+  const { modificationsTerminees } = await import("@/lib/production");
+  const ok = await modificationsTerminees(siteId, me.id);
+  revalidatePath(`/admin/sites/${siteId}`); revalidatePath(`/sites/${siteId}`, "layout"); revalidatePath("/admin/production");
+  return ok ? { ok: true } : { error: "Il reste des retours non cochés, ou le site n’est pas à l’étape « Modifier »." };
+}
+/** Vérification automatique avant mise en ligne (liens, SEO, mentions légales, backlink Acco, formulaire, mobile, performance). */
+export async function verifierSiteAction(siteId: string): Promise<ActionState> {
+  const me = await requireTeam(); await requireSiteAcces(me, siteId);
+  const { verifierSite } = await import("@/lib/qa");
+  const r = await verifierSite(siteId);
+  revalidatePath(`/admin/sites/${siteId}`);
+  return r.ok ? { ok: true } : { error: `${r.verifs.filter((v) => v.ok === false).length} point(s) à corriger.` };
+}
