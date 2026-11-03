@@ -240,14 +240,14 @@ export async function addArticle(_prev: ActionState, formData: FormData): Promis
   const siteId = String(formData.get("siteId") ?? "");
   const titre = String(formData.get("titre") ?? "").trim();
   if (!siteId || !titre) return { error: "Choisissez un site et donnez un titre." };
-  const statut = (["A_REDIGER", "A_PUBLIER", "PUBLIE"].includes(String(formData.get("statut"))) ? String(formData.get("statut")) : "A_REDIGER") as "A_REDIGER" | "A_PUBLIER" | "PUBLIE";
+  const statut = (["A_REDIGER", "REDIGE", "A_PUBLIER", "PUBLIE"].includes(String(formData.get("statut"))) ? String(formData.get("statut")) : "A_REDIGER") as "A_REDIGER" | "REDIGE" | "A_PUBLIER" | "PUBLIE";
   const url = String(formData.get("url") ?? "").trim() || null;
   await prisma.article.create({ data: { siteId, titre, url, statut, auteurId: me.id, publieAt: statut === "PUBLIE" ? new Date() : null } });
   revalidatePath(`/admin/sites/${siteId}`);
   return { ok: true };
 }
 
-export async function setArticleStatut(id: string, statut: "A_REDIGER" | "A_PUBLIER" | "PUBLIE") {
+export async function setArticleStatut(id: string, statut: "A_REDIGER" | "REDIGE" | "A_PUBLIER" | "PUBLIE") {
   const me = await requireTeam();
   const a = await prisma.article.update({ where: { id }, data: { statut, publieAt: statut === "PUBLIE" ? new Date() : null }, include: { site: { select: { name: true, clientId: true } } } });
   if (statut === "PUBLIE") await logActivite({ kind: "article", texte: `Article publié sur ${a.site.name} : ${a.titre}`, href: `/admin/sites/${a.siteId}`, userId: me.id, clientId: a.site.clientId, siteId: a.siteId });

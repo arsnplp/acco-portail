@@ -21,7 +21,8 @@ import { aiConfigured } from "@/lib/ai";
 import { getSecret } from "@/lib/settings";
 import { monthLabel, moisDuRecap, prochainEnvoi } from "@/lib/recaps";
 import { ActivityIcon, ChartColumnIcon, ClockIcon, KeyRoundIcon, NewspaperIcon, PaperclipIcon, PuzzleIcon, StarIcon, WrenchIcon } from "lucide-react";
-import { ArticleForm, ArticleStatutSelect, DeleteArticleButton } from "@/app/admin/production/blogs";
+import Link from "next/link";
+import { etatBlog, fmtLundi, sitesAvecBlog } from "@/lib/blog";
 import { requireSiteAcces } from "@/lib/perimetre";
 import { can, estExterne } from "@/lib/permissions";
 import { ProductionBloc } from "./production";
@@ -66,6 +67,7 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
   const envois = envoisRaw.map((r) => ({ mois: monthLabel(r.year, r.month), sentAt: r.sentAt ? fmtParis(r.sentAt) : null, clicks: r.clicks }));
   const prochainTxt = !prochain ? "" : prochain.enRetard ? "dans l’heure (envoi du mois en cours)" : fmtParis(prochain.date, true);
   const reviewCount = avisActive ? await prisma.review.count({ where: { siteId: site.id } }) : 0;
+  const blog = (await sitesAvecBlog()).some((s) => s.id === site.id) ? await etatBlog(site.id) : null;
 
   return (
     <AdminPage title={site.name} back={{ href: `/admin/clients/${site.clientId}`, label: site.client.name }} action={<Badge tone={SITE_STATUS[site.status].tone}>{SITE_STATUS[site.status].label}</Badge>}>
@@ -155,21 +157,16 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
         </>
       )}
 
-      <SectionTitle icon={NewspaperIcon}>Blog <span className="text-sm font-normal text-text">{site.articles.filter((a) => a.statut === "PUBLIE").length} publié{site.articles.filter((a) => a.statut === "PUBLIE").length > 1 ? "s" : ""} · {site.articles.filter((a) => a.statut !== "PUBLIE").length} à faire</span></SectionTitle>
-      <ArticleForm siteId={site.id} />
-      {site.articles.length > 0 && (
-        <ul className="mt-3 divide-y divide-border rounded-card border border-border bg-surface">
-          {site.articles.map((a) => (
-            <li key={a.id} className="flex items-center gap-3 px-3 py-2.5 text-sm">
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium text-title">{a.url ? <a href={a.url} target="_blank" rel="noreferrer" className="hover:underline">{a.titre}</a> : a.titre}</p>
-                <p className="truncate text-xs text-text">{a.publieAt ? `publié le ${fmtDateShort(a.publieAt)}` : `ajouté le ${fmtDateShort(a.createdAt)}`}</p>
-              </div>
-              <ArticleStatutSelect id={a.id} statut={a.statut} />
-              <DeleteArticleButton id={a.id} />
-            </li>
-          ))}
-        </ul>
+      {blog && (
+        <>
+          <SectionTitle icon={NewspaperIcon} action={<Link href={`/admin/blog/${site.id}`} className="text-sm text-text hover:text-title">Gérer les blogs</Link>}>Blog <span className="text-sm font-normal text-text">{blog.derniersPublies.length} publié{blog.derniersPublies.length > 1 ? "s" : ""}</span></SectionTitle>
+          <div className={`rounded-card border px-4 py-3 text-sm ${blog.enRetard ? "border-pink/60 bg-pink/10 text-pink" : "border-border bg-surface text-green"}`}>{blog.enRetard ? `Aucun article publié le ${fmtLundi(blog.dernierLundi)} : à rattraper.` : `Dernier lundi (${fmtLundi(blog.dernierLundi)}) : article publié.`}{blog.prochain ? <span className="block text-xs text-text">Prochain lundi : {blog.prochain.titre}</span> : <span className="block text-xs text-yellow">Prochain lundi : rien de prévu.</span>}</div>
+          {blog.derniersPublies.length > 0 && (
+            <ul className="mt-3 divide-y divide-border rounded-card border border-border bg-surface">
+              {blog.derniersPublies.map((a) => <li key={a.id} className="px-3 py-2.5 text-sm"><p className="truncate font-medium text-title">{a.url ? <a href={a.url} target="_blank" rel="noreferrer" className="hover:underline">{a.titre}</a> : a.titre}</p><p className="text-xs text-text">publié le {a.publieAt ? fmtDateShort(a.publieAt) : "—"}</p></li>)}
+            </ul>
+          )}
+        </>
       )}
 
       <SiteForms gestion={gestion} datesOk={can(me, "dates_production")} properties={properties} locations={locations} devs={devs.map((u) => ({ id: u.id, name: teamName(u) }))} site={{ id: site.id, name: site.name, url: site.url, previewUrl: site.previewUrl, screenshotUrl: site.screenshotUrl, status: site.status, projectStep: site.projectStep, searchConsoleProp: site.searchConsoleProp, googleLocationId: site.googleLocationId, repoUrl: site.repoUrl, repoBranch: site.repoBranch, repoRoot: site.repoRoot, developpeurId: site.developpeurId, deadlineV1: site.deadlineV1 ? parisDay(site.deadlineV1) : "", deadlineV2: site.deadlineV2 ? parisDay(site.deadlineV2) : "", deadlineLivraison: site.deadlineLivraison ? parisDay(site.deadlineLivraison) : "" }} />

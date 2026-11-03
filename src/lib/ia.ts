@@ -5,10 +5,10 @@
 import { prisma } from "@/lib/prisma";
 import { featureEnabled, getSecret } from "@/lib/settings";
 
-export type FonctionIA = "recap" | "avis_reponse" | "conseils" | "enrichissement" | "leads" | "synthese_client" | "brouillon_email" | "resume_cr";
+export type FonctionIA = "recap" | "avis_reponse" | "conseils" | "enrichissement" | "leads" | "synthese_client" | "brouillon_email" | "resume_cr" | "blog";
 export const FONCTION_LABEL: Record<FonctionIA, string> = {
   recap: "Récap mensuel rédigé", avis_reponse: "Réponse proposée aux avis", conseils: "Conseils business du portail", enrichissement: "Générer les infos (recherche web)",
-  leads: "Coffre à leads (recherche web)", synthese_client: "Synthèse de fiche client", brouillon_email: "Brouillons d’emails", resume_cr: "Résumé de compte rendu",
+  leads: "Coffre à leads (recherche web)", synthese_client: "Synthèse de fiche client", brouillon_email: "Brouillons d’emails", resume_cr: "Résumé de compte rendu", blog: "Articles de blog (rédaction SEO, sujets proposés)",
 };
 /** Modèle par défaut : le moins coûteux suffisant pour des textes courts ; les leads gardent LEADS_MODEL. */
 export const MODELE_LEGER = process.env.IA_MODELE_LEGER ?? "claude-haiku-5-5";

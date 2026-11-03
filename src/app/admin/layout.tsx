@@ -6,7 +6,7 @@ import { Header } from "@/components/nav/header";
 import { AdminNav } from "./admin-nav";
 
 /** Pages ouvertes aux prestataires et spécialistes (section 13) : leurs projets, la production, les validations qu'on leur confie, leurs paramètres. */
-const EXTERNE_OK = ["/admin/suivi", "/admin/clients", "/admin/sites", "/admin/production", "/admin/modifications", "/admin/messages", "/admin/validations", "/admin/parametres", "/admin/taches"];
+const EXTERNE_OK = ["/admin/suivi", "/admin/clients", "/admin/sites", "/admin/production", "/admin/modifications", "/admin/messages", "/admin/validations", "/admin/parametres", "/admin/taches", "/admin/blog"];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await requireTeam();

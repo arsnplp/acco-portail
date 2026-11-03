@@ -10,7 +10,7 @@ import { cn } from "@/lib/cn";
 import { addArticle, deleteArticle, setArticleStatut, type ActionState } from "../sites/actions";
 
 const STATUTS = Object.keys(ARTICLE_STATUT) as ArticleStatut[];
-const CLS: Record<ArticleStatut, string> = { A_REDIGER: "text-text", A_PUBLIER: "text-yellow", PUBLIE: "text-green" };
+const CLS: Record<ArticleStatut, string> = { A_REDIGER: "text-text", REDIGE: "text-blue", A_PUBLIER: "text-yellow", PUBLIE: "text-green" };
 
 export function ArticleForm({ sites, siteId }: { sites?: { id: string; name: string }[]; siteId?: string }) {
   const [open, setOpen] = useState(false);

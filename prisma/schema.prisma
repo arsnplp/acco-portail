@@ -145,8 +145,9 @@ enum ProjectStep {
 }
 
 enum ArticleStatut {
-  A_REDIGER
-  A_PUBLIER
+  A_REDIGER // demandé (file d'attente « blogs demandés »)
+  REDIGE // rédigé, à prévoir pour un lundi
+  A_PUBLIER // prévu pour un lundi précis
   PUBLIE
 }
 
@@ -687,6 +688,10 @@ model Article {
   demandeClient     Boolean       @default(false) // commandé par le client depuis son portail
   consignes         String?
   approbationClient Boolean       @default(false) // le client veut relire le texte avant publication
+  prevuPour         DateTime? // lundi de publication prévu (un seul article par lundi et par site)
+  contenu           String? // texte rédigé (markdown)
+  motsCles          String?
+  genereParIA       Boolean       @default(false)
   auteurId          String?
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
@@ -695,6 +700,7 @@ model Article {
   auteur User? @relation(fields: [auteurId], references: [id], onDelete: SetNull)
 
   @@index([siteId, statut])
+  @@unique([siteId, prevuPour])
 }
 
 /// Flux d'activité de l'agence : tâches terminées, étapes franchies, notes, statuts… (Production et Pilotage).
@@ -794,6 +800,7 @@ model Site {
   siteKey              String      @unique @default(cuid()) // clé des formulaires
   searchConsoleProp    String? // ex. sc-domain:example.fr
   recapAuto            Boolean     @default(false) // récap mensuel envoyé tout seul le 4 (activé par une synchro réussie)
+  blogAuto             Boolean     @default(false) // blogs automatiques : rédaction des demandes (ou d'un sujet proposé) et mise en attente pour le lundi suivant
   googleLocationId     String? // fiche Google Business Profile
   reviewsSyncedAt      DateTime?
   reviewAverage        Float?

@@ -18,9 +18,10 @@ export const PROJECT_STEPS: Array<{ key: ProjectStep; label: string; court: stri
 ];
 export const stepLabel = (s: ProjectStep) => PROJECT_STEPS.find((p) => p.key === s)?.label ?? s;
 
-export const ARTICLE_STATUT: Record<"A_REDIGER" | "A_PUBLIER" | "PUBLIE", { label: string; tone: Tone }> = {
-  A_REDIGER: { label: "À rédiger", tone: "neutral" },
-  A_PUBLIER: { label: "À publier", tone: "yellow" },
+export const ARTICLE_STATUT: Record<"A_REDIGER" | "REDIGE" | "A_PUBLIER" | "PUBLIE", { label: string; tone: Tone }> = {
+  A_REDIGER: { label: "Demandé", tone: "neutral" },
+  REDIGE: { label: "Rédigé, à prévoir", tone: "blue" },
+  A_PUBLIER: { label: "Prévu", tone: "yellow" },
   PUBLIE: { label: "Publié", tone: "green" },
 };
 
