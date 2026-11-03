@@ -16,6 +16,7 @@ const ITEMS: Array<[string, string, "suivi" | "prospection"]> = [
   ["/admin/production", "Production", "suivi"],
   ["/admin/modifications", "Modifications", "suivi"],
   ["/admin/validations", "Validations", "suivi"],
+  ["/admin/taches", "Tâches", "suivi"],
   ["/admin/contrats", "Contrats", "prospection"],
   ["/admin/campagnes", "Campagnes", "prospection"],
   ["/admin/offres", "Offres", "prospection"],

@@ -611,6 +611,31 @@ model SavedView {
 }
 
 /// Consommation IA : un enregistrement par appel (compteur et plafond mensuel dans Administration > IA et intégrations).
+enum ChargeType {
+  MENSUELLE
+  PONCTUELLE
+}
+
+/// Charges de l'entreprise saisies à la main (00.10 §4) : récurrentes, fixes principales, ponctuelles. Historique conservé (archivage).
+model Charge {
+  id           String     @id @default(cuid())
+  nom          String
+  categorie    String // logiciels, salaires, local, sous_traitance, marketing, autre
+  type         ChargeType @default(MENSUELLE)
+  montantCents Int
+  principale   Boolean    @default(false)
+  debut        DateTime // charge mensuelle : premier mois ; ponctuelle : date de la dépense
+  fin          DateTime?
+  commentaire  String?
+  clientId     String? // coût rattaché à un client / projet (prestataire…) : remonte dans la rentabilité
+  archivedAt   DateTime?
+  createdById  String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([type, archivedAt])
+}
+
 model UsageIA {
   id           String   @id @default(cuid())
   fonction     String // recap, conseils, enrichissement, leads, synthese_client, brouillon_email…

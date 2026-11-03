@@ -426,3 +426,76 @@ export async function logClientEchange(clientId: string, _prev: ActionState, for
   if (client.crmProspect) revalidatePath(`/crm/prospects/${client.crmProspect.id}`);
   return {};
 }
+
+// ─── Tableau clients : vues enregistrées et actions groupées (3.2) ─────────────────
+export async function sauverVue(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const me = await requireTeam();
+  const nom = String(formData.get("nom") ?? "").trim().slice(0, 60);
+  const params = String(formData.get("params") ?? "{}");
+  if (!nom) return { error: "Nom de la vue requis." };
+  let parsed: Record<string, string> = {};
+  try { parsed = JSON.parse(params); } catch { return { error: "Filtres invalides." }; }
+  await prisma.savedView.create({ data: { userId: me.id, espace: "clients", nom, params: parsed } });
+  revalidatePath("/admin/clients");
+  return {};
+}
+export async function supprimerVue(id: string) {
+  const me = await requireTeam();
+  await prisma.savedView.deleteMany({ where: { id, userId: me.id } });
+  revalidatePath("/admin/clients");
+}
+/**
+ * Actions groupées (3.2) : chaque action reste reliée à l'historique de chaque client ; aucune communication sortante
+ * sans validation humaine (les emails passent par une campagne à valider).
+ */
+export async function actionGroupee(_prev: ActionState & { ok?: string }, formData: FormData): Promise<ActionState & { ok?: string }> {
+  const me = await requireTeam();
+  if (estExterne(me)) return { error: "Réservé à l’équipe interne." };
+  const ids = String(formData.get("ids") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  const action = String(formData.get("action") ?? "");
+  if (ids.length === 0) return { error: "Aucun client sélectionné." };
+  const clients = await prisma.client.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, commercialId: true } });
+  if (action === "email") redirect(`/admin/campagnes/nouvelle?clients=${ids.join(",")}`);
+  if (action === "appels") {
+    // Campagne d'appels : une tâche individuelle par client, réassignable, pas un appel collectif.
+    const { creerTache } = await import("@/lib/taches-client");
+    const titre = String(formData.get("titre") ?? "").trim() || "Appeler le client (campagne d’appels)";
+    const responsableId = String(formData.get("responsableId") ?? "") || null;
+    for (const c of clients) await creerTache({ clientId: c.id, type: "APPEL", titre, echeance: formData.get("echeance") ? new Date(`${formData.get("echeance")}T09:00:00`) : null, responsableId: responsableId ?? c.commercialId ?? me.id, source: "campagne", createdById: me.id, notifier: false });
+    await logActivite({ kind: "campagne", texte: `Campagne d’appels : ${clients.length} tâche${clients.length > 1 ? "s" : ""} créée${clients.length > 1 ? "s" : ""} (${titre})`, href: "/admin/taches", userId: me.id });
+    revalidatePath("/admin/taches");
+    return { ok: `${clients.length} tâche${clients.length > 1 ? "s" : ""} d’appel créée${clients.length > 1 ? "s" : ""}.` };
+  }
+  if (action === "rdv") {
+    const { creerTache } = await import("@/lib/taches-client");
+    for (const c of clients) await creerTache({ clientId: c.id, type: "RDV_A_PLANIFIER", titre: "Proposer un rendez-vous", responsableId: c.commercialId ?? me.id, source: "campagne", createdById: me.id, notifier: false });
+    revalidatePath("/admin/taches");
+    return { ok: `${clients.length} demande${clients.length > 1 ? "s" : ""} de rendez-vous à planifier.` };
+  }
+  if (action === "reattribuer") {
+    if (!can(me, "attribuer")) return { error: "Réservé au droit attribuer." };
+    const nouveauId = String(formData.get("commercialId") ?? "") || null;
+    const nouveau = nouveauId ? await prisma.user.findUnique({ where: { id: nouveauId }, select: { firstName: true, email: true } }) : null;
+    for (const c of clients) {
+      await prisma.client.update({ where: { id: c.id }, data: { commercialId: nouveauId } });
+      await prisma.tacheClient.updateMany({ where: { clientId: c.id, statut: "A_FAIRE", responsableId: c.commercialId }, data: { responsableId: nouveauId } });
+      await logActivite({ kind: "reattribution", texte: `Référent → ${nouveau ? teamName(nouveau) : "personne"} (action groupée)`, href: `/admin/clients/${c.id}`, userId: me.id, clientId: c.id });
+    }
+    revalidatePath("/admin/clients");
+    return { ok: `${clients.length} client${clients.length > 1 ? "s" : ""} réattribué${clients.length > 1 ? "s" : ""}.` };
+  }
+  if (action === "archiver") {
+    if (!can(me, "archiver")) return { error: "Réservé au droit archiver." };
+    for (const c of clients) { await prisma.client.update({ where: { id: c.id }, data: { statut: "ARCHIVE", archivedAt: new Date() } }); await logActivite({ kind: "archivage", texte: "Client archivé (action groupée)", href: `/admin/clients/${c.id}`, userId: me.id, clientId: c.id }); }
+    revalidatePath("/admin/clients");
+    return { ok: `${clients.length} client${clients.length > 1 ? "s" : ""} archivé${clients.length > 1 ? "s" : ""}.` };
+  }
+  if (action === "etiquette") {
+    const secteur = String(formData.get("secteur") ?? "").trim();
+    if (!secteur) return { error: "Indiquez l’étiquette (secteur)." };
+    await prisma.client.updateMany({ where: { id: { in: ids } }, data: { secteur } });
+    revalidatePath("/admin/clients");
+    return { ok: `Secteur « ${secteur} » appliqué à ${clients.length} client${clients.length > 1 ? "s" : ""}.` };
+  }
+  return { error: "Action inconnue." };
+}

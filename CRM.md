@@ -1,18 +1,21 @@
 # Modules et rôles
 
 Quatre modules, chacun ouvert à des rôles précis (vérifié côté serveur à l'entrée de chaque page et action) :
-- **Pilotage** (`/admin/pilotage`) : Direction (`ADMIN`) seulement. MRR, abonnements, clients, équipe ; projection et activité par collaborateur à venir.
+- **Pilotage** (`/admin/pilotage`) : Direction = droit `pilotage` (admins, et Lucas sans administration). Onglets Vue d'ensemble, Finance, Commercial, Production, Clients et rentabilité, Charges.
 - **Prospection** (`/crm`) : Direction et Commerciaux (`COMMERCIAL`). Tout le CRM ci-dessous.
 - **Suivi** (`/admin/...`) : toute l'équipe (Direction, Commerciaux, Développeurs `DEV`, Experts `EXPERT`, Spécialistes `SPECIALISTE`),
   jamais les clients. Offres, commandes et recommandations restent réservées à la Direction et aux commerciaux.
 - **Espace client** (`/`) : clients seulement, hermétique.
 
-Rôles et comptes : Prospection → Plus → Équipe (Direction). Chaque membre a ses paramètres personnels (compte Google, notifications)
-depuis son avatar ; les clés API et le Google de l'agence restent au gestionnaire. Accueil selon le rôle : Direction `/admin`,
-commercial `/crm`, autres `/admin/suivi`.
+Rôles et comptes : Prospection → Plus → Équipe (droit `equipe`) : rôle, mode de démarrage (Commercial, Direction, Production, Admin),
+droits unitaires (`src/lib/permissions.ts`), réglages par défaut Bilel / Lucas / Arsène, délégations datées, journal des accès.
+Chaque membre a ses paramètres personnels (compte Google, notifications) depuis son avatar ; les clés API et le Google de l'agence
+restent au gestionnaire ; « IA et intégrations » (droit `ia_admin`) porte les interrupteurs IA (par fonction, désactivés par défaut,
+plafond mensuel) et les connecteurs. Prestataires et spécialistes (`EXPERT`, `SPECIALISTE`) ne voient que les clients et sites qui
+leur sont attribués (`src/lib/perimetre.ts`). Accueil selon le mode de démarrage, sinon le rôle.
 
 ## Production (Suivi → Production)
-Kanban « Sites en cours » : Maquette → Attente de validation → Modification → Attente de validation et finition → À livrer
+Kanban « Sites en cours » : Créer maquette → Valider maquette → Modifier → Valider modification → Finir → À livrer (libellés de la section 10.2)
 (sites « en création » ; glisser une carte change l'étape ; le client qui valide la maquette ou la version finale depuis son
 espace fait aussi avancer la carte). « Livré » est une zone en bas pendant le glisser, comme Gagné / Perdu : le site passe en
 ligne (historique, notification au client, demande d'avis) et sort du tableau. Sur chaque carte : échéance de l'étape en cours (deadline V1, V2 ou livraison, réglées sur la fiche du site),
@@ -149,3 +152,35 @@ utilisent la plage 06 39 98 réservée à la fiction (ARCEP) et les emails @exam
 ## À venir
 Mode Production (projets, modèles, to-do, récurrence, brief), calendrier, passage client depuis
 « Gagné », contrat Google Docs.
+
+
+# V1 « prompt maître » (branche v1-prompt-maitre, novembre 2026)
+
+Migration `prisma/migrations/20261101120000_v1_contrats_droits_production` **à appliquer après accord d'Arsène** (`npx prisma migrate deploy`).
+
+- **Garde-fous** (00.6, 00.7, 00.8) : aucun appel IA au chargement ni en tâche de fond ; chaque fonction IA a son interrupteur
+  (`ia_<fonction>`, défaut off) et le plafond mensuel coupe l'IA sans toucher au reste ; connecteurs (Gmail, Agenda, Aircall,
+  Search Console, Fiche Google, financier « bientôt disponible ») désactivables, journalisés (`src/lib/connecteurs.ts`), jamais
+  bloquants ; synchronisations planifiées par tickers (`src/instrumentation.ts`) et crons de secours `/api/cron/*` (secret obligatoire).
+  Aircall = métadonnées seulement ; plus aucune donnée fictive (avis, Search Console, récaps).
+- **Validations à deux niveaux** (`/admin/validations`, bloc « En attente de ma validation » sur l'accueil) : brief commercial puis
+  technique, maquette Bilel ET Arsène, dérogation de paiement commerciale puis technique, go-live Arsène, exception tarifaire,
+  campagne. Une décision ne peut être prise que par la personne à qui la ligne est confiée (ou son délégataire).
+- **Fiche client** (`/admin/clients/<id>`) : page principale + onglets (Sites avec options par site et « À proposer » par site,
+  Contrats et abonnements, Contacts, Activité filtrable, Emails, Appels, Tâches & RDV, Demandes, Documents, Intelligence si IA,
+  Satisfaction et parrainage). Logo déposé (initiales par défaut), En bref calculé, synthèse IA sur clic, réattribution
+  journalisée, archivage, finance V1 (premier paiement, impayé) selon le droit `finance`.
+- **Contrats** (`/admin/contrats`) : générateur commun depuis un prospect ou un client, PDF, envoi et relance humaine par Gmail,
+  acceptation en ligne (`/contrat/<token>`, code email, empreinte SHA-256, certificat), scan signé, avenants, dérogation de paiement,
+  tâches J-90 et relances (`src/lib/contrats-taches.ts`), conversion idempotente prospect → client.
+- **Production** : brief collaboratif (`/admin/sites/<id>/brief`), prérequis sur chaque carte (paiement, brief, documents),
+  « Envoyer maquette » explicite, checklist et autorisation de mise en ligne, dates réservées à Arsène (droit `dates_production`),
+  réception signée, tâches récurrentes à la livraison pour les services souscrits.
+- **Communications** : Gmail sur toutes les boîtes internes avec dédoublonnage et rattachement manuel, réponse STOP, agenda
+  bidirectionnel (Meet, invités), file de rapprochement Aircall, envois groupés (`/admin/campagnes`) avec validation humaine,
+  plafond, étalement, désinscription (`/desinscription`).
+- **Portail client** : onglets selon les services (aucun menu verrouillé), brief, retours sur la maquette, commande d'articles,
+  conseils IA sur clic, logo, désinscription commerciale, aucune facture.
+- **Tableau clients** (grille, filtres, vues enregistrées, export CSV, actions groupées), **tableau commercial** (`/admin/suivi`),
+  **gestionnaire de tâches** (`/admin/taches`), **Pilotage** par onglets avec charges saisies à la main.
+- Tests : `npm test` (vitest, `tests/`).

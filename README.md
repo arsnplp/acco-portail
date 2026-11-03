@@ -44,7 +44,11 @@ Tokens dans `src/app/globals.css` : fond `#0e0e0f`, cartes `#1a1a1b`, bordures `
 
 ## Tâches planifiées
 
-Routes protégées par `CRON_SECRET` : `/api/cron/monitor` (5 min), `/api/cron/reviews` (6 h), `/api/cron/recaps` (secours : les récaps partent déjà seuls le 4 à 8 h, boucle du serveur), `/api/cron/rgpd` (nuit). Détail dans `DEPLOIEMENT.md`.
+Routes protégées par `CRON_SECRET` (obligatoire) : `/api/cron/monitor` (5 min), `/api/cron/reviews` (6 h), `/api/cron/recaps`, `/api/cron/rgpd` (nuit), `/api/cron/aircall`, `/api/cron/rappels`, `/api/cron/gmail`, `/api/cron/agenda`, `/api/cron/campagnes`, `/api/cron/contrats`, `/api/cron/search-console`. Le serveur fait déjà tout cela par ses tickers (`src/instrumentation.ts`) ; les crons sont un secours. Détail dans `DEPLOIEMENT.md`.
+
+## Tests
+
+`npm test` lance vitest sur `tests/` : droits et modes, logo, brief, charges, variables des envois groupés. Sans base de données.
 
 ## Étapes
 
@@ -57,3 +61,4 @@ Routes protégées par `CRON_SECRET` : `/api/cron/monitor` (5 min), `/api/cron/r
 7. ✅ Avis Google (mode démo) + réponse IA
 8. ✅ Recommandations + avis Acco + Accueil en fil
 9. ✅ Surveillance, RGPD, PWA, déploiement VPS (voir `DEPLOIEMENT.md`)
+10. ✅ V1 « prompt maître » (branche `v1-prompt-maitre`) : droits et modes, validations, fiche client, contrats, production, communications, portail, tableaux et Pilotage (voir `CRM.md`, migration à appliquer après accord)

@@ -487,3 +487,13 @@ DROP TYPE "ProjectStep_old";
 
 -- Notification « maquette disponible » (10.4 : visible seulement après le clic « Envoyer maquette »)
 ALTER TYPE "NotificationKind" ADD VALUE IF NOT EXISTS 'MAQUETTE_DISPONIBLE';
+
+-- Charges de l'entreprise (00.10 §4)
+CREATE TYPE "ChargeType" AS ENUM ('MENSUELLE', 'PONCTUELLE');
+CREATE TABLE "Charge" (
+  "id" TEXT NOT NULL, "nom" TEXT NOT NULL, "categorie" TEXT NOT NULL, "type" "ChargeType" NOT NULL DEFAULT 'MENSUELLE', "montantCents" INTEGER NOT NULL,
+  "principale" BOOLEAN NOT NULL DEFAULT false, "debut" TIMESTAMP(3) NOT NULL, "fin" TIMESTAMP(3), "commentaire" TEXT, "clientId" TEXT, "archivedAt" TIMESTAMP(3), "createdById" TEXT,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "Charge_pkey" PRIMARY KEY ("id")
+);
+CREATE INDEX "Charge_type_archivedAt_idx" ON "Charge"("type", "archivedAt");
