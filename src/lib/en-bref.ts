@@ -9,7 +9,8 @@ import { timelineClient, CANAUX_CONTACT } from "@/lib/timeline";
 import { stepLabel } from "@/lib/labels";
 import { CONTRAT_STATUT } from "@/lib/contrats";
 
-export async function enBref(clientId: string) {
+export async function enBref(clientId: string, opts: { finance?: boolean } = {}) {
+  const finance = opts.finance ?? true;
   const now = new Date();
   const [client, contacts, taches, rdvAVenir, docsAttendus, commandes, modifs, offres] = await Promise.all([
     prisma.client.findUniqueOrThrow({ where: { id: clientId }, include: { sites: { include: { subscriptions: { where: { status: "ACTIF" }, select: { label: true, module: true, offerId: true } } } }, contrats: { orderBy: { createdAt: "desc" } }, subscriptions: { where: { status: "ACTIF" } }, commercial: { select: { firstName: true, email: true } }, referralsMade: { select: { status: true } } } }),
@@ -29,7 +30,7 @@ export async function enBref(clientId: string) {
   faits.push(`Client depuis le ${fmtDate(client.createdAt)} (${anciennete < 60 ? `${anciennete} jours` : `${Math.round(anciennete / 30)} mois`})${client.secteur ? `, secteur ${client.secteur}` : ""}.`);
   faits.push(`${client.sites.length} site${client.sites.length > 1 ? "s" : ""}${client.sites.length ? " : " + client.sites.map((s) => `${s.name} (${s.status === "EN_LIGNE" ? "en ligne" : s.status === "EN_CREATION" ? stepLabel(s.projectStep) : "suspendu"})`).join(", ") : ""}.`);
   const signes = client.contrats.filter((c) => c.statut === "SIGNE");
-  faits.push(`${client.contrats.length} contrat${client.contrats.length > 1 ? "s" : ""}${signes.length ? `, ${signes.length} signé${signes.length > 1 ? "s" : ""}` : ""} · ${client.subscriptions.length} abonnement${client.subscriptions.length > 1 ? "s" : ""} actif${client.subscriptions.length > 1 ? "s" : ""}${mrr ? ` · ${fmtPrice(mrr)} HT / mois` : ""}.`);
+  faits.push(`${client.contrats.length} contrat${client.contrats.length > 1 ? "s" : ""}${signes.length ? `, ${signes.length} signé${signes.length > 1 ? "s" : ""}` : ""} · ${client.subscriptions.length} abonnement${client.subscriptions.length > 1 ? "s" : ""} actif${client.subscriptions.length > 1 ? "s" : ""}${finance && mrr ? ` · ${fmtPrice(mrr)} HT / mois` : ""}.`);
   faits.push(`Référent : ${client.commercial ? client.commercial.firstName ?? client.commercial.email : "personne"}.`);
   const dernier = contacts.find((c) => c.date <= now);
   const jours = dernier ? Math.floor((now.getTime() - dernier.date.getTime()) / 86400_000) : null;
@@ -43,8 +44,8 @@ export async function enBref(clientId: string) {
   if (modifs) alertes.push(`${modifs} demande${modifs > 1 ? "s" : ""} de modification en attente.`);
   for (const c of client.contrats) {
     if (c.statut === "ENVOYE" || c.statut === "CONSULTE") alertes.push(`Contrat ${c.reference} ${CONTRAT_STATUT[c.statut].label.toLowerCase()}, non signé.`);
-    if (c.statut === "SIGNE" && !c.premierPaiementAt) alertes.push(`Contrat ${c.reference} signé : premier paiement non reçu.`);
-    if (c.impayeAt && !c.regulariseAt) alertes.push(`Impayé signalé sur ${c.reference} depuis le ${fmtDate(c.impayeAt)}.`);
+    if (finance && c.statut === "SIGNE" && !c.premierPaiementAt) alertes.push(`Contrat ${c.reference} signé : premier paiement non reçu.`);
+    if (finance && c.impayeAt && !c.regulariseAt) alertes.push(`Impayé signalé sur ${c.reference} depuis le ${fmtDate(c.impayeAt)}.`);
     if (c.statut === "SIGNE" && c.finEngagement && c.finEngagement.getTime() - now.getTime() < 90 * 86400_000 && c.finEngagement > now) alertes.push(`Engagement ${c.reference} se termine le ${fmtDate(c.finEngagement)} : renouvellement à préparer.`);
   }
   // Opportunités : options du catalogue absentes d'un site précis (jamais une option déjà active sur ce site).

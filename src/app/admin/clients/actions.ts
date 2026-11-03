@@ -6,7 +6,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireTeam } from "@/lib/auth";
 import { ensureAuthUser, sendInvitationEmail } from "@/lib/invitations";
-import { can } from "@/lib/permissions";
+import { can, estExterne } from "@/lib/permissions";
 import { requireClientAcces } from "@/lib/perimetre";
 import { agitCommeReferent } from "@/lib/delegations";
 import { logActivite } from "@/lib/activite";
@@ -66,7 +66,8 @@ export async function createClient(_prev: ActionState, formData: FormData): Prom
 }
 
 export async function updateClient(clientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireTeam();
+  const me = await requireTeam();
+  await requireClientAcces(me, clientId);
   const d = Object.fromEntries(formData) as Record<string, string>;
   if (!d.name?.trim()) return { error: "Nom requis" };
   await prisma.client.update({
@@ -222,7 +223,9 @@ export async function genererSyntheseClient(clientId: string): Promise<{ ok?: bo
 }
 
 export async function addMember(clientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireTeam();
+  const me = await requireTeam();
+  await requireClientAcces(me, clientId);
+  if (estExterne(me)) return { error: "Réservé à l’équipe interne." };
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const firstName = String(formData.get("firstName") ?? "").trim();
   if (!z.string().email().safeParse(email).success) return { error: "Email invalide" };
@@ -239,7 +242,9 @@ export async function addMember(clientId: string, _prev: ActionState, formData: 
 }
 
 export async function createSite(clientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireTeam();
+  const me = await requireTeam();
+  await requireClientAcces(me, clientId);
+  if (estExterne(me)) return { error: "Réservé à l’équipe interne." };
   const name = String(formData.get("name") ?? "").trim();
   if (name.length < 3) return { error: "Nom du site requis (ex. boulangerie-dupont.fr)" };
   const site = await prisma.site.create({
@@ -262,7 +267,8 @@ export async function createSite(clientId: string, _prev: ActionState, formData:
 }
 
 export async function createSubscription(clientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireTeam();
+  const me = await requireTeam();
+  if (!can(me, "finance")) return { error: "Réservé au droit finance." };
   const d = Object.fromEntries(formData) as Record<string, string>;
   const price = Math.round(parseFloat((d.price ?? "").replace(",", ".")) * 100);
   if (!d.label?.trim() || !Number.isFinite(price)) return { error: "Libellé et prix requis" };
@@ -282,13 +288,16 @@ export async function createSubscription(clientId: string, _prev: ActionState, f
 }
 
 export async function cancelSubscription(clientId: string, subId: string) {
-  await requireTeam();
+  const me = await requireTeam();
+  if (!can(me, "finance")) return;
   await prisma.subscription.update({ where: { id: subId }, data: { status: "RESILIE", cancelledAt: new Date() } });
   revalidatePath(`/admin/clients/${clientId}`);
 }
 
 export async function sendInvitation(clientId: string, userId: string) {
   const admin = await requireTeam();
+  await requireClientAcces(admin, clientId);
+  if (estExterne(admin)) return;
   const [client, user] = await Promise.all([prisma.client.findUnique({ where: { id: clientId } }), prisma.user.findUnique({ where: { id: userId } })]);
   if (!client || !user) return;
   await sendInvitationEmail({ email: user.email, firstName: user.firstName, clientName: client.name, clientId, inviterId: admin.id });
@@ -300,7 +309,8 @@ export async function sendInvitation(clientId: string, userId: string) {
  * Le client n'est prévenu que si la case est cochée.
  */
 export async function activateOffer(clientId: string, offerId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireTeam();
+  const me = await requireTeam();
+  if (!can(me, "finance")) return { error: "Réservé au droit finance (activation hors contrat)." };
   const { activePromo } = await import("@/lib/offers");
   const offer = await prisma.offer.findUnique({ where: { id: offerId }, include: { promotions: true } });
   if (!offer) return { error: "Offre introuvable" };
@@ -342,12 +352,14 @@ const FORMULES = ["ESSENTIEL", "REFERENCE", "CONQUETE", "SIGNATURE"] as const;
 /** Contrat et suivi : formule, engagement, commercial, développeur, fiche Google, client référence. */
 export async function updateClientSuivi(clientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
   const me = await requireTeam();
+  await requireClientAcces(me, clientId);
+  if (estExterne(me)) return { error: "Réservé à l’équipe interne." };
   const d = Object.fromEntries(formData) as Record<string, string>;
   const formule = FORMULES.includes(d.formule as (typeof FORMULES)[number]) ? (d.formule as (typeof FORMULES)[number]) : null;
   const date = (v?: string) => (v ? new Date(`${v}T12:00:00`) : null);
   const gmb = d.gmbUrl?.trim() || null;
   if (gmb && !/^https?:\/\//.test(gmb)) return { error: "Le lien de la fiche Google doit commencer par https://" };
-  const avant = await prisma.client.findUnique({ where: { id: clientId }, select: { commercialId: true } });
+  const avant = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, commercialId: true } });
   const peutAttribuer = can(me, "attribuer") || (avant ? await agitCommeReferent(me.id, avant) : false);
   await prisma.client.update({
     where: { id: clientId },
@@ -366,6 +378,7 @@ const TYPES_CR = ["APPEL", "MAIL", "RDV", "PP", "NOTE"] as const;
 /** Compte rendu saisi à la main (appel, réunion, mail…) dans l'historique du client. */
 export async function logClientEchange(clientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
   const me = await requireTeam();
+  await requireClientAcces(me, clientId);
   const type = String(formData.get("type") ?? "NOTE") as (typeof TYPES_CR)[number];
   const notes = String(formData.get("notes") ?? "").trim();
   if (!TYPES_CR.includes(type)) return { error: "Type inconnu." };

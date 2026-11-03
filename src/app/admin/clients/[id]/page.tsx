@@ -25,7 +25,7 @@ import { IntelligenceOnglet } from "./onglets/intelligence";
 import { SatisfactionOnglet } from "./onglets/satisfaction";
 import { ONGLETS, type Onglet } from "./onglets/ctx";
 
-type SP = { onglet?: string; canal?: string; site?: string; qui?: string; periode?: string };
+type SP = { onglet?: string; canal?: string; site?: string; qui?: string; periode?: string; contact?: string };
 
 /**
  * Fiche client (section 4) : page principale récapitulative + onglets. Les externes n'y accèdent que pour les clients de
@@ -43,8 +43,8 @@ export default async function ClientDetailPage({ params, searchParams }: { param
   if (!client) notFound();
   const externe = estExterne(me);
   const ia = !externe && (await featureEnabled("feature_ai"));
-  const onglet: Onglet = (ONGLETS.some(([k]) => k === sp.onglet) ? sp.onglet : "apercu") as Onglet;
   const onglets = ONGLETS.filter(([k]) => (k !== "intelligence" || ia) && !(externe && (k === "satisfaction" || k === "contrats")));
+  const onglet: Onglet = (onglets.some(([k]) => k === sp.onglet) ? sp.onglet : "apercu") as Onglet;
   const ctx = { clientId: client.id, me, finance: can(me, "finance"), externe, sp };
 
   return (
@@ -83,14 +83,14 @@ export default async function ClientDetailPage({ params, searchParams }: { param
       <div className="mt-5">
         {onglet === "apercu" && <Apercu {...ctx} ia={ia} />}
         {onglet === "sites" && <SitesOnglet {...ctx} />}
-        {onglet === "contrats" && <ContratsOnglet {...ctx} />}
+        {onglet === "contrats" && !externe && <ContratsOnglet {...ctx} />}
         {onglet === "contacts" && <ContactsOnglet {...ctx} />}
         {(onglet === "activite" || onglet === "emails" || onglet === "appels") && <ActiviteOnglet {...ctx} mode={onglet} />}
         {onglet === "taches" && <TachesOnglet {...ctx} />}
         {onglet === "demandes" && <DemandesOnglet {...ctx} />}
         {onglet === "documents" && <DocumentsOnglet {...ctx} />}
         {onglet === "intelligence" && ia && <IntelligenceOnglet {...ctx} />}
-        {onglet === "satisfaction" && <SatisfactionOnglet {...ctx} />}
+        {onglet === "satisfaction" && !externe && <SatisfactionOnglet {...ctx} />}
       </div>
     </main>
   );

@@ -93,7 +93,8 @@ export async function saveServices(_prev: ServicesState, formData: FormData): Pr
     infos[key] = v.detail ?? "Clé enregistrée.";
   }
 
-  for (const feature of Object.keys(FEATURES) as Array<keyof typeof FEATURES>) {
+  // Seuls les interrupteurs présents dans ce formulaire sont enregistrés ; les autres (IA, connecteurs) vivent dans « IA et intégrations ».
+  for (const feature of (Object.keys(FEATURES) as Array<keyof typeof FEATURES>).filter((f) => formData.has(`${f}_present`))) {
     const wanted = formData.get(feature) === "on";
     let allowed = wanted;
     if (wanted) {

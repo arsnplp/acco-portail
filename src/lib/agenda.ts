@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { userGoogleClient } from "@/lib/google-oauth";
 import { contactName } from "@/lib/crm";
 import { PROJECT_STEPS } from "@/lib/labels";
+import { connecteurActif } from "@/lib/connecteurs";
 
 const API = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
 const APP = process.env.NEXT_PUBLIC_APP_URL ?? "";
@@ -20,6 +21,7 @@ function body(e: Ev) {
 
 /** Crée ou met à jour l'événement `cle` dans l'agenda de `userId`. Silencieux si le membre n'a pas connecté Google. */
 export async function upsertAgendaEvent(userId: string, cle: string, e: Ev) {
+  if (!(await connecteurActif("calendar"))) return false; // 00.7 : connecteur coupé = agenda interne seul
   const client = await userGoogleClient(userId);
   if (!client) return false;
   const existing = await prisma.agendaEvent.findUnique({ where: { userId_cle: { userId, cle } } });
@@ -42,13 +44,14 @@ export async function upsertAgendaEvent(userId: string, cle: string, e: Ev) {
 export async function deleteAgendaEvent(userId: string, cle: string) {
   const existing = await prisma.agendaEvent.findUnique({ where: { userId_cle: { userId, cle } } });
   if (!existing) return;
-  const client = await userGoogleClient(userId);
+  const client = (await connecteurActif("calendar")) ? await userGoogleClient(userId) : null;
   if (client) await client.request({ url: `${API}/${existing.googleEventId}`, method: "DELETE" }).catch(() => null);
   await prisma.agendaEvent.delete({ where: { id: existing.id } });
 }
 
 /** Pousse dans l'agenda du membre tous ses RDV à venir et les échéances de ses sites ; retire ce qui n'a plus lieu d'être. */
 export async function syncAgendaForUser(userId: string): Promise<{ ok: boolean; rdv: number; echeances: number; error?: string }> {
+  if (!(await connecteurActif("calendar"))) return { ok: false, rdv: 0, echeances: 0, error: "Le connecteur Google Agenda est désactivé (Administration → IA et intégrations)." };
   if (!(await userGoogleClient(userId))) return { ok: false, rdv: 0, echeances: 0, error: "Compte Google non connecté." };
   const depuis = new Date(Date.now() - 86400_000);
   const [rdvs, sites] = await Promise.all([

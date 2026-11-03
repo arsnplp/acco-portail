@@ -255,6 +255,7 @@ enum NotificationKind {
   ALERTE_SITE
   DOCUMENT_DISPONIBLE
   DOCUMENT_DEMANDE
+  MAQUETTE_DISPONIBLE
 }
 
 /// VERS_EQUIPE : le client demande un document à Acco. VERS_CLIENT : Acco demande un document au client.

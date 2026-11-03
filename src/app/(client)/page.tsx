@@ -19,7 +19,7 @@ import { InboxIcon, CircleCheckIcon, TrendingUpIcon, MessageSquareIcon, PartyPop
 
 const KIND_ICON: Record<NotificationKind, LucideIcon> = {
   DEMANDE_CONTACT: InboxIcon, NOUVEL_AVIS: StarIcon, MODIFICATION_TERMINEE: CircleCheckIcon, RECAP_MENSUEL: TrendingUpIcon, MESSAGE_EQUIPE: MessageSquareIcon,
-  SITE_EN_LIGNE: PartyPopperIcon, COMMANDE_VALIDEE: PuzzleIcon, RECOMPENSE_PARRAINAGE: GiftIcon, ALERTE_SITE: TriangleAlertIcon, DOCUMENT_DISPONIBLE: FileTextIcon, DOCUMENT_DEMANDE: UploadIcon,
+  SITE_EN_LIGNE: PartyPopperIcon, COMMANDE_VALIDEE: PuzzleIcon, RECOMPENSE_PARRAINAGE: GiftIcon, ALERTE_SITE: TriangleAlertIcon, DOCUMENT_DISPONIBLE: FileTextIcon, DOCUMENT_DEMANDE: UploadIcon, MAQUETTE_DISPONIBLE: GlobeIcon,
 };
 
 export default async function AccueilPage() {

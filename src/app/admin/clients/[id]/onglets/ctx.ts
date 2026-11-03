@@ -1,7 +1,7 @@
 import type { CurrentUser } from "@/lib/auth";
 
 /** Contexte commun aux onglets de la fiche client. */
-export type Ctx = { clientId: string; me: CurrentUser; finance: boolean; externe: boolean; sp: { canal?: string; site?: string; qui?: string; periode?: string } };
+export type Ctx = { clientId: string; me: CurrentUser; finance: boolean; externe: boolean; sp: { canal?: string; site?: string; qui?: string; periode?: string; contact?: string } };
 export const lien = (clientId: string, onglet: string) => `/admin/clients/${clientId}?onglet=${onglet}`;
 
 export const ONGLETS = [

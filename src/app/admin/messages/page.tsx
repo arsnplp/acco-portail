@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { requireTeam } from "@/lib/auth";
+import { whereClientsPour } from "@/lib/perimetre";
 import { AdminPage } from "@/components/admin/page";
 import { MoreList } from "@/components/ui/more-list";
 import { Card } from "@/components/ui/card";
@@ -9,7 +11,9 @@ import { AutoRefresh } from "@/components/messages/auto-refresh";
 export const metadata = { title: "Messages" };
 
 export default async function InboxPage() {
+  const me = await requireTeam();
   const convs = await prisma.conversation.findMany({
+    where: { client: whereClientsPour(me) },
     orderBy: [{ lastMessageAt: { sort: "desc", nulls: "last" } }],
     include: { client: { select: { name: true } }, messages: { orderBy: { createdAt: "desc" }, take: 1, include: { author: { select: { firstName: true, role: true } } } } },
   });

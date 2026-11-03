@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { requireTeam } from "@/lib/auth";
+import { whereSitesPour } from "@/lib/perimetre";
 import { AdminPage } from "@/components/admin/page";
 import { MoreList } from "@/components/ui/more-list";
 import { Card } from "@/components/ui/card";
@@ -10,7 +12,9 @@ import { timeAgo } from "@/lib/format";
 export const metadata = { title: "Sites" };
 
 export default async function SitesAdminPage() {
+  const me = await requireTeam();
   const sites = await prisma.site.findMany({
+    where: whereSitesPour(me),
     orderBy: [{ status: "asc" }, { createdAt: "desc" }],
     include: { client: { select: { name: true } }, healthChecks: { orderBy: { checkedAt: "desc" }, take: 1 }, _count: { select: { changeRequests: { where: { status: { not: "TERMINEE" } } } } } },
   });

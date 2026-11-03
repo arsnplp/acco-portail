@@ -39,6 +39,7 @@ export async function marquerImpaye(contratId: string, regularise = false) {
  */
 export async function proposerPourSite(clientId: string, siteId: string, offerId: string) {
   const me = await requireTeam();
+  if (estExterne(me)) return;
   const [client, site, offer] = await Promise.all([
     prisma.client.findUnique({ where: { id: clientId }, select: { id: true, commercialId: true, name: true } }),
     prisma.site.findFirst({ where: { id: siteId, clientId }, select: { id: true, name: true, contratId: true } }),

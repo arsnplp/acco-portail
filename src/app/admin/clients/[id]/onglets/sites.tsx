@@ -13,7 +13,7 @@ import type { Ctx } from "./ctx";
 
 /** Onglet Sites (4.3, 4.4) : chaque site avec ses options réellement souscrites, son contrat, ses demandes, et une zone « À proposer » propre au site. */
 export async function SitesOnglet({ clientId, finance, externe }: Ctx) {
-  const [sites, offres] = await Promise.all([
+  const [sites, offres, communes] = await Promise.all([
     prisma.site.findMany({ where: { clientId }, orderBy: { createdAt: "asc" }, include: {
       developpeur: { select: { firstName: true, email: true } },
       subscriptions: { where: { status: "ACTIF" }, include: { offer: { select: { name: true, parentId: true } } } },
@@ -24,14 +24,16 @@ export async function SitesOnglet({ clientId, finance, externe }: Ctx) {
       _count: { select: { changeRequests: true, articles: true } },
     } }),
     externe ? [] : prisma.offer.findMany({ where: { isArchived: false }, orderBy: { order: "asc" }, include: { promotions: true, parent: { select: { name: true } } } }),
+    prisma.subscription.findMany({ where: { clientId, siteId: null, status: "ACTIF" }, include: { offer: { select: { name: true, parentId: true } } } }),
   ]);
   return (
     <div className="space-y-5">
       {sites.length === 0 && <p className="text-sm text-text">Aucun site pour ce client.</p>}
       {sites.map((s) => {
-        const actifs = new Set(s.subscriptions.map((x) => x.offerId).filter((x): x is string => !!x));
+        const toutes = [...s.subscriptions, ...communes]; // options du site + options « tous les sites »
+        const actifs = new Set(toutes.map((x) => x.offerId).filter((x): x is string => !!x));
         const contratRef = s.contratId ? s.contrats.find((c) => c.id === s.contratId) : null;
-        const aProposer = offres.filter((o) => !actifs.has(o.id) && (o.parentId ? actifs.has(o.parentId) || s.status === "EN_LIGNE" : !s.subscriptions.length));
+        const aProposer = offres.filter((o) => !actifs.has(o.id) && (o.parentId ? actifs.has(o.parentId) || s.status === "EN_LIGNE" : !toutes.length));
         return (
           <section key={s.id} className="rounded-card border border-border bg-surface">
             <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
@@ -44,9 +46,9 @@ export async function SitesOnglet({ clientId, finance, externe }: Ctx) {
             <div className="grid gap-4 p-4 md:grid-cols-2">
               <div>
                 <p className="text-xs font-semibold tracking-wide text-text uppercase">Options souscrites sur ce site</p>
-                {s.subscriptions.length === 0 ? <p className="mt-1 text-sm text-text">Aucune option active sur ce site.</p> : (
+                {toutes.length === 0 ? <p className="mt-1 text-sm text-text">Aucune option active sur ce site.</p> : (
                   <ul className="mt-1 space-y-1 text-sm">
-                    {s.subscriptions.map((x) => <li key={x.id} className="text-text-strong">{x.label}{finance ? ` · ${fmtPrice(x.priceCents)}${x.billing === "MENSUEL" ? " / mois" : ""}` : ""}{x.commitmentEndsAt ? ` · jusqu’au ${fmtDate(x.commitmentEndsAt)}` : ""}{x.monthlyQuota ? ` · ${x.monthlyQuota} modifs / mois` : ""}</li>)}
+                    {toutes.map((x) => <li key={x.id} className="text-text-strong">{x.label}{!x.siteId ? " (tous les sites)" : ""}{finance ? ` · ${fmtPrice(x.priceCents)}${x.billing === "MENSUEL" ? " / mois" : ""}` : ""}{x.commitmentEndsAt ? ` · jusqu’au ${fmtDate(x.commitmentEndsAt)}` : ""}{x.monthlyQuota ? ` · ${x.monthlyQuota} modifs / mois` : ""}</li>)}
                   </ul>
                 )}
                 <p className="mt-3 text-xs font-semibold tracking-wide text-text uppercase">Contrats</p>

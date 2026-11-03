@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { requireTeam } from "@/lib/auth";
+import { whereSitesPour } from "@/lib/perimetre";
 import { AdminPage } from "@/components/admin/page";
 import { KanbanBoard, type KanbanItem } from "./kanban-board";
 import { AutoRefresh } from "@/components/messages/auto-refresh";
@@ -8,8 +10,10 @@ import { featureEnabled } from "@/lib/settings";
 export const metadata = { title: "Modifications" };
 
 export default async function ModificationsAdminPage() {
+  const me = await requireTeam();
   const [requests, admins, claudeEnabled, heartbeat] = await Promise.all([
     prisma.changeRequest.findMany({
+      where: { site: whereSitesPour(me) },
       orderBy: [{ urgency: "desc" }, { completedAt: "desc" }, { createdAt: "asc" }],
       take: 300,
       include: { site: { include: { client: { select: { name: true } } } }, _count: { select: { attachments: true, comments: true } } },

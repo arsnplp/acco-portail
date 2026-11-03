@@ -9,11 +9,12 @@ import { cn } from "@/lib/cn";
 import { PROJECT_STEPS } from "@/lib/labels";
 import { fmtDay, initialsOf, relanceInfo } from "@/lib/crm";
 import { livrerSite, moveSiteEtape } from "../sites/actions";
-import { PackageCheckIcon } from "lucide-react";
+import { PackageCheckIcon, TriangleAlertIcon } from "lucide-react";
+import { LogoClient } from "@/components/ui/logo-client";
 
 export type SiteCard = {
-  id: string; name: string; client: string; clientId: string; etape: ProjectStep; developpeurId: string | null; dev: string | null;
-  deadline: string | null; deadlineLabel: string; depuis: string; modifs: number; preview: string | null;
+  id: string; name: string; client: string; clientId: string; logo: string | null; etape: ProjectStep; developpeurId: string | null; dev: string | null;
+  deadline: string | null; deadlineLabel: string; depuis: string; modifs: number; preview: string | null; version: number; blocages: string[]; actions: string[]; docsManquants: number;
 };
 type Dev = { id: string; name: string };
 
@@ -32,15 +33,16 @@ export function ProductionBoard({ initial, devs, meId, initialDev }: { initial: 
     const card = cards.find((c) => c.id === e.active.id);
     const to = e.over?.id as ProjectStep | "LIVRE" | undefined;
     if (!card || !to || to === card.etape) return;
+    const avant = cards;
     if (to === "LIVRE") {
       if (!confirm(`Livrer ${card.name} ? Le site passe en ligne, le client est prévenu, la carte sort du tableau.`)) return;
       setCards((cs) => cs.filter((c) => c.id !== card.id));
-      start(async () => { await livrerSite(card.id); router.refresh(); });
+      start(async () => { const r = await livrerSite(card.id); if (r?.error) { alert(r.error); setCards(avant); } router.refresh(); });
       return;
     }
     const step = PROJECT_STEPS.find((p) => p.key === to)!;
     setCards((cs) => cs.map((c) => (c.id === card.id ? { ...c, etape: to, deadlineLabel: step.deadline === "deadlineV1" ? "V1" : step.deadline === "deadlineV2" ? "V2" : "Livraison", depuis: new Date().toISOString() } : c)));
-    start(async () => { await moveSiteEtape(card.id, to); router.refresh(); });
+    start(async () => { const r = await moveSiteEtape(card.id, to); if (r?.error) { alert(r.error); setCards(avant); } router.refresh(); });
   }
 
   return (
@@ -96,8 +98,15 @@ function Card({ card, overlay }: { card: SiteCard; overlay?: boolean }) {
   const d = card.deadline ? relanceInfo(card.deadline) : null;
   return (
     <article className={cn("cursor-grab rounded-card border border-border bg-surface p-3 hover:border-text active:cursor-grabbing", overlay && "rotate-1 border-text shadow-2xl shadow-black/60")}>
-      <p className="truncate font-title text-[15px] leading-tight font-semibold text-title">{card.name}</p>
-      <p className="truncate text-xs text-text">{card.client}</p>
+      <div className="flex items-center gap-2">
+        <LogoClient id={card.clientId} name={card.client} logo={card.logo} size={28} />
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-title text-[15px] leading-tight font-semibold text-title">{card.name} <span className="text-[11px] font-normal text-text">V{card.version}</span></p>
+          <p className="truncate text-xs text-text">{card.client}</p>
+        </div>
+      </div>
+      {card.blocages.length > 0 && <p className="mt-2 flex items-start gap-1 text-[11px] text-pink" title={card.blocages.join("\n")}><TriangleAlertIcon size={11} className="mt-0.5 shrink-0" aria-hidden /> <span className="line-clamp-2">{card.blocages[0]}{card.blocages.length > 1 ? ` (+${card.blocages.length - 1})` : ""}</span></p>}
+      {card.actions.length > 0 && <p className="mt-1 line-clamp-2 text-[11px] text-blue" title={card.actions.join("\n")}>→ {card.actions[0]}</p>}
       <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-[11px]">
         {d ? (
           <span className={cn("flex items-center gap-1 rounded-full px-2 py-0.5 font-medium", d.state === "late" ? "bg-pink/15 text-pink" : d.state === "today" || d.state === "soon" ? "bg-yellow/15 text-yellow" : "bg-surface-2 text-text")} title={`Deadline ${card.deadlineLabel} : ${fmtDay(card.deadline!)}`}>
@@ -105,7 +114,8 @@ function Card({ card, overlay }: { card: SiteCard; overlay?: boolean }) {
           </span>
         ) : <span className="rounded-full bg-surface-2 px-2 py-0.5 text-muted">Pas de deadline {card.deadlineLabel}</span>}
         {card.modifs > 0 && <span className="flex items-center gap-1 text-text" title="Demandes de modification ouvertes"><PencilRulerIcon size={11} aria-hidden /> {card.modifs}</span>}
-        {card.preview && <a href={card.preview} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} className="flex items-center gap-1 text-text hover:text-title" title="Prévisualisation"><ExternalLinkIcon size={11} aria-hidden /> V1</a>}
+        {card.preview && <a href={card.preview} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} className="flex items-center gap-1 text-text hover:text-title" title="Prévisualisation"><ExternalLinkIcon size={11} aria-hidden /> V{card.version}</a>}
+        {card.docsManquants > 0 && <span className="text-yellow" title="Éléments manquants du client">{card.docsManquants} doc{card.docsManquants > 1 ? "s" : ""}</span>}
         {card.dev ? <span title={card.dev} className="ml-auto flex size-5 items-center justify-center rounded-full bg-surface-2 text-[9px] font-semibold text-text-strong">{initialsOf(card.dev)}</span> : <span className="ml-auto text-muted" title="Sans développeur">—</span>}
       </div>
     </article>

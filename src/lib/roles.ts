@@ -28,6 +28,10 @@ export const MODE_HOME: Record<Mode, string> = { COMMERCIAL: "/crm", DIRECTION: 
 /** Page d'accueil selon le rôle, ou selon le mode de démarrage s'il est réglé. */
 export function homeFor(role: Role, mode?: Mode | null) {
   if (role === "CLIENT") return "/";
+  // Un mode ne mène jamais vers un espace fermé au rôle (sinon boucle de redirection).
+  if (mode === "COMMERCIAL" && !MODULES.prospection.includes(role)) mode = null;
+  if (mode === "ADMIN" && role !== "ADMIN") mode = null;
+  if (mode === "DIRECTION" && !["ADMIN", "COMMERCIAL"].includes(role)) mode = null;
   if (mode) return MODE_HOME[mode];
   if (role === "ADMIN") return "/admin";
   if (role === "COMMERCIAL") return "/crm";

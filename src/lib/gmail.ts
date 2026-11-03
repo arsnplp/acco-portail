@@ -37,6 +37,8 @@ export const gmailConfigured = async () => (await boites()).length > 0;
 
 /** Synchronise les mails d'une fiche (adresses de ses contacts) dans toutes les boîtes connectées. */
 export async function syncProspectEmails(prospectId: string): Promise<{ added: number; error?: string }> {
+  const { connecteurActif } = await import("@/lib/connecteurs");
+  if (!(await connecteurActif("gmail"))) return { added: 0 };
   const bs = await boites();
   if (!bs.length) return { added: 0 };
   const p = await prisma.prospect.findUnique({ where: { id: prospectId }, select: { contacts: { select: { email: true } } } });

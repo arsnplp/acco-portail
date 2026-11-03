@@ -26,6 +26,10 @@ export async function enregistrerLogo(clientId: string, file: File) {
   if (file.size === 0) throw new Error("Fichier vide.");
   if (file.size > MAX) throw new Error("Logo trop lourd (5 Mo max).");
   const bytes = Buffer.from(await file.arrayBuffer());
+  if (ext === "svg") {
+    const txt = bytes.toString("utf8");
+    if (/<script|on[a-z]+\s*=|javascript:|<foreignObject|<iframe|<embed|<object|xlink:href\s*=\s*["']?\s*(?!#|data:image)/i.test(txt)) throw new Error("SVG refusé : il contient du script ou des références externes.");
+  }
   const storage = createSupabaseAdmin().storage.from("documents");
   const stamp = Date.now();
   let logoPath: string, logoMiniPath: string;

@@ -29,8 +29,9 @@ export const sha256 = (b: Uint8Array | Buffer | string) => createHash("sha256").
 
 export async function nouvelleReference(now = new Date()) {
   const annee = now.getFullYear();
-  const n = await prisma.contrat.count({ where: { reference: { startsWith: `ACCO-${annee}-` } } });
-  return `ACCO-${annee}-${String(n + 1).padStart(4, "0")}`;
+  const derniers = await prisma.contrat.findMany({ where: { reference: { startsWith: `ACCO-${annee}-` } }, select: { reference: true } });
+  const max = derniers.reduce((m, c) => Math.max(m, parseInt(c.reference.slice(`ACCO-${annee}-`.length), 10) || 0), 0);
+  return `ACCO-${annee}-${String(max + 1).padStart(4, "0")}`;
 }
 
 export type ContratComplet = Contrat & { lignes: LigneContrat[]; client: { name: string; address: string | null; siren: string | null; email: string | null } | null; prospect: { societe: string; adresse: string | null; siren: string | null } | null; commercial: { firstName: string | null; lastName: string | null; email: string } | null; site: { name: string } | null };

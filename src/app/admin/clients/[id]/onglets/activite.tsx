@@ -22,9 +22,10 @@ export async function ActiviteOnglet({ clientId, sp, mode, externe }: Ctx & { mo
     prisma.user.findMany({ where: { role: { in: MODULES.suivi } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true } }),
     prisma.site.findMany({ where: { clientId }, select: { id: true, name: true } }),
   ]);
-  const visibles = externe ? items.filter((i) => !i.interne) : items;
+  const contacts = [...new Set(items.map((i) => i.contact).filter((c): c is string => !!c))];
+  const visibles = (externe ? items.filter((i) => !i.interne) : items).filter((i) => !sp.contact || i.contact === sp.contact);
   const base = `/admin/clients/${clientId}?onglet=${mode}`;
-  const href = (patch: Record<string, string | null>) => { const p = new URLSearchParams(); for (const [k, v] of Object.entries({ canal: sp.canal ?? "", periode: sp.periode ?? "", qui: sp.qui ?? "", site: sp.site ?? "", ...patch })) if (v) p.set(k, v); const q = p.toString(); return q ? `${base}&${q}` : base; };
+  const href = (patch: Record<string, string | null>) => { const p = new URLSearchParams(); for (const [k, v] of Object.entries({ canal: sp.canal ?? "", periode: sp.periode ?? "", qui: sp.qui ?? "", site: sp.site ?? "", contact: sp.contact ?? "", ...patch })) if (v) p.set(k, v); const q = p.toString(); return q ? `${base}&${q}` : base; };
   const sel = "h-9 appearance-none rounded-full border border-border bg-surface px-3 text-xs text-title outline-none hover:border-text";
   return (
     <div>
@@ -37,6 +38,7 @@ export async function ActiviteOnglet({ clientId, sp, mode, externe }: Ctx & { mo
         <div className="flex rounded-full border border-border p-0.5 text-xs">{PERIODES.map(([k, l]) => <Link key={k} href={href({ periode: k })} className={cn("rounded-full px-2.5 py-1", periode[0] === k ? "bg-title font-semibold text-bg" : "text-text hover:text-title")}>{l}</Link>)}</div>
         <select name="qui" defaultValue={sp.qui ?? ""} className={sel} aria-label="Collaborateur"><option value="">Toute l’équipe</option>{equipe.map((u) => <option key={u.id} value={u.id}>{teamName(u)}</option>)}</select>
         {sites.length > 1 && <select name="site" defaultValue={sp.site ?? ""} className={sel} aria-label="Site"><option value="">Tous les sites</option>{sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>}
+        {contacts.length > 0 && <select name="contact" defaultValue={sp.contact ?? ""} className={sel} aria-label="Contact"><option value="">Tous les contacts</option>{contacts.map((c) => <option key={c} value={c}>{c}</option>)}</select>}
         <input type="hidden" name="periode" value={periode[0]} />
         <button type="submit" className="h-9 rounded-full border border-border px-3 text-xs text-text hover:text-title">Filtrer</button>
       </form>

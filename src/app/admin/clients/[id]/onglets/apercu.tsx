@@ -29,7 +29,7 @@ export async function Apercu({ clientId, me, finance, externe, ia }: Ctx & { ia:
       crmProspect: { select: { id: true, contacts: { orderBy: [{ principal: "desc" }, { createdAt: "asc" }] } } },
       commercial: { select: { id: true, firstName: true, email: true } },
     } }),
-    enBref(clientId),
+    enBref(clientId, { finance }),
     timelineClient(clientId, { canaux: CANAUX_CONTACT, limite: 6 }),
     prisma.tacheClient.findMany({ where: { clientId, statut: "A_FAIRE" }, orderBy: [{ echeance: { sort: "asc", nulls: "last" } }], take: 8, include: { responsable: { select: { firstName: true, email: true } } } }),
     prisma.rendezVous.findMany({ where: { clientId, resultat: "PREVU", debut: { gte: now } }, orderBy: { debut: "asc" }, take: 3 }),
@@ -46,13 +46,13 @@ export async function Apercu({ clientId, me, finance, externe, ia }: Ctx & { ia:
   const synth = synthese ? (JSON.parse(synthese.value) as { texte: string; at: string; par: string }) : null;
   const alertes = [
     ...taches.filter((t) => t.echeance && t.echeance < now).map((t) => ({ tone: "pink" as const, texte: `Tâche en retard : ${t.titre}`, href: lien(clientId, "taches") })),
-    ...client.contrats.filter((c) => c.impayeAt && !c.regulariseAt).map((c) => ({ tone: "pink" as const, texte: `Impayé signalé sur ${c.reference}`, href: `/admin/contrats/${c.id}` })),
+    ...(finance ? client.contrats.filter((c) => c.impayeAt && !c.regulariseAt).map((c) => ({ tone: "pink" as const, texte: `Impayé signalé sur ${c.reference}`, href: `/admin/contrats/${c.id}` })) : []),
     ...modifs.map((m) => ({ tone: "yellow" as const, texte: `Demande de modification : ${m.title} (${m.site.name})`, href: "/admin/modifications" })),
     ...commandes.map((o) => ({ tone: "yellow" as const, texte: `Commande à traiter : ${o.offer.name}${o.site ? ` pour ${o.site.name}` : ""}`, href: "/admin/commandes" })),
     ...docsAttendus.map((d) => ({ tone: "yellow" as const, texte: `Attendu du client : ${d.kind.toLowerCase()}${d.site ? ` (${d.site.name})` : ""}${d.message ? ` · ${d.message}` : ""}`, href: `/admin/clients/${clientId}/documents` })),
     ...taches.filter((t) => t.type === "RDV_A_PLANIFIER").map((t) => ({ tone: "blue" as const, texte: `RDV à fixer : ${t.titre}`, href: lien(clientId, "taches") })),
-    ...client.contrats.filter((c) => c.statut === "ENVOYE" || c.statut === "CONSULTE").map((c) => ({ tone: "blue" as const, texte: `Contrat ${c.reference} ${CONTRAT_STATUT[c.statut].label.toLowerCase()}, non signé`, href: `/admin/contrats/${c.id}` })),
-    ...client.contrats.filter((c) => c.statut === "SIGNE" && c.finEngagement && c.finEngagement > now && c.finEngagement.getTime() - now.getTime() < 90 * 86400_000).map((c) => ({ tone: "blue" as const, texte: `Échéance ${c.reference} le ${fmtDate(c.finEngagement!)} (préavis ${c.preavisJours} j)`, href: `/admin/contrats/${c.id}` })),
+    ...(externe ? [] : client.contrats.filter((c) => c.statut === "ENVOYE" || c.statut === "CONSULTE").map((c) => ({ tone: "blue" as const, texte: `Contrat ${c.reference} ${CONTRAT_STATUT[c.statut].label.toLowerCase()}, non signé`, href: `/admin/contrats/${c.id}` }))),
+    ...(externe ? [] : client.contrats.filter((c) => c.statut === "SIGNE" && c.finEngagement && c.finEngagement > now && c.finEngagement.getTime() - now.getTime() < 90 * 86400_000).map((c) => ({ tone: "blue" as const, texte: `Échéance ${c.reference} le ${fmtDate(c.finEngagement!)} (préavis ${c.preavisJours} j)`, href: `/admin/contrats/${c.id}` }))),
     ...((bref.jours === null || bref.jours >= JOURS_SANS_CONTACT) && bref.rdvAVenir === 0 ? [{ tone: "pink" as const, texte: `Aucun échange depuis ${bref.jours === null ? "le début" : `${bref.jours} jours`}, pas de RDV prévu`, href: lien(clientId, "taches") }] : []),
   ];
   const mensuel = client.contrats.filter((c) => c.statut === "SIGNE").reduce((a, c) => a + c.montantMensuelHt, 0);
@@ -163,7 +163,7 @@ export async function Apercu({ clientId, me, finance, externe, ia }: Ctx & { ia:
           {bref.opportunites.length > 0 && <ul className="mt-2 space-y-1 text-sm text-green">{bref.opportunites.map((f, i) => <li key={i}>{f}</li>)}</ul>}
           {ia && (
             <div className="mt-3 border-t border-border pt-3">
-              {synth && <div className="mb-2 text-sm whitespace-pre-line text-text-strong">{synth.texte}<p className="mt-1 text-[11px] text-muted">Synthèse IA du {fmtDayTime(synth.at)} par {synth.par} : faits et hypothèses distingués, à relire.</p></div>}
+              {synth && <div className="mb-2 text-sm whitespace-pre-line text-text-strong">{synth.texte}<p className="mt-1 text-[11px] text-muted">Synthèse IA du {fmtDayTime(synth.at)} par {synth.par} : faits et hypothèses distingués, à relire.{interactions.some((i) => i.date > new Date(synth.at)) && <span className="text-yellow"> Des échanges plus récents existent : à actualiser.</span>}</p></div>}
               <SyntheseButton clientId={clientId} existe={!!synth} />
             </div>
           )}

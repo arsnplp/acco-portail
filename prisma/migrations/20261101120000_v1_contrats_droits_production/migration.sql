@@ -484,3 +484,6 @@ ALTER TABLE "Site" ALTER COLUMN "projectStep" TYPE "ProjectStep" USING (
 )::"ProjectStep";
 ALTER TABLE "Site" ALTER COLUMN "projectStep" SET DEFAULT 'CREER_MAQUETTE';
 DROP TYPE "ProjectStep_old";
+
+-- Notification « maquette disponible » (10.4 : visible seulement après le clic « Envoyer maquette »)
+ALTER TYPE "NotificationKind" ADD VALUE IF NOT EXISTS 'MAQUETTE_DISPONIBLE';

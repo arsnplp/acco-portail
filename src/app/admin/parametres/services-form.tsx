@@ -40,6 +40,7 @@ export function ServicesForm({ secrets, toggles, googleConnected }: { secrets: S
               <p className="flex items-center gap-2 font-semibold text-title"><svc.icon size={16} strokeWidth={1.75} className={svc.feature === "feature_claude_code" || svc.feature === "feature_ai" ? "text-claude" : "text-text"} aria-hidden /> {svc.title}</p>
               {svc.feature && (
                 <label className={`flex items-center gap-2 text-sm ${ready ? "text-text-strong" : "text-muted"}`} title={ready ? "" : "Renseignez d’abord la clé"}>
+                  <input type="hidden" name={`${svc.feature}_present`} value="1" />
                   <input type="checkbox" name={svc.feature} defaultChecked={toggles[svc.feature] && ready} disabled={!ready} className="size-4 accent-white disabled:opacity-40" />
                   Activer
                 </label>

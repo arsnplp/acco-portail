@@ -121,7 +121,7 @@ export default async function SiteAdminPage({ params }: { params: Promise<{ id: 
           <Card className="space-y-3">
             <p className="text-xs text-text">
               {googleOn ? <>Google connecté{googleEmail ? ` (${googleEmail})` : ""}. {site.searchConsoleProp ? `Propriété : ${site.searchConsoleProp}` : <span className="text-yellow">Propriété Search Console vide : les chiffres affichés sont une démo. Choisissez-la dans « Paramètres du site » ci-dessous puis Enregistrer.</span>}</> : <>Mode démo : Google n’est pas connecté (Paramètres → Connecter Google), les chiffres sont simulés.</>}
-              {" "}{aiOn ? "Résumés rédigés par Claude." : "Résumés rédigés par gabarit (activez Claude dans Paramètres → Clés et services)."}
+              {" "}{aiOn ? "Résumés par gabarit ; rédaction Claude possible sur clic (interrupteur « récap » dans IA et intégrations)." : "Résumés rédigés par gabarit (IA désactivée)."}
             </p>
             <p className="text-xs text-text">
               Dernier mois synchronisé : {last ? monthLabel(last.year, last.month) : "aucun"} · Récap mensuel : {site.recapAuto ? <span className="text-green">envoyé automatiquement le 4 de chaque mois</span> : <span className="text-yellow">pas encore automatique, synchronisez pour l’activer</span>}

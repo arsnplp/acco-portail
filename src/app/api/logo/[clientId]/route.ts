@@ -8,8 +8,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ clientId
   const user = await getCurrentUser();
   if (!user) return new NextResponse(null, { status: 401 });
   if (user.role === "CLIENT" && !user.memberships.some((m) => m.clientId === clientId)) return new NextResponse(null, { status: 403 });
+  if (user.role !== "CLIENT") { const { peutVoirClient } = await import("@/lib/perimetre"); if (!(await peutVoirClient(user, clientId))) return new NextResponse(null, { status: 403 }); }
   const mini = new URL(req.url).searchParams.get("mini") === "1";
   const logo = await lireLogo(clientId, mini);
   if (!logo) return new NextResponse(null, { status: 404 });
-  return new NextResponse(new Uint8Array(logo.bytes), { headers: { "Content-Type": logo.contentType, "Cache-Control": "private, max-age=86400, immutable" } });
+  return new NextResponse(new Uint8Array(logo.bytes), { headers: { "Content-Type": logo.contentType, "Cache-Control": "private, max-age=86400, immutable", "X-Content-Type-Options": "nosniff", "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; sandbox", "Content-Disposition": "inline; filename=logo" } });
 }

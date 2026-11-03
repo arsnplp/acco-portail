@@ -26,12 +26,19 @@ export function peutDecider(user: { id: string; role: "CLIENT" | "ADMIN" | "COMM
   return can(user, "validation_commerciale") || can(user, "validation_technique");
 }
 
-/** Validateurs par défaut : technique = gestionnaire (Arsène) ; commercial = Direction commerciale (droit validation_commerciale). */
+/**
+ * Validateurs par défaut, deux niveaux distincts (20.1) : technique = gestionnaire (Arsène) ou droit validation_technique ;
+ * commercial = Direction commerciale (droit validation_commerciale) hors gestionnaire, pour qu'Arsène ne boucle jamais seul la chaîne.
+ */
+type UV = { id: string; role: "CLIENT" | "ADMIN" | "COMMERCIAL" | "DEV" | "EXPERT" | "SPECIALISTE"; email: string; droits: string[] };
+const estTechnique = (u: UV) => gestionnaireEmails().includes(u.email.toLowerCase()) || u.droits.includes("validation_technique");
+const estCommercial = (u: UV) => !gestionnaireEmails().includes(u.email.toLowerCase()) && can(u, "validation_commerciale");
 export async function validateursPour(type: ValidationType) {
   const users = await prisma.user.findMany({ where: { role: { not: "CLIENT" } }, select: { id: true, role: true, email: true, droits: true } });
-  if (TECHNIQUE.includes(type)) return users.filter((u) => gestionnaireEmails().includes(u.email.toLowerCase()));
-  if (type === "MAQUETTE") return users.filter((u) => gestionnaireEmails().includes(u.email.toLowerCase()) || (can(u, "validation_commerciale") && u.role === "ADMIN"));
-  return users.filter((u) => can(u, "validation_commerciale"));
+  if (TECHNIQUE.includes(type)) return users.filter(estTechnique);
+  if (type === "MAQUETTE") return users.filter((u) => estTechnique(u) || (estCommercial(u) && u.role === "ADMIN"));
+  const com = users.filter(estCommercial);
+  return com.length ? com : users.filter((u) => can(u, "validation_commerciale")); // équipe réduite : à défaut, le gestionnaire
 }
 
 /** Crée une validation en attente pour chaque validateur (ou pour `assigneId` si précisé). Idempotent par (type, objet, assigné). */
@@ -65,7 +72,9 @@ export async function decider(validationId: string, user: { id: string; role: "C
   if (!v || v.statut !== "EN_ATTENTE") return null;
   const now = new Date();
   const delegue = v.assigneId !== user.id ? await prisma.delegation.count({ where: { versId: user.id, deId: v.assigneId, debut: { lte: now }, fin: { gte: now }, clientId: null } }) : 0;
-  if (v.assigneId !== user.id && v.delegueAId !== user.id && !delegue && !peutDecider(user, v.type)) return null;
+  // La ligne doit être confiée à l'appelant (assigné, délégataire explicite, ou délégation active) : le droit générique n'est jamais une alternative (20.1).
+  const confiee = v.assigneId === user.id || v.delegueAId === user.id || delegue > 0;
+  if (!confiee || (v.assigneId === user.id && !peutDecider(user, v.type))) return null;
   const maj = await prisma.validation.update({ where: { id: validationId }, data: { statut, decideParId: user.id, decideAt: now, motif: motif ?? null } });
   const href = v.siteId ? `/admin/sites/${v.siteId}` : v.contratId ? `/admin/contrats/${v.contratId}` : v.clientId ? `/admin/clients/${v.clientId}` : "/admin/validations";
   await logActivite({ kind: "validation", texte: `${VALIDATION_LABEL[v.type]} : ${statut === "VALIDEE" ? "validée" : "refusée"}${motif ? ` (${motif})` : ""}`, href, userId: user.id, clientId: v.clientId, siteId: v.siteId });
@@ -99,6 +108,16 @@ async function suites(v: { id: string; type: ValidationType; clientId: string | 
       break;
     case "GO_LIVE":
       if (v.siteId) await prisma.site.update({ where: { id: v.siteId }, data: { goLiveAutoriseAt: new Date(), goLiveAutoriseParId: userId } });
+      break;
+    case "MAQUETTE":
+      // Bilel ET Arsène : quand les deux lignes sont validées, action commerciale « prendre RDV » (jamais d'envoi automatique, 10.4).
+      if (v.siteId && (await estValide("MAQUETTE", { siteId: v.siteId }))) {
+        const site = await prisma.site.findUnique({ where: { id: v.siteId }, select: { name: true, clientId: true, version: true } });
+        if (site) {
+          const { creerTache } = await import("@/lib/taches-client");
+          await creerTache({ clientId: site.clientId, siteId: v.siteId, type: "RDV_A_PLANIFIER", titre: `Présenter la maquette V${site.version} de ${site.name} au client`, description: "Maquette validée en interne : prendre rendez-vous, puis cliquer « Envoyer maquette » après la réunion.", source: "maquette", createdById: userId, notifier: true });
+        }
+      }
       break;
     case "CAMPAGNE":
       if (v.objetId) await prisma.campagne.updateMany({ where: { id: v.objetId, statut: "BROUILLON" }, data: { statut: "VALIDEE", validParId: userId, validAt: new Date() } });

@@ -7,8 +7,8 @@ import { requireDroit } from "@/lib/auth";
 import { ensureAuthUser } from "@/lib/invitations";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { sendEmail, layout, appUrl } from "@/lib/email";
-import { EQUIPE, MODE_LABEL, ROLE_LABEL, homeFor } from "@/lib/roles";
-import { DROITS, PRESETS, type Droit, type Preset } from "@/lib/permissions";
+import { EQUIPE, MODE_LABEL, MODULES, ROLE_LABEL, homeFor } from "@/lib/roles";
+import { DROITS, PRESETS, can, type Droit, type Preset } from "@/lib/permissions";
 import { logActivite } from "@/lib/activite";
 import { teamName } from "@/lib/crm";
 
@@ -81,6 +81,7 @@ export async function setTeamMode(id: string, mode: Mode | "") {
   const u = await prisma.user.findUnique({ where: { id } });
   if (!u || u.role === "CLIENT") return;
   if (mode === "ADMIN" && u.role !== "ADMIN") return;
+  if (mode === "COMMERCIAL" && !MODULES.prospection.includes(u.role)) return;
   await prisma.user.update({ where: { id }, data: { modeDefaut: mode || null } });
   await journalEquipe(me.id, u, mode ? `démarre en mode ${MODE_LABEL[mode]}` : "mode de démarrage retiré");
   revalidatePath("/crm/equipe");
@@ -91,7 +92,8 @@ export async function setTeamDroits(id: string, droits: string[]) {
   const me = await requireDroit("equipe");
   const u = await prisma.user.findUnique({ where: { id } });
   if (!u || u.role === "CLIENT") return;
-  const voulus = droits.filter((d): d is Droit => DROITS_VALIDES.includes(d as Droit));
+  if (id === me.id) return;
+  const voulus = droits.filter((d): d is Droit => DROITS_VALIDES.includes(d as Droit)).filter((d) => can(me, d) || u.droits.includes(d));
   const ajoutes = voulus.filter((d) => !u.droits.includes(d));
   const retires = u.droits.filter((d) => !voulus.includes(d as Droit));
   if (ajoutes.length === 0 && retires.length === 0) return;
@@ -135,6 +137,8 @@ export async function creerDelegation(_prev: TeamState, f: FormData): Promise<Te
   const me = await requireDroit("attribuer");
   const deId = String(f.get("deId") ?? "");
   const versId = String(f.get("versId") ?? "");
+  if (!can(me, "equipe") && deId !== me.id) return { error: "Vous ne pouvez déléguer que votre propre portefeuille (la Direction peut déléguer celui d’un autre membre)." };
+  if (!can(me, "equipe") && versId === me.id) return { error: "Une délégation vers vous-même doit être enregistrée par la Direction." };
   const clientId = String(f.get("clientId") ?? "") || null;
   const debut = new Date(String(f.get("debut") ?? ""));
   const fin = new Date(String(f.get("fin") ?? ""));

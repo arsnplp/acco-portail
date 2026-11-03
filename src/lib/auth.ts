@@ -53,7 +53,7 @@ export async function requireModule(module: Module) {
 /** Direction (droit `pilotage` : les admins, et Lucas sans administration). */
 export async function requireAdmin() {
   const user = await requireUser();
-  if (!can(user, "pilotage")) redirect(homeFor(user.role, user.modeDefaut));
+  if (!can(user, "pilotage")) redirect(user.role === "CLIENT" ? "/" : "/admin"); // hub de l'équipe, jamais le mode Direction (boucle)
   return user;
 }
 /** Un droit unitaire précis (section 20.1) ; sinon renvoi vers l'accueil de l'équipe. */
