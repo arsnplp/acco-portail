@@ -10,12 +10,12 @@ export function Card({ className, children, href, id }: { className?: string; ch
 
 export function SectionTitle({ icon: Icon, children, action }: { icon?: LucideIcon; children: React.ReactNode; action?: React.ReactNode }) {
   return (
-    <div className="flex items-end justify-between mb-3 mt-8 first:mt-0">
+    <div className="mb-3 mt-8 flex items-end justify-between gap-3 first:mt-0">
       <h2 className="text-lg flex items-center gap-2">
         {Icon && <Icon size={18} strokeWidth={1.75} className="shrink-0 text-text" aria-hidden />}
         {children}
       </h2>
-      {action}
+      {action && <div className="shrink-0 whitespace-nowrap">{action}</div>}
     </div>
   );
 }

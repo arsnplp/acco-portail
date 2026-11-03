@@ -59,7 +59,7 @@ export default async function SuiviPage({ searchParams }: { searchParams: Promis
       </div>
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">{compteurs.map((t) => <Card key={t.l} href={t.href} className={cn(t.n > 0 && "border-pink/40")}><p className={cn("font-title text-3xl font-extrabold", t.n > 0 ? "text-title" : "text-muted")}>{t.n}</p><p className="mt-1 text-xs text-text">{t.l}</p></Card>)}</div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-2">
         <section>
           <SectionTitle icon={FactoryIcon} action={<Link href="/admin/production" className="text-sm text-text hover:text-title">Kanban</Link>}>Sites en cours de création ({sites.length})</SectionTitle>
           <div className="grid gap-2">{sites.map((s, i) => { const step = PROJECT_STEPS.find((p) => p.key === s.projectStep)!; const dl = s[step.deadline]; const e = etats[i]; return (
@@ -71,7 +71,7 @@ export default async function SuiviPage({ searchParams }: { searchParams: Promis
           <div className="grid gap-2">{rdvAPlanifier.map((t) => <C key={t.id} c={t.client} href={`/admin/clients/${t.client.id}?onglet=taches`}><p className="truncate text-sm font-semibold text-title">{t.titre}</p><p className="truncate text-xs text-text">{t.client.name}{t.site ? ` · ${t.site.name}` : ""} · {fmtDayTime(t.createdAt)}{t.source ? ` · ${t.source}` : ""} · fixer le RDV depuis la fiche</p></C>)}{rdvAPlanifier.length === 0 && <p className="text-sm text-text">Rien à planifier : maquettes et versions prêtes apparaissent ici.</p>}</div>
         </section>
         <section>
-          <SectionTitle icon={UserXIcon} action={<Link href="/admin/clients?alerte=60j" className="text-sm text-text hover:text-title">Vue enregistrable</Link>}>Sans interaction depuis {JOURS_SANS_CONTACT} jours, sans RDV ({sansContact.length})</SectionTitle>
+          <SectionTitle icon={UserXIcon} action={<Link href="/admin/clients?alerte=60j" className="text-sm whitespace-nowrap text-text hover:text-title">Voir</Link>}>Sans échange depuis {JOURS_SANS_CONTACT} jours ({sansContact.length})</SectionTitle>
           <div className="grid gap-2">{sansContact.slice(0, 12).map(({ c, j, jamais }) => <C key={c.id} c={c}><p className="truncate text-sm font-semibold text-title">{c.name}</p><p className="text-xs text-pink">{jamais ? `aucun échange tracé · client depuis ${j} j` : `dernier échange il y a ${j} j`}{c.commercial ? ` · ${teamName(c.commercial)}` : ""}</p></C>)}{sansContact.length === 0 && <p className="text-sm text-text">Tous les clients ont eu un échange récent ou un RDV prévu.</p>}</div>
         </section>
         <section>
@@ -83,11 +83,11 @@ export default async function SuiviPage({ searchParams }: { searchParams: Promis
           <div className="grid gap-2">{parrainages.map((r) => <C key={r.id} c={r.referrer} href="/admin/recommandations"><p className="truncate text-sm font-semibold text-title">{r.contactName ?? "Contact"} <Badge tone={r.status === "ENVOYEE" ? "blue" : "yellow"}>{r.status === "ENVOYEE" ? "à qualifier" : "contacté"}</Badge></p><p className="text-xs text-text">parrain : {r.referrer.name}{r.referred ? ` · prospect : ${r.referred.name}` : ""} · {fmtDate(r.createdAt)}</p></C>)}{parrainages.length === 0 && <p className="text-sm text-text">Aucune recommandation en attente.</p>}</div>
         </section>}
         <section>
-          <SectionTitle icon={FileTextIcon}>Documents et informations attendus du client ({docs.length})</SectionTitle>
+          <SectionTitle icon={FileTextIcon}>Documents attendus du client ({docs.length})</SectionTitle>
           <div className="grid gap-2">{docs.map((d) => <C key={d.id} c={d.client} href={`/admin/clients/${d.client.id}/documents`}><p className="truncate text-sm font-semibold text-title">{d.kind.toLowerCase()}{d.site ? ` · ${d.site.name}` : ""}{d.message ? ` · ${d.message}` : ""}</p><p className="text-xs text-text">{d.client.name} · demandé le {fmtDate(d.createdAt)}{d.requester ? ` par ${teamName(d.requester)}` : ""} · non reçu</p></C>)}{docs.length === 0 && <p className="text-sm text-text">Rien d’attendu.</p>}</div>
         </section>
         <section>
-          <SectionTitle icon={ListChecksIcon} action={<Link href="/admin/taches" className="text-sm text-text hover:text-title">Gestionnaire</Link>}>Tâches et relances prioritaires ({taches.length})</SectionTitle>
+          <SectionTitle icon={ListChecksIcon} action={<Link href="/admin/taches" className="text-sm whitespace-nowrap text-text hover:text-title">Toutes</Link>}>Tâches et relances prioritaires ({taches.length})</SectionTitle>
           <div className="grid gap-2">{taches.slice(0, 12).map((t) => <C key={t.id} c={t.client} href={`/admin/clients/${t.client.id}?onglet=taches`}><p className="truncate text-sm font-semibold text-title">{t.titre}</p><p className={cn("text-xs", t.echeance && t.echeance < now ? "text-pink" : "text-text")}>{t.client.name} · {t.echeance ? `${t.echeance < now ? "en retard · " : ""}${fmtDate(t.echeance)}` : "sans échéance"} · {t.responsable ? teamName(t.responsable) : "sans responsable"}</p></C>)}{taches.length === 0 && <p className="text-sm text-text">Aucune tâche en attente.</p>}</div>
         </section>
         {!externe && <section>
