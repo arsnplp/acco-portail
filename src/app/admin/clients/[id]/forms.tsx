@@ -8,7 +8,7 @@ import { LogoClient } from "@/components/ui/logo-client";
 import { cn } from "@/lib/cn";
 import {
   archiverClient, createSite, createSubscription, creerRdvClientAction, creerTacheClientAction, deleteClientContact, genererSyntheseClient, logClientEchange,
-  reattribuerClient, removeLogo, saveClientContact, setRdvClientResultat, terminerTacheAction, updateClient, uploadLogo, type ActionState,
+  reattribuerClient, removeLogo, saveClientContact, setRdvClientResultat, terminerTacheAction, updateClient, uploadLogo, rattacherEmailAction, rattacherAppelAction, synchroniserEmailsAction, type ActionState,
 } from "../actions";
 import { marquerImpaye, marquerPremierPaiement, proposerPourSite } from "@/app/admin/contrats/actions";
 
@@ -211,7 +211,7 @@ export function TacheButtons({ clientId, tacheId }: { clientId: string; tacheId:
   );
 }
 
-export function RdvForm({ clientId, membres, sites, meId }: { clientId: string; membres: Member[]; sites: SiteRef[]; meId: string }) {
+export function RdvForm({ clientId, membres, sites, meId, contacts = [] }: { clientId: string; membres: Member[]; sites: SiteRef[]; meId: string; contacts?: { email: string; nom: string }[] }) {
   const [key, setKey] = useState(0);
   const [state, action] = useActionState<ActionState, FormData>(async (prev, fd) => { const r = await creerRdvClientAction(clientId, prev, fd); if (!r.error) setKey((k) => k + 1); return r; }, {});
   return (
@@ -225,9 +225,13 @@ export function RdvForm({ clientId, membres, sites, meId }: { clientId: string; 
         <Field label="Lieu / visio"><Input name="lieu" placeholder="Sur place, Google Meet…" /></Field>
         <Field label="Site"><Select name="siteId" defaultValue=""><option value="">—</option>{sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</Select></Field>
       </div>
+      <div className="flex flex-wrap gap-3 text-xs text-text-strong">
+        <label className="flex items-center gap-1.5"><input type="checkbox" name="meet" className="size-4" /> Créer un lien Google Meet</label>
+        {contacts.map((c) => <label key={c.email} className="flex items-center gap-1.5"><input type="checkbox" name="invites" value={c.email} className="size-4" /> Inviter {c.nom}</label>)}
+      </div>
       <FormError message={state.error} />
       <SubmitButton size="sm" pendingLabel="…">Fixer le rendez-vous</SubmitButton>
-      <p className="text-[11px] text-muted">Ajouté dans l’agenda Google du membre si son compte est connecté.</p>
+      <p className="text-[11px] text-muted">Ajouté dans l’agenda Google du membre si son compte est connecté (invitations envoyées aux contacts cochés). Un RDV déplacé ou annulé dans Google est répercuté ici.</p>
     </form>
   );
 }
@@ -241,4 +245,18 @@ export function RdvButtons({ clientId, rdvId }: { clientId: string; rdvId: strin
       <button type="button" disabled={pending} onClick={() => confirm("Annuler ce rendez-vous ?") && start(() => setRdvClientResultat(clientId, rdvId, "ANNULE"))} className={b}>Annuler</button>
     </div>
   );
+}
+
+export function RattacherEmailForm({ clientId }: { clientId: string }) {
+  const [state, action] = useActionState<ActionState, FormData>(rattacherEmailAction.bind(null, clientId), {});
+  return <form action={action} className="flex flex-wrap items-end gap-2"><Field label="Rattacher un email non reconnu" hint="identifiant du message ou lien Gmail"><Input name="ref" required placeholder="18f3a2…" /></Field><SubmitButton size="sm" variant="secondary" pendingLabel="…">Rattacher</SubmitButton><FormError message={state.error} /></form>;
+}
+export function SyncEmailsButton({ clientId }: { clientId: string }) {
+  const [pending, start] = useTransition();
+  const [msg, setMsg] = useState<string | null>(null);
+  return <div><button type="button" disabled={pending} onClick={() => start(async () => { const r = await synchroniserEmailsAction(clientId); setMsg(r.error ?? `${r.added ?? 0} nouveau${(r.added ?? 0) > 1 ? "x" : ""} message${(r.added ?? 0) > 1 ? "s" : ""}.`); })} className="inline-flex h-8 items-center rounded-full border border-border px-3 text-xs text-title hover:border-text disabled:opacity-50">{pending ? "Synchronisation…" : "Actualiser depuis Gmail"}</button>{msg && <p className="mt-1 text-xs text-text">{msg}</p>}</div>;
+}
+export function RattacherAppelButton({ clientId, echangeId }: { clientId: string; echangeId: string }) {
+  const [pending, start] = useTransition();
+  return <button type="button" disabled={pending} onClick={() => start(() => rattacherAppelAction(clientId, echangeId))} className="h-7 rounded-full border border-border px-2.5 text-xs text-title hover:border-text disabled:opacity-50">{pending ? "…" : "Rattacher à ce client"}</button>;
 }

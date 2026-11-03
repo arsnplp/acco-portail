@@ -7,6 +7,8 @@ import { CANAL_LABEL, timelineClient, type Canal } from "@/lib/timeline";
 import { cn } from "@/lib/cn";
 import { addDays } from "@/lib/format";
 import { CompteRenduForm } from "../suivi-forms";
+import { RattacherAppelButton, RattacherEmailForm, SyncEmailsButton } from "../forms";
+import { appelsNonRattaches } from "@/lib/aircall";
 import type { Ctx } from "./ctx";
 
 const PERIODES: Array<[string, string, number | null]> = [["30", "30 jours", 30], ["90", "3 mois", 90], ["365", "1 an", 365], ["tout", "Tout", null]];
@@ -23,6 +25,7 @@ export async function ActiviteOnglet({ clientId, sp, mode, externe }: Ctx & { mo
     prisma.site.findMany({ where: { clientId }, select: { id: true, name: true } }),
   ]);
   const contacts = [...new Set(items.map((i) => i.contact).filter((c): c is string => !!c))];
+  const inconnus = mode === "appels" && !externe ? await appelsNonRattaches(20) : [];
   const visibles = (externe ? items.filter((i) => !i.interne) : items).filter((i) => !sp.contact || i.contact === sp.contact);
   const base = `/admin/clients/${clientId}?onglet=${mode}`;
   const href = (patch: Record<string, string | null>) => { const p = new URLSearchParams(); for (const [k, v] of Object.entries({ canal: sp.canal ?? "", periode: sp.periode ?? "", qui: sp.qui ?? "", site: sp.site ?? "", contact: sp.contact ?? "", ...patch })) if (v) p.set(k, v); const q = p.toString(); return q ? `${base}&${q}` : base; };
@@ -30,6 +33,12 @@ export async function ActiviteOnglet({ clientId, sp, mode, externe }: Ctx & { mo
   return (
     <div>
       {mode === "activite" && !externe && <CompteRenduForm clientId={clientId} today={parisDay()} />}
+      {mode === "emails" && !externe && <div className="flex flex-wrap items-end gap-3"><SyncEmailsButton clientId={clientId} /><RattacherEmailForm clientId={clientId} /></div>}
+      {inconnus.length > 0 && (
+        <details className="rounded-card border border-border bg-surface px-4 py-3 text-sm"><summary className="cursor-pointer text-text">{inconnus.length} appel{inconnus.length > 1 ? "s" : ""} Aircall non rattaché{inconnus.length > 1 ? "s" : ""} (numéros inconnus)</summary>
+          <ul className="mt-2 space-y-1 text-xs">{inconnus.map((e) => <li key={e.id} className="flex items-center gap-2"><span className="flex-1 text-text-strong">{e.notes} · {fmtDayTime(e.date)}{e.auteur ? ` · ${teamName(e.auteur)}` : e.auteurNom ? ` · ${e.auteurNom}` : ""}{isAircallMeta(e.meta) ? ` · ${e.meta.numero}` : ""}</span><RattacherAppelButton clientId={clientId} echangeId={e.id} /></li>)}</ul>
+        </details>
+      )}
       <form method="get" action={`/admin/clients/${clientId}`} className="mt-4 flex flex-wrap items-center gap-2">
         <input type="hidden" name="onglet" value={mode} />
         {mode === "activite" && (

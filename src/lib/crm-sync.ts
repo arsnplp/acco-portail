@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { syncProspectCalls } from "@/lib/aircall";
-import { syncProspectEmails } from "@/lib/gmail";
+import { syncClientEmails, syncProspectEmails } from "@/lib/gmail";
 import { connecteurActif, journal, marquerSync } from "@/lib/connecteurs";
 
 /** Synchronise une fiche (appels Aircall + emails Gmail). Si `force` est faux, au plus une fois toutes les 10 minutes. */
@@ -32,6 +32,12 @@ export async function syncPlanifiee() {
     try { await syncProspectEmails(f.id); n++; } catch (e) { await journal("gmail", "erreur", (e as Error).message); }
     await prisma.prospect.update({ where: { id: f.id }, data: { syncAt: new Date() } }).catch(() => null);
   }
+  // Clients sans fiche prospect (historique importé) : 15 par passage, les moins récemment synchronisés d'abord.
+  const clients = await prisma.client.findMany({ where: { archivedAt: null, crmProspect: null, OR: [{ contacts: { some: { email: { not: null } } } }, { email: { not: null } }] }, select: { id: true } });
+  const marques = await prisma.setting.findMany({ where: { key: { startsWith: "sync_client:" } } });
+  const quand = new Map(marques.map((m) => [m.key.slice("sync_client:".length), new Date(m.value).getTime()]));
+  const aFaire = clients.map((c) => ({ id: c.id, t: quand.get(c.id) ?? 0 })).filter((c) => Date.now() - c.t > 3600_000).sort((a, b) => a.t - b.t).slice(0, 15);
+  for (const c of aFaire) { try { await syncClientEmails(c.id); n++; } catch (e) { await journal("gmail", "erreur", (e as Error).message); } }
   if (n) await marquerSync("gmail");
   return { fiches: n };
 }

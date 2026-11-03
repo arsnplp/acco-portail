@@ -183,9 +183,11 @@ export async function creerRdvClientAction(clientId: string, _prev: ActionState,
   const dureeMin = Math.max(15, parseInt(d.duree || "60", 10) || 60);
   const client = await prisma.client.findUnique({ where: { id: clientId }, select: { name: true } });
   const rdv = await prisma.rendezVous.create({ data: { clientId, siteId: d.siteId || null, commercialId: d.commercialId || me.id, titre: d.titre?.trim() || null, debut, dureeMin, lieu: d.lieu?.trim() || null } });
-  // Dans l'agenda Google du membre si son compte est connecté (silencieux sinon).
+  // Dans l'agenda Google du membre si son compte est connecté (silencieux sinon) ; invités = contacts cochés ; Meet sur demande.
+  const invites = formData.getAll("invites").map(String).filter((e) => e.includes("@"));
   const { upsertAgendaEvent } = await import("@/lib/agenda");
-  await upsertAgendaEvent(rdv.commercialId!, `rdv-client:${rdv.id}`, { titre: `${d.titre?.trim() || "RDV"} · ${client?.name ?? "client"}`, debut, fin: new Date(debut.getTime() + dureeMin * 60_000), lieu: rdv.lieu, description: `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/admin/clients/${clientId}` }).catch(() => null);
+  const g = await upsertAgendaEvent(rdv.commercialId!, `rdv-client:${rdv.id}`, { titre: `${d.titre?.trim() || "RDV"} · ${client?.name ?? "client"}`, debut, fin: new Date(debut.getTime() + dureeMin * 60_000), lieu: rdv.lieu, description: `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/admin/clients/${clientId}`, invites, meet: d.meet === "on" }).catch(() => ({ ok: false, meetUrl: null }));
+  if (g.meetUrl) await prisma.rendezVous.update({ where: { id: rdv.id }, data: { meetUrl: g.meetUrl } });
   // Une tâche « RDV à planifier » encore ouverte est close.
   await prisma.tacheClient.updateMany({ where: { clientId, type: "RDV_A_PLANIFIER", statut: "A_FAIRE", ...(d.siteId ? { OR: [{ siteId: d.siteId }, { siteId: null }] } : {}) }, data: { statut: "FAIT", faitAt: new Date() } });
   await logActivite({ kind: "rdv", texte: `RDV fixé le ${debut.toLocaleDateString("fr-FR")}${d.titre ? ` : ${d.titre.trim()}` : ""}`, href: `/admin/clients/${clientId}?onglet=taches`, userId: me.id, clientId, siteId: d.siteId || null });
@@ -200,6 +202,34 @@ export async function setRdvClientResultat(clientId: string, rdvId: string, resu
   await prisma.rendezVous.update({ where: { id: rdvId }, data: { resultat } });
   if (resultat === "ANNULE" && rdv.commercialId) { const { deleteAgendaEvent } = await import("@/lib/agenda"); await deleteAgendaEvent(rdv.commercialId, `rdv-client:${rdv.id}`).catch(() => null); }
   revalidatePath(`/admin/clients/${clientId}`);
+}
+
+// ─── Rattachement manuel (8.1, 8.2) ─────────────────
+export async function rattacherEmailAction(clientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const me = await requireTeam();
+  await requireClientAcces(me, clientId);
+  if (estExterne(me)) return { error: "Réservé à l’équipe interne." };
+  const { rattacherMessageGmail } = await import("@/lib/gmail");
+  const r = await rattacherMessageGmail(clientId, String(formData.get("ref") ?? ""), me.id);
+  revalidatePath(`/admin/clients/${clientId}`);
+  return r.ok ? {} : { error: r.error };
+}
+export async function rattacherAppelAction(clientId: string, echangeId: string) {
+  const me = await requireTeam();
+  await requireClientAcces(me, clientId);
+  if (estExterne(me)) return;
+  const { rattacherAppel } = await import("@/lib/aircall");
+  await rattacherAppel(echangeId, clientId);
+  revalidatePath(`/admin/clients/${clientId}`);
+}
+/** Synchronisation manuelle des emails de la fiche (bouton, jamais au chargement : 00.8). */
+export async function synchroniserEmailsAction(clientId: string): Promise<{ added?: number; error?: string }> {
+  const me = await requireTeam();
+  await requireClientAcces(me, clientId);
+  const { syncClientEmails } = await import("@/lib/gmail");
+  const r = await syncClientEmails(clientId);
+  revalidatePath(`/admin/clients/${clientId}`);
+  return r;
 }
 
 // ─── Synthèse IA courte (4.2 bloc 10, sur clic, 00.6) ─────────────────

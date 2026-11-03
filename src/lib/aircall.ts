@@ -95,29 +95,38 @@ export function noteAppel(m: AircallMeta) {
 /** Type d'échange pour un appel : répondu = Appel ; sortant sans réponse = NRP ; entrant manqué = simple note (ce n'est pas un NRP). */
 const typeAppel = (m: AircallMeta): EchangeType => (m.repondu ? "APPEL" : m.direction === "outbound" ? "NRP" : "NOTE");
 
-type Index = { byPhone: Map<string, string>; userByEmail: Map<string, string> };
+type Index = { byPhone: Map<string, string>; byPhoneClient: Map<string, string>; userByEmail: Map<string, string> };
 
 async function buildIndex(prospectIds?: string[]): Promise<Index> {
-  const [prospects, users] = await Promise.all([
+  const [prospects, clients, users] = await Promise.all([
     prisma.prospect.findMany({ where: prospectIds ? { id: { in: prospectIds } } : {}, select: { id: true, telephone: true, statut: true, contacts: { select: { telephone: true } } } }),
-    prisma.user.findMany({ where: { role: { in: MODULES.prospection } }, select: { id: true, email: true } }),
+    prospectIds ? [] : prisma.client.findMany({ where: { archivedAt: null, crmProspect: null }, select: { id: true, phone: true, contacts: { select: { telephone: true } } } }),
+    prisma.user.findMany({ where: { role: { in: MODULES.suivi } }, select: { id: true, email: true } }),
   ]);
   const byPhone = new Map<string, string>();
   // Une fiche ouverte passe avant une fiche close si deux fiches partagent un numéro.
   for (const p of [...prospects].sort((a, b) => Number(["GAGNE", "PERDU", "ABANDON"].includes(a.statut)) - Number(["GAGNE", "PERDU", "ABANDON"].includes(b.statut)))) {
     for (const t of [p.telephone, ...p.contacts.map((c) => c.telephone)]) { const n = normPhone(t); if (n && !byPhone.has(n)) byPhone.set(n, p.id); }
   }
-  return { byPhone, userByEmail: new Map(users.map((u) => [u.email.toLowerCase(), u.id])) };
+  // Clients sans fiche prospect (historique importé) : rattachement direct au client.
+  const byPhoneClient = new Map<string, string>();
+  for (const c of clients) for (const t of [c.phone, ...c.contacts.map((x) => x.telephone)]) { const n = normPhone(t); if (n && !byPhone.has(n) && !byPhoneClient.has(n)) byPhoneClient.set(n, c.id); }
+  return { byPhone, byPhoneClient, userByEmail: new Map(users.map((u) => [u.email.toLowerCase(), u.id])) };
 }
 
 /** Enregistre (ou enrichit) l'échange correspondant à un appel. Renvoie true si quelque chose a été écrit. */
-async function upsertCall(c: AircallCall, prospectId: string, idx: Index) {
+async function upsertCall(c: AircallCall, prospectId: string | null, idx: Index, clientId: string | null = null) {
   const externalId = `aircall:${c.id}`;
   const existing = await prisma.echange.findUnique({ where: { externalId }, select: { id: true } });
   if (existing) return false;
   const meta = baseMeta(c);
   const date = new Date(c.started_at * 1000);
   const auteurId = c.user?.email ? idx.userByEmail.get(c.user.email.toLowerCase()) ?? null : null;
+  if (!prospectId) {
+    // Client direct, ou numéro inconnu : file de rapprochement (échange sans fiche, à rattacher à la main).
+    await prisma.echange.create({ data: { clientId, type: typeAppel(meta), notes: noteAppel(meta), date, auteurId, auteurNom: auteurId ? null : c.user?.name ?? null, origine: "aircall", externalId, meta: meta as unknown as Prisma.InputJsonObject } });
+    return true;
+  }
   // Déjà noté à la main autour de l'appel (NRP, Appel, Prise de RDV, RDV) : on rattache l'appel à cette note au lieu d'en créer une deuxième.
   const manuel = await prisma.echange.findFirst({
     where: { prospectId, externalId: null, origine: "saisie", type: { in: ["NRP", "APPEL", "PRISE_RDV", "RDV"] }, date: { gte: new Date(date.getTime() - 20 * 60_000), lte: new Date(date.getTime() + 40 * 60_000) } },
@@ -164,9 +173,10 @@ export async function syncAircall() {
     let matched = 0, last = row ? Number(row.value) : from;
     for (const c of calls) {
       last = Math.max(last, c.started_at);
-      const prospectId = idx.byPhone.get(normPhone(c.raw_digits) ?? "");
-      if (!prospectId) continue;
-      try { if (await upsertCall(c, prospectId, idx)) matched++; } catch (e) { console.warn("[aircall]", c.id, (e as Error).message); }
+      const num = normPhone(c.raw_digits) ?? "";
+      const prospectId = idx.byPhone.get(num) ?? null;
+      const clientId = prospectId ? null : idx.byPhoneClient.get(num) ?? null;
+      try { if (await upsertCall(c, prospectId, idx, clientId)) { if (prospectId || clientId) matched++; } } catch (e) { console.warn("[aircall]", c.id, (e as Error).message); }
     }
     await prisma.setting.upsert({ where: { key: "aircall_sync_from" }, create: { key: "aircall_sync_from", value: String(last) }, update: { value: String(last) } });
     await marquerSync("aircall");
@@ -186,4 +196,14 @@ export function startAircallTicker() {
   const run = () => { syncAircall().catch((e) => console.warn("[aircall]", (e as Error).message)); };
   setTimeout(run, 20_000);
   g.__accoAircall = setInterval(run, 5 * 60_000);
+}
+
+/** File de rapprochement (8.2) : appels dont le numéro n'est rattaché à aucune fiche. */
+export async function appelsNonRattaches(limite = 30) {
+  return prisma.echange.findMany({ where: { origine: "aircall", prospectId: null, clientId: null }, orderBy: { date: "desc" }, take: limite, include: { auteur: { select: { firstName: true, email: true } } } });
+}
+/** Rattache un appel inconnu à un client (et, par ricochet, à sa fiche prospect si elle existe). */
+export async function rattacherAppel(echangeId: string, clientId: string) {
+  const p = await prisma.prospect.findFirst({ where: { clientId }, select: { id: true } });
+  await prisma.echange.updateMany({ where: { id: echangeId, origine: "aircall", prospectId: null, clientId: null }, data: { clientId, prospectId: p?.id ?? null } });
 }

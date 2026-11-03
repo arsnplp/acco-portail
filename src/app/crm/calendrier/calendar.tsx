@@ -5,7 +5,7 @@ import { cn } from "@/lib/cn";
 
 export type Vue = "jour" | "semaine" | "mois";
 export type CalEvent = {
-  id: string; kind: "rdv" | "rappel"; at: string; duree: number; prospectId: string; nom: string; societe: string;
+  id: string; kind: "rdv" | "rappel"; at: string; duree: number; prospectId: string; href?: string; nom: string; societe: string;
   objet: string; resultat: "PREVU" | "FAIT" | "NO_SHOW" | "ANNULE" | null; qui: string | null;
 };
 
@@ -44,7 +44,7 @@ function lanes(evts: CalEvent[]) {
 
 function EventBox({ e, compact }: { e: CalEvent; compact?: boolean }) {
   return (
-    <Link href={`/crm/prospects/${e.prospectId}`} title={`${hhmm(e.at)} · ${e.nom} · ${e.objet}`} className={cn("block h-full overflow-hidden rounded-md text-xs leading-tight hover:brightness-125", compact ? "px-1 py-0.5" : "px-2 py-1", style(e))}>
+    <Link href={e.href ?? `/crm/prospects/${e.prospectId}`} title={`${hhmm(e.at)} · ${e.nom} · ${e.objet}`} className={cn("block h-full overflow-hidden rounded-md text-xs leading-tight hover:brightness-125", compact ? "px-1 py-0.5" : "px-2 py-1", style(e))}>
       {compact ? (
         <>
           <span className="block truncate"><span className="font-semibold text-title">{e.nom}</span> <span className="text-[10px] tabular-nums">{hhmm(e.at)}</span></span>
@@ -130,7 +130,7 @@ function MonthGrid({ first, events, today, month, base }: { first: string; event
               <Link href={`${base}&vue=jour&d=${d}`} className={cn("mb-1 inline-flex size-6 items-center justify-center rounded-full text-xs", d === today ? "bg-yellow font-bold text-bg" : out ? "text-muted" : "text-text-strong hover:bg-surface-2")}>{Number(d.slice(8))}</Link>
               <div className="space-y-0.5">
                 {list.slice(0, 3).map((e) => (
-                  <Link key={e.id} href={`/crm/prospects/${e.prospectId}`} title={`${hhmm(e.at)} · ${e.nom} · ${e.objet}`} className={cn("block truncate rounded px-1 py-0.5 text-[10px] leading-tight sm:text-[11px]", style(e))}>
+                  <Link key={e.id} href={e.href ?? `/crm/prospects/${e.prospectId}`} title={`${hhmm(e.at)} · ${e.nom} · ${e.objet}`} className={cn("block truncate rounded px-1 py-0.5 text-[10px] leading-tight sm:text-[11px]", style(e))}>
                     <span className="tabular-nums">{hhmm(e.at)}</span> <span className="hidden sm:inline">{e.nom}</span>
                   </Link>
                 ))}

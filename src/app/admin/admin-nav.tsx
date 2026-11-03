@@ -17,6 +17,7 @@ const ITEMS: Array<[string, string, "suivi" | "prospection"]> = [
   ["/admin/modifications", "Modifications", "suivi"],
   ["/admin/validations", "Validations", "suivi"],
   ["/admin/contrats", "Contrats", "prospection"],
+  ["/admin/campagnes", "Campagnes", "prospection"],
   ["/admin/offres", "Offres", "prospection"],
   ["/admin/commandes", "Commandes", "prospection"],
   ["/admin/messages", "Messages", "suivi"],
@@ -27,7 +28,7 @@ const ITEMS: Array<[string, string, "suivi" | "prospection"]> = [
 const PARAMETRES: Array<[string, string]> = [["/admin", "← Accueil"], ["/admin/parametres", "Paramètres"]];
 const PILOTAGE: Array<[string, string]> = [["/admin", "← Accueil"], ["/admin/pilotage", "Pilotage"]];
 /** Pages masquées aux prestataires et spécialistes (section 13) ; le serveur les bloque aussi (layout). */
-const EXTERNE_CACHE = ["/admin/documents", "/admin/contrats", "/admin/offres", "/admin/commandes", "/admin/recommandations"];
+const EXTERNE_CACHE = ["/admin/documents", "/admin/contrats", "/admin/campagnes", "/admin/offres", "/admin/commandes", "/admin/recommandations"];
 
 export function AdminNav({ role, externe = false, direction = false }: { role: Role; externe?: boolean; direction?: boolean }) {
   const pathname = usePathname();

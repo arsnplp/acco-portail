@@ -15,4 +15,8 @@ export async function register() {
   startSearchConsoleTicker();
   const { startContratsTicker } = await import("./lib/contrats-taches");
   startContratsTicker();
+  const { startAgendaTicker } = await import("./lib/agenda");
+  startAgendaTicker();
+  const { startCampagnesTicker } = await import("./lib/campagnes");
+  startCampagnesTicker();
 }
