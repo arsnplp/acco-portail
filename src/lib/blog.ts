@@ -11,6 +11,9 @@ import { normName } from "@/lib/crm";
 import { sendPushToUser } from "@/lib/push";
 import { gestionnaireEmails } from "@/lib/roles";
 import { logActivite } from "@/lib/activite";
+import { WORKER_HEARTBEAT_KEY, workerOnline } from "@/lib/change-requests";
+
+export const slugDe = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 70);
 
 const TZ = "Europe/Paris";
 const jourParis = (d: Date) => new Date(`${d.toLocaleDateString("en-CA", { timeZone: TZ })}T12:00:00Z`); // midi UTC : stable
@@ -185,7 +188,77 @@ export async function alertesBlog(now = new Date()) {
 export function startBlogTicker() {
   const g = globalThis as { __blogTicker?: NodeJS.Timeout };
   if (g.__blogTicker) return;
-  const tick = () => Promise.all([automatiserBlogs(), alertesBlog()]).catch((e) => console.warn("[blog]", (e as Error).message));
+  const tick = () => Promise.all([automatiserBlogs(), publierBlogsDuLundi(), suivrePublications(), alertesBlog()]).catch((e) => console.warn("[blog]", (e as Error).message));
   setTimeout(tick, 150_000);
-  g.__blogTicker = setInterval(tick, 60 * 60_000);
+  g.__blogTicker = setInterval(tick, 10 * 60_000);
 }
+
+/** Adresse publique prévue d'un article (le worker crée la page à cet emplacement exact). */
+export const urlArticle = (siteUrl: string | null, titre: string) => (siteUrl ? `${siteUrl.replace(/\/$/, "")}/blog/${slugDe(titre)}.html` : null);
+
+export function consignesPublication(a: { titre: string; contenu: string | null; motsCles: string | null }, siteUrl: string | null) {
+  const slug = slugDe(a.titre);
+  return `PUBLICATION AUTOMATIQUE D'UN ARTICLE DE BLOG (portail Acco). À faire exactement :
+1. Crée la page de l'article à l'emplacement blog/${slug}.html (depuis la racine servie du site). Si le site a déjà un dossier ou une convention de blog (ex. blog/index.html, articles/, posts/), respecte-la et garde le nom ${slug}.
+2. Reprends le style du site (même en-tête, pied de page, feuille de style, polices) pour que la page soit intégrée. Pas de nouveau framework.
+3. Convertis le texte markdown ci-dessous en HTML propre : h1 pour le titre, h2 pour les sections, paragraphes, liens tels quels. Place la « Meta description » dans <meta name="description">, le titre dans <title>, et ajoute les balises Open Graph de base.
+4. Ajoute un lien vers l'article sur la page d'accueil ou la page de liste du blog (crée blog/index.html listant les articles si elle n'existe pas), avec la date du jour.
+5. Ne modifie rien d'autre. Pas de fichier de configuration, pas de déploiement.
+Adresse publique attendue : ${urlArticle(siteUrl, a.titre) ?? `/blog/${slug}.html`}
+${a.motsCles ? `Mots-clés : ${a.motsCles}\n` : ""}
+--- ARTICLE (markdown) ---
+${a.contenu ?? ""}`;
+}
+
+/**
+ * Lundi dès 6 h (Paris) : chaque article prévu pour ce lundi est confié au worker Claude du Mac, qui l'intègre au dépôt GitHub du
+ * site ; le VPS publie dans la minute. Aucune validation humaine : la mise en ligne est demandée dès que la branche est prête.
+ */
+export async function publierBlogsDuLundi(now = new Date()) {
+  const jour = jourParis(now).getUTCDay();
+  const heure = Number(now.toLocaleTimeString("fr-FR", { timeZone: TZ, hour: "2-digit", hour12: false }));
+  if (jour !== 1 || heure < 6) return { confies: 0 };
+  const lundi = dernierLundi(now);
+  const articles = await prisma.article.findMany({ where: { statut: "A_PUBLIER", prevuPour: lundi, changeRequestId: null }, include: { site: { select: { id: true, name: true, url: true, repoUrl: true, clientId: true, developpeurId: true } } } });
+  let confies = 0;
+  for (const a of articles) {
+    const cle = `blog_probleme:${a.siteId}`;
+    if (!a.site.repoUrl) { await prisma.setting.upsert({ where: { key: cle }, create: { key: cle, value: `${new Date().toISOString()} Dépôt GitHub non renseigné sur la fiche du site : publication impossible.` }, update: { value: `${new Date().toISOString()} Dépôt GitHub non renseigné sur la fiche du site : publication impossible.` } }); continue; }
+    if (!a.contenu) continue;
+    const cr = await prisma.changeRequest.create({ data: { siteId: a.siteId, title: `Article de blog : ${a.titre}`, description: consignesPublication(a, a.site.url), page: "Blog", status: "EN_COURS", assigneeId: a.site.developpeurId, startedAt: new Date(), claudeState: "EN_FILE" } });
+    await prisma.article.update({ where: { id: a.id }, data: { changeRequestId: cr.id, url: a.url ?? urlArticle(a.site.url, a.titre) } });
+    await logActivite({ kind: "article", texte: `${a.site.name} : publication de « ${a.titre} » confiée à Claude (dépôt GitHub)`, href: `/admin/blog/${a.siteId}`, clientId: a.site.clientId, siteId: a.siteId });
+    confies++;
+  }
+  return { confies };
+}
+
+/** Suit les publications confiées au worker : branche prête → mise en ligne demandée ; en ligne → article publié ; erreur → alerte. */
+export async function suivrePublications() {
+  const enCours = await prisma.article.findMany({ where: { statut: "A_PUBLIER", changeRequestId: { not: null } }, include: { site: { select: { id: true, name: true, url: true, clientId: true, developpeurId: true, client: { select: { developpeurId: true } } } } } });
+  if (enCours.length === 0) return { suivis: 0 };
+  const heartbeat = await prisma.setting.findUnique({ where: { key: WORKER_HEARTBEAT_KEY } });
+  const macOk = workerOnline(heartbeat?.value);
+  const gestionnaires = await prisma.user.findMany({ where: { email: { in: gestionnaireEmails() } }, select: { id: true } });
+  for (const a of enCours) {
+    const cr = await prisma.changeRequest.findUnique({ where: { id: a.changeRequestId! }, select: { claudeState: true, claudeError: true, claudeSummary: true } });
+    const cle = `blog_probleme:${a.siteId}`;
+    const probleme = async (msg: string) => {
+      const deja = await prisma.setting.findUnique({ where: { key: cle } });
+      await prisma.setting.upsert({ where: { key: cle }, create: { key: cle, value: `${new Date().toISOString()} ${msg}` }, update: { value: `${new Date().toISOString()} ${msg}` } });
+      if (!deja || !deja.value.endsWith(msg)) for (const id of new Set([a.site.developpeurId, a.site.client.developpeurId, ...gestionnaires.map((g) => g.id)].filter((x): x is string => !!x))) await sendPushToUser(id, { title: `Blog non publié : ${a.site.name}`, body: msg, url: `/admin/blog/${a.siteId}`, tag: `blog-pb-${a.id}` }).catch(() => null);
+    };
+    if (!cr) { await prisma.article.update({ where: { id: a.id }, data: { changeRequestId: null } }); continue; }
+    if (cr.claudeState === "PRET") { await prisma.changeRequest.update({ where: { id: a.changeRequestId! }, data: { claudeState: "MISE_EN_LIGNE_DEMANDEE", status: "EN_COURS" } }); continue; }
+    if (cr.claudeState === "EN_LIGNE") {
+      await prisma.article.update({ where: { id: a.id }, data: { statut: "PUBLIE", publieAt: new Date(), url: a.url ?? urlArticle(a.site.url, a.titre) } });
+      await prisma.setting.deleteMany({ where: { key: cle } });
+      await logActivite({ kind: "article", texte: `Article publié automatiquement sur ${a.site.name} : ${a.titre}`, href: `/admin/blog/${a.siteId}`, clientId: a.site.clientId, siteId: a.siteId });
+      continue;
+    }
+    if (cr.claudeState === "ERREUR") { await probleme(`Échec de la publication par Claude : ${cr.claudeError ?? cr.claudeSummary ?? "erreur"}`); continue; }
+    if (!macOk && (cr.claudeState === "EN_FILE" || cr.claudeState === "MISE_EN_LIGNE_DEMANDEE")) await probleme("Le Mac (worker Claude) est hors ligne : la publication attend.");
+  }
+  return { suivis: enCours.length };
+}
+export const consignesPublicationExport = consignesPublication;

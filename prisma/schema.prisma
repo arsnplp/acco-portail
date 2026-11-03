@@ -692,6 +692,7 @@ model Article {
   contenu           String? // texte rédigé (markdown)
   motsCles          String?
   genereParIA       Boolean       @default(false)
+  changeRequestId   String? // publication automatique : demande confiée au worker Claude du Mac (dépôt GitHub du site)
   auteurId          String?
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt

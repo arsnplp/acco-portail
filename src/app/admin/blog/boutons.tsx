@@ -5,7 +5,7 @@ import { CalendarCheckIcon, SparklesIcon } from "lucide-react";
 import { Field, FormError, Input, Textarea } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Toggle } from "@/components/ui/toggle";
-import { demanderArticle, deplanifierAction, planifierAction, proposerSujetAction, publierAction, redigerAction, setBlogAuto, supprimerArticleAction, type BlogState } from "./actions";
+import { demanderArticle, deplanifierAction, planifierAction, proposerSujetAction, publierAction, publierMaintenantAction, redigerAction, setBlogAuto, supprimerArticleAction, type BlogState } from "./actions";
 
 function useBouton(fn: () => Promise<BlogState>) {
   const [pending, start] = useTransition();
@@ -56,4 +56,9 @@ export function AutoForm({ siteId, on }: { siteId: string; on: boolean }) {
       <Toggle name="auto" label="Automatique : chaque semaine, rédige le prochain blog demandé (ou un sujet proposé) et le prévoit pour le lundi suivant. Il reste à publier par le développeur." defaultChecked={on} />
     </form>
   );
+}
+
+export function PublierMaintenantButton({ id }: { id: string }) {
+  const { pending, msg, run } = useBouton(() => publierMaintenantAction(id));
+  return <span><button type="button" disabled={pending} onClick={() => confirm("Publier maintenant via Claude (dépôt GitHub du site) ?") && run()} className={`${B} border-claude/50 text-claude`}>{pending ? "…" : "Publier maintenant (Claude)"}</button>{msg.error && <span className="ml-2 text-xs text-pink">{msg.error}</span>}{msg.ok && <span className="ml-2 text-xs text-green">{msg.ok}</span>}</span>;
 }
