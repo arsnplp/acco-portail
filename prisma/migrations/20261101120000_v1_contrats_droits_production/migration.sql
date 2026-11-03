@@ -44,7 +44,7 @@ ADD COLUMN     "secteur" TEXT,
 ADD COLUMN     "statut" "ClientStatut" NOT NULL DEFAULT 'ACTIF';
 
 -- AlterTable
-ALTER TABLE "Offer" ADD COLUMN     "parentId" TEXT;
+-- (parentId d'Offer : déjà créé par 20261031150000_offres_complements)
 
 -- AlterTable
 ALTER TABLE "ProspectContact" ADD COLUMN     "clientId" TEXT,
@@ -434,7 +434,6 @@ ALTER TABLE "SavedView" ADD CONSTRAINT "SavedView_userId_fkey" FOREIGN KEY ("use
 ALTER TABLE "UsageIA" ADD CONSTRAINT "UsageIA_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Offer" ADD CONSTRAINT "Offer_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "Offer"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Subscription" ADD CONSTRAINT "Subscription_contratId_fkey" FOREIGN KEY ("contratId") REFERENCES "Contrat"("id") ON DELETE SET NULL ON UPDATE CASCADE;
