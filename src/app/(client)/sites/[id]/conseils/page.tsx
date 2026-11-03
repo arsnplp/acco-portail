@@ -5,6 +5,8 @@ import { conseilsPourSite } from "@/lib/conseils";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { Empty } from "@/components/ui/empty";
 import { cn } from "@/lib/cn";
+import { iaAutorisee } from "@/lib/ia";
+import { ConseilsIaButton } from "./bouton";
 
 export const metadata = { title: "Conseils" };
 
@@ -14,12 +16,13 @@ const PRIO = { 1: { label: "À faire en premier", cls: "bg-pink/15 text-pink" },
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { site } = await requireClientSite(id);
-  const conseils = await conseilsPourSite(site.id);
+  const [conseils, ia] = await Promise.all([conseilsPourSite(site.id), iaAutorisee("conseils")]);
   if (conseils.length === 0) return <Empty icon={LightbulbIcon} title="Rien à signaler" text="Votre présence en ligne est bien en place. On vous dit dès qu’il y a quelque chose à faire." />;
   return (
     <div>
       <SectionTitle icon={SparklesIcon}>Vos prochaines actions</SectionTitle>
-      <p className="-mt-2 mb-3 text-sm text-text">Des recommandations simples, calculées à partir de votre site, de votre fiche Google et de vos avis. Mises à jour chaque semaine.</p>
+      <p className="-mt-2 mb-3 text-sm text-text">Des actions que vous pouvez mener vous-même : réseaux sociaux, fiche Google, avis, bouche-à-oreille. Ce que nous faisons pour vous n’apparaît pas ici.</p>
+      {ia.ok && <div className="mb-3"><ConseilsIaButton siteId={site.id} /></div>}
       <div className="grid gap-3">
         {conseils.map((c) => {
           const p = PRIO[c.priorite];

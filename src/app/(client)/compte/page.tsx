@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { Page } from "@/components/page";
 import { MoreList } from "@/components/ui/more-list";
 import { Card, SectionTitle } from "@/components/ui/card";
+import { LogoClient } from "@/components/ui/logo-client";
+import { LogoClientForm, OptOutForm } from "./forms";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { fmtPrice, fmtDate } from "@/lib/format";
@@ -17,11 +19,12 @@ export const metadata = { title: "Mon compte" };
 export default async function ComptePage() {
   const { user, client, membership } = await requireClientContext();
   const isOwner = membership.role === "OWNER";
-  const [subs, docCount, prefs, reviewUrl] = await Promise.all([
+  const [subs, docCount, prefs, reviewUrl, optOut] = await Promise.all([
     prisma.subscription.findMany({ where: { clientId: client.id, status: "ACTIF" }, include: { site: { select: { name: true } } }, orderBy: { startedAt: "asc" } }),
-    prisma.document.count({ where: { clientId: client.id } }),
+    prisma.document.count({ where: { clientId: client.id, kind: { not: "FACTURE" } } }),
     prisma.notificationPreference.findUnique({ where: { userId: user.id } }),
     prisma.setting.findUnique({ where: { key: "google_review_url" } }),
+    prisma.prospectContact.findFirst({ where: { email: { equals: user.email, mode: "insensitive" }, OR: [{ clientId: client.id }, { prospect: { clientId: client.id } }], optOutCommercial: true }, select: { id: true } }),
   ]);
 
   return (
@@ -43,11 +46,15 @@ export default async function ComptePage() {
       )}
 
       <SectionTitle icon={StoreIcon}>Entreprise</SectionTitle>
+      <div className="mb-3 flex items-center gap-3 rounded-card border border-border bg-surface p-3">
+        <LogoClient id={client.id} name={client.name} logo={client.logoMiniPath} size={56} />
+        <LogoClientForm editable={isOwner} hasLogo={!!client.logoMiniPath} />
+      </div>
       <CompanyForm client={{ name: client.name, address: client.address, phone: client.phone, email: client.email }} editable={isOwner} />
 
       <SectionTitle icon={FileTextIcon}>Documents</SectionTitle>
       <Card href="/compte/documents" className="flex items-center justify-between py-3">
-        <div className="flex items-center gap-3"><FileText size={20} strokeWidth={1.5} className="text-text" /><div><p className="font-medium text-title">Contrats, factures, devis</p><p className="text-xs text-text">{docCount} document{docCount > 1 ? "s" : ""}</p></div></div>
+        <div className="flex items-center gap-3"><FileText size={20} strokeWidth={1.5} className="text-text" /><div><p className="font-medium text-title">Contrats, devis et documents signés</p><p className="text-xs text-text">{docCount} document{docCount > 1 ? "s" : ""}</p></div></div>
         <ChevronRight size={18} className="text-text" />
       </Card>
 
@@ -83,6 +90,7 @@ export default async function ComptePage() {
       <SectionTitle icon={BellIcon}>Notifications</SectionTitle>
       <Card className="mb-3"><EnablePush /></Card>
       <NotificationPrefsForm prefs={prefs} />
+      <OptOutForm optOut={!!optOut} />
 
       <div className="mt-10 grid gap-2">
         <Button variant="secondary" href="/nouveau-mot-de-passe" className="w-full">Changer mon mot de passe</Button>

@@ -12,6 +12,7 @@ import { timeAgo, fmtPrice, fmtDateShort, addDays, weekIndex } from "@/lib/forma
 import { EnablePush } from "@/components/push/enable-push";
 import { pendingReviewPrompt } from "@/lib/review-prompt";
 import { activePromo } from "@/lib/offers";
+import { PROJECT_STEPS } from "@/lib/labels";
 import { answerReviewPrompt } from "./actions";
 import type { NotificationKind } from "@prisma/client";
 import { BellIcon, GlobeIcon } from "lucide-react";
@@ -33,6 +34,18 @@ export default async function AccueilPage() {
     prisma.subscription.findMany({ where: { clientId: client.id, status: "ACTIF" }, select: { offerId: true, module: true } }),
     prisma.referral.findFirst({ where: { referrerClientId: client.id, createdAt: { gte: addDays(-90) } } }),
   ]);
+  const [rdvs, docsAttendus, demandes, contrats, briefs] = await Promise.all([
+    prisma.rendezVous.findMany({ where: { clientId: client.id, resultat: "PREVU", debut: { gte: new Date() } }, orderBy: { debut: "asc" }, take: 3, select: { id: true, titre: true, debut: true, lieu: true, meetUrl: true } }),
+    prisma.documentRequest.count({ where: { clientId: client.id, status: "EN_ATTENTE", direction: "VERS_CLIENT" } }),
+    prisma.changeRequest.count({ where: { site: { clientId: client.id }, status: { not: "TERMINEE" } } }),
+    prisma.contrat.findMany({ where: { clientId: client.id, statut: "SIGNE" }, orderBy: { signeAt: "desc" }, select: { id: true, reference: true, titre: true, signeAt: true } }),
+    prisma.brief.findMany({ where: { site: { clientId: client.id, status: "EN_CREATION" }, etat: { in: ["EN_COURS", "ATTENDU_CLIENT"] } }, select: { siteId: true, site: { select: { name: true } } } }),
+  ]);
+  const aFaire = [
+    ...briefs.map((b) => ({ href: `/sites/${b.siteId}/brief`, texte: `Compléter le brief de ${b.site.name}` })),
+    ...(docsAttendus ? [{ href: "/compte/documents", texte: `${docsAttendus} document${docsAttendus > 1 ? "s" : ""} à nous envoyer` }] : []),
+    ...sites.filter((s) => s.status === "EN_CREATION" && s.maquetteEnvoyeeAt && (s.projectStep === "VALIDER_MAQUETTE" || s.projectStep === "VALIDER_MODIFICATION")).map((s) => ({ href: `/sites/${s.id}`, texte: `Donner votre avis sur la maquette de ${s.name}` })),
+  ];
   const unreadIds = notifications.filter((n) => !n.readAt).map((n) => n.id);
   if (unreadIds.length) await prisma.notification.updateMany({ where: { id: { in: unreadIds } }, data: { readAt: new Date() } });
 
@@ -75,16 +88,33 @@ export default async function AccueilPage() {
         </Card>
       ) : null}
 
+      {(aFaire.length > 0 || rdvs.length > 0) && (
+        <>
+          <SectionTitle icon={CircleCheckIcon}>À faire et à venir</SectionTitle>
+          <div className="grid gap-2">
+            {aFaire.map((a) => <Card key={a.href + a.texte} href={a.href} className="py-3 text-sm font-medium text-title">{a.texte}</Card>)}
+            {rdvs.map((r) => <Card key={r.id} className="py-3"><p className="text-sm font-medium text-title">Rendez-vous {fmtDateShort(r.debut)} à {new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit" }).format(r.debut)}{r.titre ? ` · ${r.titre}` : ""}</p><p className="text-xs text-text">{r.lieu ?? ""}{r.meetUrl ? <> · <a href={r.meetUrl} target="_blank" rel="noreferrer" className="underline">Google Meet</a></> : null}</p></Card>)}
+          </div>
+        </>
+      )}
+
       <SectionTitle icon={GlobeIcon}>Vos sites</SectionTitle>
       <div className="grid gap-3">
         {sites.map((s) => (
           <Card key={s.id} href={`/sites/${s.id}`} className="flex items-center justify-between">
-            <div><p className="font-semibold text-title">{s.name}</p><p className="text-sm text-text">{s.url ?? "En préparation"}</p></div>
+            <div><p className="font-semibold text-title">{s.name}</p><p className="text-sm text-text">{s.status === "EN_CREATION" ? (PROJECT_STEPS.find((p) => p.key === s.projectStep)?.client ?? "En préparation") : s.url ?? "En préparation"}{demandes && s.status === "EN_LIGNE" ? ` · ${demandes} demande${demandes > 1 ? "s" : ""} en cours` : ""}</p></div>
             {s.status === "EN_LIGNE" ? <Badge tone="green">En ligne</Badge> : <Badge tone="yellow">En création</Badge>}
           </Card>
         ))}
         {sites.length === 0 && <Empty icon={Globe} title="Aucun site pour le moment" />}
       </div>
+
+      {contrats.length > 0 && (
+        <>
+          <SectionTitle icon={FileTextIcon}>Vos contrats</SectionTitle>
+          <div className="grid gap-2">{contrats.map((c) => <Card key={c.id} href="/compte/documents" className="flex items-center justify-between py-3"><div><p className="text-sm font-medium text-title">{c.titre}</p><p className="text-xs text-text">{c.reference}{c.signeAt ? ` · signé le ${fmtDateShort(c.signeAt)}` : ""}</p></div><Badge tone="green">Signé</Badge></Card>)}</div>
+        </>
+      )}
 
       <SectionTitle icon={BellIcon}>Quoi de neuf</SectionTitle>
       {notifications.length === 0 ? (

@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import type { NotificationPreference } from "@prisma/client";
-import { updateCompany, updateProfile, updateNotificationPrefs, type ActionState } from "./actions";
+import { setOptOutCommercial, updateCompany, updateProfile, updateNotificationPrefs, uploadLogoClient, type ActionState } from "./actions";
 import { Field, Input, FormError } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Card } from "@/components/ui/card";
@@ -71,3 +71,26 @@ export function NotificationPrefsForm({ prefs }: { prefs: NotificationPreference
   );
 }
 
+
+export function LogoClientForm({ editable, hasLogo }: { editable: boolean; hasLogo: boolean }) {
+  const [state, action, pending] = useActionState<ActionState, FormData>(uploadLogoClient, {});
+  if (!editable) return <p className="text-sm text-text">{hasLogo ? "Votre logo" : "Pas encore de logo"}</p>;
+  return (
+    <form action={action} className="min-w-0 flex-1">
+      <label className="inline-flex h-9 cursor-pointer items-center rounded-card border border-border px-3 text-sm font-semibold text-title hover:bg-surface-2">
+        {pending ? "Envoi…" : hasLogo ? "Changer le logo" : "Ajouter votre logo"}
+        <input type="file" name="logo" accept="image/png,image/jpeg,image/svg+xml,image/webp" className="sr-only" disabled={pending} onChange={(e) => e.currentTarget.form?.requestSubmit()} />
+      </label>
+      <p className="mt-1 text-xs text-text">PNG, JPG, SVG ou WebP, 5 Mo max.</p>
+      <FormError message={state.error} />
+    </form>
+  );
+}
+export function OptOutForm({ optOut }: { optOut: boolean }) {
+  return (
+    <form action={setOptOutCommercial} className="mt-3 rounded-card border border-border bg-surface">
+      <Toggle name="optOut" label="Ne pas recevoir de messages commerciaux (nouveautés, offres). Les messages liés à votre site continuent." defaultChecked={optOut} />
+      <div className="px-4 pb-3"><SubmitButton size="sm" variant="secondary" pendingLabel="…">Enregistrer</SubmitButton></div>
+    </form>
+  );
+}

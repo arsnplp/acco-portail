@@ -16,7 +16,7 @@ export const metadata = { title: "Documents" };
 export default async function DocumentsPage() {
   const { client } = await requireClientContext();
   const [documents, toProvide] = await Promise.all([
-    prisma.document.findMany({ where: { clientId: client.id }, orderBy: { createdAt: "desc" }, include: { site: { select: { name: true } } } }),
+    prisma.document.findMany({ where: { clientId: client.id, kind: { not: "FACTURE" } }, orderBy: { createdAt: "desc" }, include: { site: { select: { name: true } } } }),
     prisma.documentRequest.findMany({ where: { clientId: client.id, direction: "VERS_CLIENT", status: "EN_ATTENTE" }, orderBy: { createdAt: "asc" } }),
   ]);
 

@@ -10,7 +10,7 @@ export type NavItem = { href: string; label: string; icon: LucideIcon; badge?: n
 export const CLIENT_NAV: NavItem[] = [
   { href: "/", label: "Accueil", icon: Home },
   { href: "/sites", label: "Mes sites", icon: Globe },
-  { href: "/offres", label: "Offres", icon: Tag },
+  { href: "/offres", label: "Services", icon: Tag },
   { href: "/messages", label: "Messages", icon: MessageCircle },
 ];
 

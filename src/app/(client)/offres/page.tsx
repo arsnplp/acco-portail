@@ -32,7 +32,7 @@ export default async function OffresPage() {
   const siteOptions = sites.filter((s) => s.status !== "SUSPENDU").map((s) => ({ id: s.id, name: s.name }));
 
   return (
-    <Page title="Offres" subtitle="Des services pour aller plus loin avec votre site. Un clic, et on vous rappelle.">
+    <Page title="Services" subtitle="Ce que nous pouvons faire de plus pour votre activité. Un clic, et votre interlocuteur vous rappelle : rien n’est facturé sans votre accord.">
       {cards.length === 0 && <Empty icon={Tag} title="Aucune offre pour le moment" />}
       {promoCards.length > 0 && (
         <>

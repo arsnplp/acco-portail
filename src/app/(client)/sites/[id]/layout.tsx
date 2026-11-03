@@ -4,13 +4,21 @@ import { BackLink } from "@/components/ui/back-link";
 import { requireClientSite, siteHealth } from "@/lib/sites";
 import { Badge } from "@/components/ui/badge";
 import { SITE_STATUS } from "@/lib/labels";
-import { SiteTabs } from "./site-tabs";
+import { SiteTabs, type Tab } from "./site-tabs";
+import { prisma } from "@/lib/prisma";
 
 export default async function SiteLayout({ children, params }: { children: React.ReactNode; params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { site } = await requireClientSite(id);
   const online = site.status === "EN_LIGNE";
-  const health = online ? await siteHealth(site.id) : null;
+  const [health, subs] = await Promise.all([online ? siteHealth(site.id) : null, prisma.subscription.findMany({ where: { status: "ACTIF", OR: [{ siteId: site.id }, { siteId: null, clientId: site.clientId }] }, select: { module: true, label: true, offer: { select: { name: true } } } })]);
+  const libelles = subs.map((s) => `${s.label} ${s.offer?.name ?? ""}`.toLowerCase());
+  const avis = subs.some((s) => s.module === "AVIS");
+  const blog = libelles.some((l) => /blog|article|contenu|rédac|redac/.test(l));
+  // Onglets selon l'état du site et les services réellement souscrits (14.1) : rien de verrouillé.
+  const tabs: Tab[] = online
+    ? [{ slug: "activite", label: "Activité" }, { slug: "resultats", label: "Résultats" }, ...(avis ? [{ slug: "avis", label: "Avis" }] : []), { slug: "modifications", label: "Modifications" }, ...(blog ? [{ slug: "blog", label: "Blog" }] : []), { slug: "conseils", label: "Conseils" }, { slug: "documents", label: "Documents" }]
+    : [{ slug: "", label: "Avancement" }, { slug: "brief", label: "Brief" }, { slug: "documents", label: "Documents" }];
 
   return (
     <main className="mx-auto w-full max-w-lg flex-1 pb-nav">
@@ -23,7 +31,7 @@ export default async function SiteLayout({ children, params }: { children: React
               {site.url && (
                 <a href={site.url} target="_blank" rel="noreferrer" className="underline-offset-2 hover:underline">Voir le site ↗</a>
               )}
-              <Link href={`/sites/${site.id}/documents`} className="inline-flex items-center gap-1 hover:text-title"><FileText size={14} /> Documents</Link>
+              {online && <Link href={`/sites/${site.id}/documents`} className="inline-flex items-center gap-1 hover:text-title"><FileText size={14} /> Documents</Link>}
             </div>
           </div>
           <Badge tone={SITE_STATUS[site.status].tone}>{SITE_STATUS[site.status].label}</Badge>
@@ -38,7 +46,7 @@ export default async function SiteLayout({ children, params }: { children: React
         )}
       </div>
 
-      <SiteTabs siteId={site.id} enabled={online} />
+      <SiteTabs siteId={site.id} tabs={tabs} />
 
       <div className="px-4 pt-5">{children}</div>
 

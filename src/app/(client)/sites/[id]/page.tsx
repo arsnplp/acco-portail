@@ -8,7 +8,10 @@ import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Timeline } from "@/components/ui/timeline";
 import { cn } from "@/lib/cn";
-import { uploadAsset, validateMockup } from "./actions";
+import { demanderRetouche, uploadAsset, validateMockup } from "./actions";
+import { Input, Textarea } from "@/components/ui/field";
+import { Badge } from "@/components/ui/badge";
+import { CHANGE_STATUS, clientChangeStatus } from "@/lib/labels";
 import { AutoUploadInput } from "@/components/ui/auto-upload";
 import { fmtDateShort } from "@/lib/format";
 import { ClockIcon, ConstructionIcon, PaperclipIcon } from "lucide-react";
@@ -18,9 +21,10 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
   const { site } = await requireClientSite(id);
   if (site.status !== "EN_CREATION") redirect(`/sites/${site.id}/activite`);
 
-  const [assets, history] = await Promise.all([
+  const [assets, history, retouches] = await Promise.all([
     prisma.siteAsset.findMany({ where: { siteId: site.id }, orderBy: { createdAt: "asc" } }),
     prisma.siteHistoryEntry.findMany({ where: { siteId: site.id }, orderBy: { happenedAt: "desc" } }),
+    site.maquetteEnvoyeeAt ? prisma.changeRequest.findMany({ where: { siteId: site.id }, orderBy: { createdAt: "desc" }, select: { id: true, title: true, status: true, createdAt: true } }) : [],
   ]);
   const stepIndex = PROJECT_STEPS.findIndex((s) => s.key === site.projectStep);
   const missing = assets.filter((a) => !a.storagePath).length;
@@ -64,6 +68,23 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
           </SubmitButton>
           <p className="mt-2 text-center text-xs text-muted">Une remarque ? Écrivez-nous dans Messages avant de valider.</p>
         </form>
+      )}
+
+      {site.maquetteEnvoyeeAt && (
+        <>
+          <SectionTitle icon={FileCheck2}>Vos retours sur la maquette V{site.version}</SectionTitle>
+          {retouches.length > 0 && (
+            <div className="mb-3 grid gap-2">
+              {retouches.map((r) => <Card key={r.id} className="flex items-center justify-between gap-3 py-3"><p className="min-w-0 truncate text-sm font-medium text-title">{r.title}</p><Badge tone={CHANGE_STATUS[r.status].tone}>{clientChangeStatus(r.status) === "RECUE" ? "Notée" : clientChangeStatus(r.status) === "EN_COURS" ? "En cours" : "Faite"}</Badge></Card>)}
+            </div>
+          )}
+          <form action={demanderRetouche.bind(null, site.id)} className="space-y-2 rounded-card border border-border bg-surface p-4">
+            <Input name="title" required placeholder="Ce que vous souhaitez changer (ex. couleur du bouton)" />
+            <Textarea name="description" placeholder="Détail (facultatif)" className="min-h-16 text-sm" />
+            <Input name="page" placeholder="Page concernée (facultatif)" />
+            <SubmitButton size="sm" variant="secondary" pendingLabel="…">Ajouter ce retour</SubmitButton>
+          </form>
+        </>
       )}
 
       <SectionTitle icon={PaperclipIcon}>Éléments à nous fournir</SectionTitle>

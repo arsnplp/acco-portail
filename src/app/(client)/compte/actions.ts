@@ -45,3 +45,22 @@ export async function switchClient(clientId: string) {
   (await cookies()).set(CLIENT_COOKIE, clientId, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
   redirect("/");
 }
+
+/** Logo déposé par le client (00.1), même traitement que côté équipe. */
+export async function uploadLogoClient(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { client, membership } = await requireClientContext();
+  if (membership.role !== "OWNER") return { error: "Réservé au gérant du compte." };
+  const file = formData.get("logo");
+  if (!(file instanceof File) || file.size === 0) return { error: "Choisissez un fichier." };
+  try { const { enregistrerLogo } = await import("@/lib/logo"); await enregistrerLogo(client.id, file); }
+  catch (e) { return { error: (e as Error).message }; }
+  revalidatePath("/compte");
+  return {};
+}
+/** Préférence « ne pas recevoir de messages commerciaux » (00.4) : s'applique aux contacts portant l'email de l'utilisateur. */
+export async function setOptOutCommercial(formData: FormData) {
+  const { user, client } = await requireClientContext();
+  const optOut = formData.get("optOut") === "on";
+  await prisma.prospectContact.updateMany({ where: { email: { equals: user.email, mode: "insensitive" }, OR: [{ clientId: client.id }, { prospect: { clientId: client.id } }] }, data: { optOutCommercial: optOut } });
+  revalidatePath("/compte");
+}
