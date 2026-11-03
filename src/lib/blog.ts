@@ -203,7 +203,8 @@ export function consignesPublication(a: { titre: string; contenu: string | null;
 2. Reprends le style du site (même en-tête, pied de page, feuille de style, polices) pour que la page soit intégrée. Pas de nouveau framework.
 3. Convertis le texte markdown ci-dessous en HTML propre : h1 pour le titre, h2 pour les sections, paragraphes, liens tels quels. Place la « Meta description » dans <meta name="description">, le titre dans <title>, et ajoute les balises Open Graph de base.
 4. Ajoute un lien vers l'article sur la page d'accueil ou la page de liste du blog (crée blog/index.html listant les articles si elle n'existe pas), avec la date du jour.
-5. Ne modifie rien d'autre. Pas de fichier de configuration, pas de déploiement.
+5. Si le dépôt contient blog/_cocon.md, relie l'article à sa page pilier (lien dans le texte avec une ancre contenant le mot-clé) et ajoute un lien vers l'article depuis cette page pilier, en respectant le cocon sémantique.
+6. Ne modifie rien d'autre. Pas de fichier de configuration, pas de déploiement.
 Adresse publique attendue : ${urlArticle(siteUrl, a.titre) ?? `/blog/${slug}.html`}
 ${a.motsCles ? `Mots-clés : ${a.motsCles}\n` : ""}
 --- ARTICLE (markdown) ---

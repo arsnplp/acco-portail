@@ -12,9 +12,10 @@ export const PROMPT_BLOG = `Ce site doit être prêt pour la publication automat
 4. SEO local : sur chaque page, nom de l'entreprise, ville et secteur dans <title> et meta description ; données structurées JSON-LD LocalBusiness (nom, adresse, téléphone, horaires si connus) sur l'accueil ; sitemap.xml qui inclut /blog/ et doit accepter de nouvelles lignes ; robots.txt qui autorise /blog/.
 5. Pages internes stables pour le maillage : /index.html, /services (ou équivalent), /contact. Si les chemins diffèrent, note-les dans blog/_gabarit.html en commentaire HTML en tête de fichier, sous la forme <!-- maillage : accueil=/ ; services=/services.html ; contact=/contact.html -->.
 6. Un commentaire HTML en tête de blog/index.html qui explique comment ajouter un article à la liste (balise à dupliquer), pour que l'ajout automatique reste simple.
-7. Ne touche ni au déploiement, ni aux fichiers de configuration, ni au formulaire de contact existant.
+7. Cocon sémantique : à partir de l'activité, de la ville et des services réels de l'entreprise, définis le mot-clé principal du site (page d'accueil) et 4 à 8 mots-clés secondaires (un par page de service ou thème : « <service> + <ville> », questions fréquentes des clients, intentions locales). Écris cette liste dans blog/_cocon.md : pour chaque mot-clé, la page pilier correspondante, les sujets d'articles de blog qui l'alimentent (3 à 5 idées par thème) et les liens à faire entre eux (article → page pilier, page pilier → articles, accueil → pages piliers). Les pages existantes doivent respecter ce cocon : chaque page cible UN mot-clé, title et h1 le reprennent, les liens internes suivent la hiérarchie, les ancres de liens contiennent le mot-clé visé plutôt que « cliquez ici ». Les articles de blog publiés par le portail devront reprendre ces mots-clés et pointer vers leur page pilier : blog/_cocon.md sert de référence et ne doit rien inventer (pas de mots-clés hors de l'activité réelle).
+8. Ne touche ni au déploiement, ni aux fichiers de configuration, ni au formulaire de contact existant.
 
-Résume en fin de réponse : chemins créés, chemins des pages pour le maillage, et tout ce qui manque (ville, horaires, téléphone) pour le SEO local.`;
+Résume en fin de réponse : chemins créés, chemins des pages pour le maillage, les mots-clés du cocon, et tout ce qui manque (ville, horaires, téléphone, services) pour le SEO local.`;
 
 export function PromptBlog() {
   const [ok, setOk] = useState(false);
