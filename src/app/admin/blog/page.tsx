@@ -10,6 +10,7 @@ import { LogoClient } from "@/components/ui/logo-client";
 import { etatBlog, fmtLundi, problemeBlog, sitesAvecBlog } from "@/lib/blog";
 import { teamName } from "@/lib/crm";
 import { prisma } from "@/lib/prisma";
+import { PromptBlog } from "./prompt";
 
 export const metadata = { title: "Blogs" };
 
@@ -41,6 +42,7 @@ export default async function BlogPage() {
           ))}
         </div>
       )}
+      <div className="mt-6"><PromptBlog /></div>
       <p className="mt-4 text-xs text-muted">La rédaction et les sujets proposés passent par l’IA (interrupteur « Articles de blog » dans IA et intégrations). <Link href="/admin/parametres" className="underline">Paramètres</Link></p>
     </AdminPage>
   );
