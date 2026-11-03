@@ -9,7 +9,7 @@ import { SectionTitle } from "@/components/ui/card";
 import { fmtDateShort } from "@/lib/format";
 import { etatBlog, fmtLundi, problemeBlog } from "@/lib/blog";
 import { ARTICLE_STATUT } from "@/lib/labels";
-import { AutoForm, DemanderForm, DeplanifierButton, PlanifierButton, ProposerSujetButton, PublierForm, PublierMaintenantButton, RedigerButton, SupprimerButton } from "../boutons";
+import { AutoForm, DemanderForm, DeplanifierButton, PlanifierButton, ProposerSujetButton, PublierForm, PublierMaintenantButton, RedigerButton, RepoForm, SupprimerButton } from "../boutons";
 
 export const metadata = { title: "Blog du site" };
 
@@ -50,7 +50,7 @@ export default async function BlogSitePage({ params }: { params: Promise<{ siteI
           {pb && <p className="text-xs text-pink">Problème de l’automatisation : {pb}</p>}
         </div>
       </div>
-      <div className="mt-3"><AutoForm siteId={siteId} on={site.blogAuto} /></div>
+      <div className="mt-3 grid gap-3"><RepoForm siteId={siteId} repoUrl={site.repoUrl} /><AutoForm siteId={siteId} on={site.blogAuto} /></div>
 
       <SectionTitle icon={InboxIcon}>Blogs demandés ({e.demandes.length})</SectionTitle>
       <ul className="grid gap-2">{e.demandes.map((a) => <Art key={a.id} a={a} actions={<><RedigerButton id={a.id} /><SupprimerButton id={a.id} /></>} />)}{e.demandes.length === 0 && <li className="text-sm text-text">File vide.</li>}</ul>

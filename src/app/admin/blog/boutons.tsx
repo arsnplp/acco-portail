@@ -5,7 +5,7 @@ import { CalendarCheckIcon, SparklesIcon } from "lucide-react";
 import { Field, FormError, Input, Textarea } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Toggle } from "@/components/ui/toggle";
-import { demanderArticle, deplanifierAction, planifierAction, proposerSujetAction, publierAction, publierMaintenantAction, redigerAction, setBlogAuto, supprimerArticleAction, type BlogState } from "./actions";
+import { demanderArticle, deplanifierAction, planifierAction, proposerSujetAction, publierAction, publierMaintenantAction, redigerAction, setBlogAuto, setRepoUrlAction, supprimerArticleAction, type BlogState } from "./actions";
 
 function useBouton(fn: () => Promise<BlogState>) {
   const [pending, start] = useTransition();
@@ -61,4 +61,16 @@ export function AutoForm({ siteId, on }: { siteId: string; on: boolean }) {
 export function PublierMaintenantButton({ id }: { id: string }) {
   const { pending, msg, run } = useBouton(() => publierMaintenantAction(id));
   return <span><button type="button" disabled={pending} onClick={() => confirm("Publier maintenant via Claude (dépôt GitHub du site) ?") && run()} className={`${B} border-claude/50 text-claude`}>{pending ? "…" : "Publier maintenant (Claude)"}</button>{msg.error && <span className="ml-2 text-xs text-pink">{msg.error}</span>}{msg.ok && <span className="ml-2 text-xs text-green">{msg.ok}</span>}</span>;
+}
+
+export function RepoForm({ siteId, repoUrl }: { siteId: string; repoUrl: string | null }) {
+  const [state, action] = useActionState<BlogState, FormData>(setRepoUrlAction.bind(null, siteId), {});
+  return (
+    <form action={action} className={`flex flex-wrap items-end gap-2 rounded-card border p-3 ${repoUrl ? "border-border bg-surface" : "border-pink/60 bg-pink/10"}`}>
+      <Field label="Dépôt GitHub du site (publication automatique)"><Input name="repoUrl" type="url" defaultValue={repoUrl ?? ""} placeholder="https://github.com/arsnplp/monsite.git" className="min-w-72 py-1.5 text-sm" /></Field>
+      <SubmitButton size="sm" variant="secondary" pendingLabel="…">Enregistrer</SubmitButton>
+      <FormError message={state.error} />{state.ok && <span className="text-xs text-green">{state.ok}</span>}
+      {!repoUrl && <p className="w-full text-xs text-pink">Sans dépôt, les articles prévus ne seront pas publiés le lundi.</p>}
+    </form>
+  );
 }

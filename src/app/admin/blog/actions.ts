@@ -67,3 +67,13 @@ export async function publierMaintenantAction(articleId: string): Promise<BlogSt
   raf(siteId);
   return { ok: "Confié à Claude : en ligne dans quelques minutes si le Mac est allumé." };
 }
+
+/** Dépôt GitHub du site (le même champ que sur la fiche du site) : indispensable à la publication automatique. */
+export async function setRepoUrlAction(siteId: string, _prev: BlogState, fd: FormData): Promise<BlogState> {
+  const me = await requireTeam(); await requireSiteAcces(me, siteId);
+  const url = String(fd.get("repoUrl") ?? "").trim();
+  if (url && !/^https:\/\/github\.com\/[^/\s]+\/[^/\s]+/.test(url)) return { error: "Adresse attendue : https://github.com/compte/depot(.git)" };
+  await prisma.site.update({ where: { id: siteId }, data: { repoUrl: url || null } });
+  raf(siteId);
+  return { ok: url ? "Dépôt enregistré." : "Dépôt retiré." };
+}
