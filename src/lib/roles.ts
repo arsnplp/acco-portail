@@ -47,6 +47,11 @@ export function homeFor(role: Role, mode?: Mode | null) {
 export function gestionnaireEmails() {
   return (process.env.GESTIONNAIRE_EMAILS ?? "arsene@acco-lab.fr").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
 }
+/** Membre compté dans les statistiques commerciales : commercial, ou admin qui travaille en mode Commercial (Bilel, Lucas) ; jamais le gestionnaire (Arsène). */
+export function estCommercial(u: { role: Role; email: string; modeDefaut?: Mode | null }) {
+  if (isGestionnaire(u)) return false;
+  return u.role === "COMMERCIAL" || (u.role === "ADMIN" && u.modeDefaut === "COMMERCIAL");
+}
 export function isGestionnaire(user: { email: string; role: string } | null | undefined) {
   if (!user || user.role !== "ADMIN") return false;
   return gestionnaireEmails().includes(user.email.toLowerCase());

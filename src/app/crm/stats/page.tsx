@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { EchangeType, ProspectStatut } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { MODULES } from "@/lib/roles";
+import { MODULES, estCommercial } from "@/lib/roles";
 import { requireProspection } from "@/lib/auth";
 import { cn } from "@/lib/cn";
 import { ECHANGE, ECHANGE_COULEUR, PIPELINE, STATUT, STATUT_COULEUR, parisDay, teamName, todayBounds, VIZ } from "@/lib/crm";
@@ -35,7 +35,7 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
   const byCommercial = who ? { commercialId: who } : {};
 
   const [team, wonAll, echanges, prevEchanges, rdvPris, prevRdvPris, rdvTenus, wins, prevWins, pipeline] = await Promise.all([
-    prisma.user.findMany({ where: { role: { in: MODULES.prospection } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true, avatarUrl: true } }),
+    prisma.user.findMany({ where: { role: { in: MODULES.prospection } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true, avatarUrl: true, role: true, modeDefaut: true } }).then((us) => us.filter(estCommercial)),
     prisma.prospect.findMany({ where: { statut: "GAGNE" }, select: { commercialId: true, fraisCreationEuros: true, mensuelEuros: true } }),
     prisma.echange.findMany({ where: { ...byAuteur, date: { gte: since, lt: end } }, select: { type: true, date: true, auteurId: true, prospectId: true } }),
     prisma.echange.findMany({ where: { ...byAuteur, date: { gte: prevSince, lt: since } }, select: { type: true, prospectId: true } }),
