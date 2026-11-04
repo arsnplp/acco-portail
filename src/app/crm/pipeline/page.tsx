@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { MODULES } from "@/lib/roles";
 import { requireProspection } from "@/lib/auth";
@@ -8,7 +9,9 @@ export const metadata = { title: "Pipeline" };
 
 export default async function PipelinePage({ searchParams }: { searchParams: Promise<{ c?: string }> }) {
   const me = await requireProspection();
-  const { c } = await searchParams;
+  const { c: cParam } = await searchParams;
+  // Dernier filtre choisi, gardé tant que la session dure (cookie effacé à la déconnexion).
+  const c = cParam ?? (await cookies()).get("acco_pipeline_c")?.value ?? "me";
   const [prospects, team, cibles] = await Promise.all([
     prisma.prospect.findMany({
       where: { statut: { in: PIPELINE } },
@@ -34,7 +37,7 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
       team={team.map((u) => ({ id: u.id, name: teamName(u), avatarUrl: u.avatarUrl }))}
       cibles={cibles.map((x) => x.nom)}
       meId={me.id}
-      initialFilter={c ?? "me"} // par défaut, chacun voit son pipeline ; « Tous » reste à un clic
+      initialFilter={c} // par défaut, chacun voit son pipeline ; « Tous » reste à un clic
     />
   );
 }

@@ -27,7 +27,8 @@ type Member = { id: string; name: string; avatarUrl: string | null };
 export function Board({ initial, team, cibles, meId, initialFilter }: { initial: CardData[]; team: Member[]; cibles: string[]; meId: string; initialFilter: string }) {
   const router = useRouter();
   const [cards, setCards] = useState(initial);
-  const [who, setWho] = useState(initialFilter === "me" ? meId : initialFilter);
+  const [who, setWhoState] = useState(initialFilter === "me" ? meId : initialFilter);
+  const setWho = (v: string) => { setWhoState(v); document.cookie = `acco_pipeline_c=${encodeURIComponent(v === meId ? "me" : v)}; path=/; SameSite=Lax`; };
   const [q, setQ] = useState("");
   const [cible, setCible] = useState("");
   const [dragging, setDragging] = useState<CardData | null>(null);

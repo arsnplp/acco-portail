@@ -5,7 +5,7 @@ import { cn } from "@/lib/cn";
 
 export type Vue = "jour" | "semaine" | "mois";
 export type CalEvent = {
-  id: string; kind: "rdv" | "rappel"; at: string; duree: number; prospectId: string; href?: string; nom: string; societe: string;
+  id: string; kind: "rdv" | "rappel" | "google"; at: string; duree: number; prospectId: string; href?: string; nom: string; societe: string;
   objet: string; resultat: "PREVU" | "FAIT" | "NO_SHOW" | "ANNULE" | null; qui: string | null;
 };
 
@@ -19,6 +19,7 @@ const label = (day: string, o: Intl.DateTimeFormatOptions) => new Intl.DateTimeF
 
 function style(e: CalEvent) {
   if (e.kind === "rappel") return "border border-dashed border-blue/70 bg-blue/10 text-text-strong";
+  if (e.kind === "google") return "border-l-4 border-muted bg-surface-2 text-text";
   if (e.resultat === "FAIT") return "border-l-4 border-green bg-green/15 text-text-strong";
   if (e.resultat === "NO_SHOW") return "border-l-4 border-pink bg-pink/15 text-text-strong";
   if (e.resultat === "ANNULE") return "border-l-4 border-muted bg-surface-2 text-text line-through";

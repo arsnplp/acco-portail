@@ -140,12 +140,38 @@ export async function pullAgendaForUser(userId: string) {
   return { maj };
 }
 
+/** Google → app : les événements du membre qui ne viennent pas de l'app (7 jours en arrière, 60 jours en avant) sont copiés pour s'afficher dans le calendrier. */
+export async function importerAgendaExterne(userId: string) {
+  if (!(await connecteurActif("calendar"))) return { importes: 0 };
+  const client = await userGoogleClient(userId);
+  if (!client) return { importes: 0 };
+  const timeMin = new Date(Date.now() - 7 * 86400_000), timeMax = new Date(Date.now() + 60 * 86400_000);
+  const notres = new Set((await prisma.agendaEvent.findMany({ where: { userId }, select: { googleEventId: true } })).map((e) => e.googleEventId));
+  const res = await client.request<{ items?: (GEvent & { summary?: string; attendees?: { self?: boolean; responseStatus?: string }[] })[] }>({ url: API, params: { timeMin: timeMin.toISOString(), timeMax: timeMax.toISOString(), singleEvents: true, orderBy: "startTime", maxResults: 250 } });
+  const vus = new Set<string>();
+  let importes = 0;
+  for (const ev of res.data.items ?? []) {
+    if (!ev.id || ev.status === "cancelled" || notres.has(ev.id)) continue;
+    if (ev.attendees?.some((a) => a.self && a.responseStatus === "declined")) continue;
+    const jour = !!ev.start?.date;
+    const debut = ev.start?.dateTime ? new Date(ev.start.dateTime) : ev.start?.date ? new Date(`${ev.start.date}T12:00:00Z`) : null;
+    const fin = ev.end?.dateTime ? new Date(ev.end.dateTime) : debut ? new Date(debut.getTime() + 3600_000) : null;
+    if (!debut || !fin) continue;
+    vus.add(ev.id);
+    await prisma.agendaExterne.upsert({ where: { userId_googleEventId: { userId, googleEventId: ev.id } }, create: { userId, googleEventId: ev.id, titre: ev.summary ?? "(sans titre)", debut, fin, jour, lieu: ev.location ?? null, meetUrl: ev.hangoutLink ?? null }, update: { titre: ev.summary ?? "(sans titre)", debut, fin, jour, lieu: ev.location ?? null, meetUrl: ev.hangoutLink ?? null } });
+    importes++;
+  }
+  await prisma.agendaExterne.deleteMany({ where: { userId, debut: { gte: timeMin, lte: timeMax }, googleEventId: { notIn: [...vus] } } });
+  return { importes };
+}
+
 /** Synchronisation planifiée des agendas (toutes les 15 min) : Google → app puis app → Google, pour chaque membre connecté. */
 export async function syncAgendasPlanifiee() {
   if (!(await connecteurActif("calendar"))) return { membres: 0 };
   const users = await prisma.user.findMany({ where: { googleRefreshToken: { not: null }, role: { not: "CLIENT" } }, select: { id: true } });
   for (const u of users) {
     await pullAgendaForUser(u.id).catch((e) => console.warn("[agenda]", (e as Error).message));
+    await importerAgendaExterne(u.id).catch(async (e) => { const { journal } = await import("@/lib/connecteurs"); await journal("calendar", "erreur", `Import Google (${u.id}) : ${(e as Error).message}`); });
     await syncAgendaForUser(u.id).catch((e) => console.warn("[agenda]", (e as Error).message));
   }
   const { marquerSync } = await import("@/lib/connecteurs");

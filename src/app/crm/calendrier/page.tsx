@@ -33,7 +33,7 @@ export default async function CalendrierPage({ searchParams }: { searchParams: P
   const from = parisMidnight(first), to = parisMidnight(shift(first, days));
   const byCommercial = who === "all" ? {} : who === "me" ? { commercialId: me.id } : { commercialId: who };
 
-  const [rdvs, rappels, team] = await Promise.all([
+  const [rdvs, rappels, team, externes] = await Promise.all([
     prisma.rendezVous.findMany({
       where: { ...byCommercial, debut: { gte: from, lt: to } },
       orderBy: { debut: "asc" },
@@ -44,6 +44,7 @@ export default async function CalendrierPage({ searchParams }: { searchParams: P
       select: { id: true, societe: true, rappelAt: true, commercial: { select: { firstName: true, email: true } }, contacts: { orderBy: [{ principal: "desc" }, { createdAt: "asc" }], take: 1, select: { prenom: true, nom: true } } },
     }) : Promise.resolve([]),
     prisma.user.findMany({ where: { role: { in: MODULES.prospection } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true } }),
+    prisma.agendaExterne.findMany({ where: { ...(who === "all" ? {} : { userId: who === "me" ? me.id : who }), debut: { gte: from, lt: to } }, orderBy: { debut: "asc" }, include: { user: { select: { firstName: true, email: true } } } }),
   ]);
 
   const events: CalEvent[] = [
@@ -57,6 +58,10 @@ export default async function CalendrierPage({ searchParams }: { searchParams: P
       nom: r.client!.name, societe: `Client${r.site ? ` · ${r.site.name}` : ""}`,
       objet: `${r.titre ?? "RDV client"}${r.lieu ? ` · ${r.lieu}` : ""}${r.meetUrl ? " · Meet" : ""}`, resultat: r.resultat,
       qui: r.commercial ? initialsOf(teamName(r.commercial)) : null,
+    })),
+    ...externes.map((e) => ({
+      id: `g-${e.id}`, kind: "google" as const, at: e.debut.toISOString(), duree: e.jour ? 60 : Math.max(30, Math.round((e.fin.getTime() - e.debut.getTime()) / 60_000)), prospectId: "", href: e.meetUrl ?? "#",
+      nom: e.titre, societe: "Google Agenda", objet: `${e.jour ? "Journée" : "Google Agenda"}${e.lieu ? ` · ${e.lieu}` : ""}`, resultat: null, qui: initialsOf(teamName(e.user)),
     })),
     ...rappels.map((p) => ({
       id: `rap-${p.id}`, kind: "rappel" as const, at: p.rappelAt!.toISOString(), duree: 20, prospectId: p.id,
@@ -101,6 +106,7 @@ export default async function CalendrierPage({ searchParams }: { searchParams: P
         <li className="flex items-center gap-1.5"><span className="size-2 rounded-sm bg-pink" />No show</li>
         <li className="flex items-center gap-1.5"><span className="size-2 rounded-sm bg-muted" />Annulé</li>
         <li className="flex items-center gap-1.5"><span className="size-2 rounded-sm border border-dashed border-blue" />Rappel</li>
+        <li className="flex items-center gap-1.5"><span className="size-2 rounded-sm bg-surface-2 border border-muted" />Google Agenda (importé toutes les 15 min)</li>
       </ul>
       <div className="mt-4">
         <Calendar vue={vue} first={first} days={days} today={today} month={d.slice(0, 7)} events={events} base={`/crm/calendrier?${new URLSearchParams({ c: who, ...(avecRappels ? {} : { rappels: "0" }) })}`} />

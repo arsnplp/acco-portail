@@ -366,6 +366,7 @@ model User {
   articles             Article[]
   activites            Activite[]
   agendaEvents         AgendaEvent[]
+  agendaExternes       AgendaExterne[]
   contratsCrees        Contrat[]               @relation("ContratCreePar")
   contratsSuivis       Contrat[]               @relation("ContratCommercial")
   delegationsDe        Delegation[]            @relation("DelegationDe")
@@ -653,6 +654,25 @@ model RetourCreation {
   site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
 
   @@index([siteId, fait])
+}
+
+/// Événements du Google Agenda d'un membre qui ne viennent pas de l'app (importés toutes les 15 min, affichés dans le calendrier).
+model AgendaExterne {
+  id            String   @id @default(cuid())
+  userId        String
+  googleEventId String
+  titre         String
+  debut         DateTime
+  fin           DateTime
+  jour          Boolean  @default(false)
+  lieu          String?
+  meetUrl       String?
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, googleEventId])
+  @@index([userId, debut])
 }
 
 model UsageIA {
