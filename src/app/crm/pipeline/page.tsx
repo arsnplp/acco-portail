@@ -34,7 +34,7 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
       team={team.map((u) => ({ id: u.id, name: teamName(u), avatarUrl: u.avatarUrl }))}
       cibles={cibles.map((x) => x.nom)}
       meId={me.id}
-      initialFilter={c === "all" ? "all" : c ?? "all"}
+      initialFilter={c ?? "me"} // par défaut, chacun voit son pipeline ; « Tous » reste à un clic
     />
   );
 }
