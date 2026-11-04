@@ -51,6 +51,60 @@ export default async function SuiviPage({ searchParams }: { searchParams: Promis
   const C = ({ c, children, href }: { c: { id: string; name: string; logoMiniPath: string | null }; children: React.ReactNode; href?: string }) => (
     <Card href={href ?? `/admin/clients/${c.id}`} className="flex items-center gap-3 py-2.5"><LogoClient id={c.id} name={c.name} logo={c.logoMiniPath} size={32} /><div className="min-w-0 flex-1">{children}</div></Card>
   );
+  /** Ordre fixé par la Direction ; les sections vides passent sous celles qui ont des éléments, sans changer leur ordre relatif. */
+  const sections = [
+    { key: "sites", n: sites.length, el: (
+      <section className="rounded-card border border-border bg-surface p-5">
+          <SectionTitle icon={FactoryIcon} action={<Link href="/admin/production" className="text-sm text-text hover:text-title">Kanban</Link>}>Sites en cours de création ({sites.length})</SectionTitle>
+          <div className="grid gap-2">{sites.map((s, i) => { const step = PROJECT_STEPS.find((p) => p.key === s.projectStep)!; const dl = s[step.deadline]; const e = etats[i]; return (
+            <C key={s.id} c={s.client} href={`/admin/sites/${s.id}`}><p className="truncate text-sm font-semibold text-title">{s.name} <span className="font-normal text-text">· {step.label} · V{s.version}</span></p><p className="truncate text-xs text-text">{s.client.name} · réf. {s.client.commercial ? teamName(s.client.commercial) : "—"} · dev {s.developpeur ? teamName(s.developpeur) : "—"}{dl ? ` · ${step.deadline === "deadlineV1" ? "V1" : step.deadline === "deadlineV2" ? "V2" : "livraison"} le ${fmtDate(dl)}${dl < now ? " (retard)" : ""}` : ""}</p>{e.blocages.length > 0 && <p className="truncate text-xs text-pink">{e.blocages[0]}</p>}{e.actions.length > 0 && <p className="truncate text-xs text-blue">→ {e.actions[0]}</p>}</C>
+          ); })}{sites.length === 0 && <p className="text-sm text-text">Aucun site en création.</p>}</div>
+      </section>
+    ) },
+    { key: "rdv", n: rdvAPlanifier.length, el: (
+      <section className="rounded-card border border-border bg-surface p-5">
+          <SectionTitle icon={CalendarClockIcon} action={<Link href="/admin/taches?type=RDV_A_PLANIFIER" className="text-sm text-text hover:text-title">Toutes</Link>}>Rendez-vous à planifier ({rdvAPlanifier.length})</SectionTitle>
+          <div className="grid gap-2">{rdvAPlanifier.map((t) => <C key={t.id} c={t.client} href={`/admin/clients/${t.client.id}?onglet=taches`}><p className="truncate text-sm font-semibold text-title">{t.titre}</p><p className="truncate text-xs text-text">{t.client.name}{t.site ? ` · ${t.site.name}` : ""} · {fmtDayTime(t.createdAt)}{t.source ? ` · ${t.source}` : ""} · fixer le RDV depuis la fiche</p></C>)}{rdvAPlanifier.length === 0 && <p className="text-sm text-text">Rien à planifier : maquettes et versions prêtes apparaissent ici.</p>}</div>
+      </section>
+    ) },
+    { key: "taches", n: taches.length, el: (
+      <section className="rounded-card border border-border bg-surface p-5">
+          <SectionTitle icon={ListChecksIcon} action={<Link href="/admin/taches" className="text-sm whitespace-nowrap text-text hover:text-title">Toutes</Link>}>Tâches et relances prioritaires ({taches.length})</SectionTitle>
+          <div className="grid gap-2">{taches.slice(0, 12).map((t) => <C key={t.id} c={t.client} href={`/admin/clients/${t.client.id}?onglet=taches`}><p className="truncate text-sm font-semibold text-title">{t.titre}</p><p className={cn("text-xs", t.echeance && t.echeance < now ? "text-pink" : "text-text")}>{t.client.name} · {t.echeance ? `${t.echeance < now ? "en retard · " : ""}${fmtDate(t.echeance)}` : "sans échéance"} · {t.responsable ? teamName(t.responsable) : "sans responsable"}</p></C>)}{taches.length === 0 && <p className="text-sm text-text">Aucune tâche en attente.</p>}</div>
+      </section>
+    ) },
+    { key: "commandes", n: commandes.length + demandes.length, el: (
+      <section className="rounded-card border border-border bg-surface p-5">
+          <SectionTitle icon={InboxIcon}>Commandes et demandes à traiter ({commandes.length + demandes.length})</SectionTitle>
+          <div className="grid gap-2">{commandes.map((o) => <C key={o.id} c={o.client} href="/admin/commandes"><p className="truncate text-sm font-semibold text-title">Commande : {o.offer.name}{o.site ? ` pour ${o.site.name}` : ""}</p><p className="text-xs text-text">{o.client.name} · {fmtDayTime(o.createdAt)}</p></C>)}{demandes.map((d) => <C key={d.id} c={d.site.client} href="/admin/modifications"><p className="truncate text-sm font-semibold text-title">Modification : {d.title}</p><p className="text-xs text-text">{d.site.client.name} · {d.site.name} · {fmtDayTime(d.createdAt)}</p></C>)}{commandes.length + demandes.length === 0 && <p className="text-sm text-text">Rien à traiter.</p>}</div>
+      </section>
+    ) },
+    { key: "parrainages", n: parrainages.length, el: externe ? null : (
+      <section className="rounded-card border border-border bg-surface p-5">
+          <SectionTitle icon={GiftIcon} action={<Link href="/admin/recommandations" className="text-sm text-text hover:text-title">Toutes</Link>}>Parrainages à qualifier ({parrainages.length})</SectionTitle>
+          <div className="grid gap-2">{parrainages.map((r) => <C key={r.id} c={r.referrer} href="/admin/recommandations"><p className="truncate text-sm font-semibold text-title">{r.contactName ?? "Contact"} <Badge tone={r.status === "ENVOYEE" ? "blue" : "yellow"}>{r.status === "ENVOYEE" ? "à qualifier" : "contacté"}</Badge></p><p className="text-xs text-text">parrain : {r.referrer.name}{r.referred ? ` · prospect : ${r.referred.name}` : ""} · {fmtDate(r.createdAt)}</p></C>)}{parrainages.length === 0 && <p className="text-sm text-text">Aucune recommandation en attente.</p>}</div>
+      </section>
+    ) },
+    { key: "docs", n: docs.length, el: (
+      <section className="rounded-card border border-border bg-surface p-5">
+          <SectionTitle icon={FileTextIcon}>Documents attendus du client ({docs.length})</SectionTitle>
+          <div className="grid gap-2">{docs.map((d) => <C key={d.id} c={d.client} href={`/admin/clients/${d.client.id}/documents`}><p className="truncate text-sm font-semibold text-title">{d.kind.toLowerCase()}{d.site ? ` · ${d.site.name}` : ""}{d.message ? ` · ${d.message}` : ""}</p><p className="text-xs text-text">{d.client.name} · demandé le {fmtDate(d.createdAt)}{d.requester ? ` par ${teamName(d.requester)}` : ""} · non reçu</p></C>)}{docs.length === 0 && <p className="text-sm text-text">Rien d’attendu.</p>}</div>
+      </section>
+    ) },
+    { key: "sansContact", n: sansContact.length, el: (
+      <section className="rounded-card border border-border bg-surface p-5">
+          <SectionTitle icon={UserXIcon} action={<Link href="/admin/clients?alerte=60j" className="text-sm whitespace-nowrap text-text hover:text-title">Voir</Link>}>Sans échange depuis {JOURS_SANS_CONTACT} jours ({sansContact.length})</SectionTitle>
+          <div className="grid gap-2">{sansContact.slice(0, 12).map(({ c, j, jamais }) => <C key={c.id} c={c}><p className="truncate text-sm font-semibold text-title">{c.name}</p><p className="text-xs text-pink">{jamais ? `aucun échange tracé · client depuis ${j} j` : `dernier échange il y a ${j} j`}{c.commercial ? ` · ${teamName(c.commercial)}` : ""}</p></C>)}{sansContact.length === 0 && <p className="text-sm text-text">Tous les clients ont eu un échange récent ou un RDV prévu.</p>}</div>
+      </section>
+    ) },
+    { key: "echeances", n: echeances.length, el: externe ? null : (
+      <section className="rounded-card border border-border bg-surface p-5">
+          <SectionTitle icon={HourglassIcon}>Échéances contractuelles sous 90 jours ({echeances.length})</SectionTitle>
+          <div className="grid gap-2">{echeances.map((c) => <C key={c.id} c={c.client!} href={`/admin/contrats/${c.id}`}><p className="truncate text-sm font-semibold text-title">{c.client!.name} · {c.reference}</p><p className="text-xs text-text">fin le {fmtDate(c.finEngagement!)} · préavis {c.preavisJours} j</p><Badge tone={daysUntil(c.finEngagement!) <= 30 ? "pink" : "yellow"}>dans {daysUntil(c.finEngagement!)} j</Badge></C>)}{echeances.length === 0 && <p className="text-sm text-text">Aucune échéance sous 90 jours.</p>}</div>
+      </section>
+    ) },
+  ].filter((s) => s.el);
+  const ordonnees = [...sections.filter((s) => s.n > 0), ...sections.filter((s) => s.n === 0)];
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -60,40 +114,7 @@ export default async function SuiviPage({ searchParams }: { searchParams: Promis
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">{compteurs.map((t) => <Card key={t.l} href={t.href} className={cn(t.n > 0 && "border-pink/40")}><p className={cn("font-title text-3xl font-extrabold", t.n > 0 ? "text-title" : "text-muted")}>{t.n}</p><p className="mt-1 text-xs text-text">{t.l}</p></Card>)}</div>
 
       <div className="mt-8 grid gap-5">
-        <section className="rounded-card border border-border bg-surface p-5">
-          <SectionTitle icon={FactoryIcon} action={<Link href="/admin/production" className="text-sm text-text hover:text-title">Kanban</Link>}>Sites en cours de création ({sites.length})</SectionTitle>
-          <div className="grid gap-2">{sites.map((s, i) => { const step = PROJECT_STEPS.find((p) => p.key === s.projectStep)!; const dl = s[step.deadline]; const e = etats[i]; return (
-            <C key={s.id} c={s.client} href={`/admin/sites/${s.id}`}><p className="truncate text-sm font-semibold text-title">{s.name} <span className="font-normal text-text">· {step.label} · V{s.version}</span></p><p className="truncate text-xs text-text">{s.client.name} · réf. {s.client.commercial ? teamName(s.client.commercial) : "—"} · dev {s.developpeur ? teamName(s.developpeur) : "—"}{dl ? ` · ${step.deadline === "deadlineV1" ? "V1" : step.deadline === "deadlineV2" ? "V2" : "livraison"} le ${fmtDate(dl)}${dl < now ? " (retard)" : ""}` : ""}</p>{e.blocages.length > 0 && <p className="truncate text-xs text-pink">{e.blocages[0]}</p>}{e.actions.length > 0 && <p className="truncate text-xs text-blue">→ {e.actions[0]}</p>}</C>
-          ); })}{sites.length === 0 && <p className="text-sm text-text">Aucun site en création.</p>}</div>
-        </section>
-        <section className="rounded-card border border-border bg-surface p-5">
-          <SectionTitle icon={CalendarClockIcon} action={<Link href="/admin/taches?type=RDV_A_PLANIFIER" className="text-sm text-text hover:text-title">Toutes</Link>}>Rendez-vous à planifier ({rdvAPlanifier.length})</SectionTitle>
-          <div className="grid gap-2">{rdvAPlanifier.map((t) => <C key={t.id} c={t.client} href={`/admin/clients/${t.client.id}?onglet=taches`}><p className="truncate text-sm font-semibold text-title">{t.titre}</p><p className="truncate text-xs text-text">{t.client.name}{t.site ? ` · ${t.site.name}` : ""} · {fmtDayTime(t.createdAt)}{t.source ? ` · ${t.source}` : ""} · fixer le RDV depuis la fiche</p></C>)}{rdvAPlanifier.length === 0 && <p className="text-sm text-text">Rien à planifier : maquettes et versions prêtes apparaissent ici.</p>}</div>
-        </section>
-        <section className="rounded-card border border-border bg-surface p-5">
-          <SectionTitle icon={UserXIcon} action={<Link href="/admin/clients?alerte=60j" className="text-sm whitespace-nowrap text-text hover:text-title">Voir</Link>}>Sans échange depuis {JOURS_SANS_CONTACT} jours ({sansContact.length})</SectionTitle>
-          <div className="grid gap-2">{sansContact.slice(0, 12).map(({ c, j, jamais }) => <C key={c.id} c={c}><p className="truncate text-sm font-semibold text-title">{c.name}</p><p className="text-xs text-pink">{jamais ? `aucun échange tracé · client depuis ${j} j` : `dernier échange il y a ${j} j`}{c.commercial ? ` · ${teamName(c.commercial)}` : ""}</p></C>)}{sansContact.length === 0 && <p className="text-sm text-text">Tous les clients ont eu un échange récent ou un RDV prévu.</p>}</div>
-        </section>
-        <section className="rounded-card border border-border bg-surface p-5">
-          <SectionTitle icon={InboxIcon}>Commandes et demandes à traiter ({commandes.length + demandes.length})</SectionTitle>
-          <div className="grid gap-2">{commandes.map((o) => <C key={o.id} c={o.client} href="/admin/commandes"><p className="truncate text-sm font-semibold text-title">Commande : {o.offer.name}{o.site ? ` pour ${o.site.name}` : ""}</p><p className="text-xs text-text">{o.client.name} · {fmtDayTime(o.createdAt)}</p></C>)}{demandes.map((d) => <C key={d.id} c={d.site.client} href="/admin/modifications"><p className="truncate text-sm font-semibold text-title">Modification : {d.title}</p><p className="text-xs text-text">{d.site.client.name} · {d.site.name} · {fmtDayTime(d.createdAt)}</p></C>)}{commandes.length + demandes.length === 0 && <p className="text-sm text-text">Rien à traiter.</p>}</div>
-        </section>
-        {!externe && <section className="rounded-card border border-border bg-surface p-5">
-          <SectionTitle icon={GiftIcon} action={<Link href="/admin/recommandations" className="text-sm text-text hover:text-title">Toutes</Link>}>Parrainages à qualifier ({parrainages.length})</SectionTitle>
-          <div className="grid gap-2">{parrainages.map((r) => <C key={r.id} c={r.referrer} href="/admin/recommandations"><p className="truncate text-sm font-semibold text-title">{r.contactName ?? "Contact"} <Badge tone={r.status === "ENVOYEE" ? "blue" : "yellow"}>{r.status === "ENVOYEE" ? "à qualifier" : "contacté"}</Badge></p><p className="text-xs text-text">parrain : {r.referrer.name}{r.referred ? ` · prospect : ${r.referred.name}` : ""} · {fmtDate(r.createdAt)}</p></C>)}{parrainages.length === 0 && <p className="text-sm text-text">Aucune recommandation en attente.</p>}</div>
-        </section>}
-        <section className="rounded-card border border-border bg-surface p-5">
-          <SectionTitle icon={FileTextIcon}>Documents attendus du client ({docs.length})</SectionTitle>
-          <div className="grid gap-2">{docs.map((d) => <C key={d.id} c={d.client} href={`/admin/clients/${d.client.id}/documents`}><p className="truncate text-sm font-semibold text-title">{d.kind.toLowerCase()}{d.site ? ` · ${d.site.name}` : ""}{d.message ? ` · ${d.message}` : ""}</p><p className="text-xs text-text">{d.client.name} · demandé le {fmtDate(d.createdAt)}{d.requester ? ` par ${teamName(d.requester)}` : ""} · non reçu</p></C>)}{docs.length === 0 && <p className="text-sm text-text">Rien d’attendu.</p>}</div>
-        </section>
-        <section className="rounded-card border border-border bg-surface p-5">
-          <SectionTitle icon={ListChecksIcon} action={<Link href="/admin/taches" className="text-sm whitespace-nowrap text-text hover:text-title">Toutes</Link>}>Tâches et relances prioritaires ({taches.length})</SectionTitle>
-          <div className="grid gap-2">{taches.slice(0, 12).map((t) => <C key={t.id} c={t.client} href={`/admin/clients/${t.client.id}?onglet=taches`}><p className="truncate text-sm font-semibold text-title">{t.titre}</p><p className={cn("text-xs", t.echeance && t.echeance < now ? "text-pink" : "text-text")}>{t.client.name} · {t.echeance ? `${t.echeance < now ? "en retard · " : ""}${fmtDate(t.echeance)}` : "sans échéance"} · {t.responsable ? teamName(t.responsable) : "sans responsable"}</p></C>)}{taches.length === 0 && <p className="text-sm text-text">Aucune tâche en attente.</p>}</div>
-        </section>
-        {!externe && <section className="rounded-card border border-border bg-surface p-5">
-          <SectionTitle icon={HourglassIcon}>Échéances contractuelles sous 90 jours ({echeances.length})</SectionTitle>
-          <div className="grid gap-2">{echeances.map((c) => <C key={c.id} c={c.client!} href={`/admin/contrats/${c.id}`}><p className="truncate text-sm font-semibold text-title">{c.client!.name} · {c.reference}</p><p className="text-xs text-text">fin le {fmtDate(c.finEngagement!)} · préavis {c.preavisJours} j</p><Badge tone={daysUntil(c.finEngagement!) <= 30 ? "pink" : "yellow"}>dans {daysUntil(c.finEngagement!)} j</Badge></C>)}{echeances.length === 0 && <p className="text-sm text-text">Aucune échéance sous 90 jours.</p>}</div>
-        </section>}
+        {ordonnees.map((s) => <div key={s.key}>{s.el}</div>)}
       </div>
       <p className="mt-6 text-xs text-muted"><CircleCheckIcon size={12} className="mr-1 inline" aria-hidden />Les chiffres viennent des objets réels (sites, tâches, demandes, contrats), jamais de valeurs fictives.</p>
     </main>

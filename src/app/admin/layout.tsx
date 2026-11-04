@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { requireTeam, initials } from "@/lib/auth";
 import { can, estExterne } from "@/lib/permissions";
+import { estCommercial } from "@/lib/roles";
 import { Header } from "@/components/nav/header";
 import { AdminNav } from "./admin-nav";
 
@@ -18,7 +19,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <>
       <Header width="max-w-3xl" initials={initials(user)} avatarUrl={user.avatarUrl} accountHref="/admin/parametres" right={<span className="mr-1 text-xs text-text">{externe ? "Prestataire" : "Équipe"}</span>} />
-      <AdminNav role={user.role} externe={externe} direction={can(user, "pilotage")} />
+      <AdminNav role={user.role} externe={externe} direction={can(user, "pilotage")} commercial={estCommercial(user)} />
       {children}
     </>
   );

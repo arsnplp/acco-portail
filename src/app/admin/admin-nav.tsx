@@ -26,13 +26,18 @@ const ITEMS: Array<[string, string, "suivi" | "prospection"]> = [
   ["/admin/recommandations", "Recommandations", "prospection"],
   ["/admin/documents", "Documents", "suivi"],
 ];
+/** Onglets des commerciaux (Bilel, Lucas, alternants) : seulement ce dont ils ont besoin, dans cet ordre. */
+const COMMERCIAL: Array<[string, string]> = [
+  ["/admin", "← Accueil"], ["/admin/suivi", "Tableau de bord"], ["/admin/taches", "Tâches"], ["/admin/clients", "Clients"], ["/admin/production", "Production"],
+  ["/admin/contrats", "Contrats"], ["/admin/commandes", "Commandes"], ["/admin/recommandations", "Recommandations"], ["/admin/documents", "Documents"], ["/admin/validations", "Validations"],
+];
 /** Paramètres de l'app : ouverts depuis l'avatar, hors des onglets du Suivi client. */
 const PARAMETRES: Array<[string, string]> = [["/admin", "← Accueil"], ["/admin/parametres", "Paramètres"]];
 const PILOTAGE: Array<[string, string]> = [["/admin", "← Accueil"], ["/admin/pilotage", "Pilotage"]];
 /** Pages masquées aux prestataires et spécialistes (section 13) ; le serveur les bloque aussi (layout). */
 const EXTERNE_CACHE = ["/admin/documents", "/admin/contrats", "/admin/campagnes", "/admin/offres", "/admin/commandes", "/admin/recommandations"];
 
-export function AdminNav({ role, externe = false, direction = false }: { role: Role; externe?: boolean; direction?: boolean }) {
+export function AdminNav({ role, externe = false, direction = false, commercial = false }: { role: Role; externe?: boolean; direction?: boolean; commercial?: boolean }) {
   const pathname = usePathname();
   const activeRef = useRef<HTMLAnchorElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
@@ -61,7 +66,7 @@ export function AdminNav({ role, externe = false, direction = false }: { role: R
   return (
     <nav className="sticky top-14 z-20 border-b border-border bg-bg/95 backdrop-blur">
       <ul ref={listRef} className="mx-auto flex max-w-3xl gap-1 overflow-x-auto overscroll-x-contain px-4 [scrollbar-width:none] [touch-action:pan-x] [&::-webkit-scrollbar]:hidden">
-        {(pathname.startsWith("/admin/parametres") ? PARAMETRES : pathname.startsWith("/admin/pilotage") && direction ? PILOTAGE : ITEMS.filter(([h, , m]) => canAccess(role, m) && !(externe && EXTERNE_CACHE.includes(h))).map(([h, l]) => [h, l] as [string, string])).map(([href, label]) => {
+        {(pathname.startsWith("/admin/parametres") ? PARAMETRES : pathname.startsWith("/admin/pilotage") && direction ? PILOTAGE : commercial ? COMMERCIAL : ITEMS.filter(([h, , m]) => canAccess(role, m) && !(externe && EXTERNE_CACHE.includes(h))).map(([h, l]) => [h, l] as [string, string])).map(([href, label]) => {
           const active = href !== "/admin" && pathname.startsWith(href);
           return (
             <li key={href} className="shrink-0">
