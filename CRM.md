@@ -113,6 +113,8 @@ Accès : carte « Commercial » du tableau de bord admin, ou directement `/crm`.
 - **Équipe** (Direction) : créer le compte d'un membre avec son rôle (Direction, Commercial, Développeur, Expert, Spécialiste), changer un rôle, retirer un accès.
 
 ## Coffre à leads (`/crm/leads`)
+- **Accès** : Direction seulement (droit `pilotage` : Bilel, Lucas, Arsène). Les commerciaux ne voient ni l'entrée de menu
+  ni les pages ; les fiches issues d'une liste gardent leurs « Infos du lead » sans lien vers le coffre.
 - **Générer** : nombre (1 à 50), secteur et région en texte libre, filtres « mobiles uniquement (06/07) » et
   « avec / sans site », attribution (commercial ou personne). Claude cherche
   sur le web (outil de recherche web de l'API Anthropic), le registre officiel (recherche-entreprises.api.gouv.fr,

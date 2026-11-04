@@ -23,10 +23,10 @@ export type NavDroits = { admin: boolean; direction?: boolean };
 function secondaires({ admin, direction }: NavDroits): Item[] {
   return [
     { href: "/crm/prospects", label: "Tous les prospects", icon: ListChecksIcon, exact: true, hint: "Filtres avancés, repêchage, actions en masse" },
-    { href: "/crm/leads", label: "Coffre à leads", icon: VaultIcon, hint: "Générer et utiliser des listes" },
     { href: "/crm/stats", label: "Stats", icon: ChartColumnIcon, hint: "Chiffres de l’équipe et graphiques" },
     { href: "/admin/suivi", label: "Suivi de mes clients", icon: ListChecksIcon, hint: "Sites en cours, RDV à planifier, relances, demandes" },
     ...(direction ? [
+      { href: "/crm/leads", label: "Coffre à leads", icon: VaultIcon, hint: "Direction : générer et utiliser des listes" },
       { href: "/crm/historique", label: "Historique", icon: HistoryIcon, hint: "Tous les échanges notés" },
       { href: "/admin/pilotage", label: "Pilotage", icon: GaugeIcon, hint: "Direction : MRR, activité, projection" },
     ] : []),

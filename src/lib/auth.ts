@@ -64,6 +64,12 @@ export async function requireDroit(droit: Droit) {
 }
 /** Prospection (CRM) : Direction et Commerciaux. */
 export const requireProspection = () => requireModule("prospection");
+/** Coffre à leads : réservé à la Direction (droit `pilotage`), jamais aux commerciaux. */
+export async function requireCoffre() {
+  const user = await requireProspection();
+  if (!can(user, "pilotage")) redirect("/crm");
+  return user;
+}
 
 export { isGestionnaire } from "@/lib/roles";
 import { isGestionnaire } from "@/lib/roles";

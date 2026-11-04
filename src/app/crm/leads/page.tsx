@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArchiveIcon, ChevronRightIcon, SparklesIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { MODULES } from "@/lib/roles";
-import { requireProspection } from "@/lib/auth";
+import { requireCoffre } from "@/lib/auth";
 import { cn } from "@/lib/cn";
 import { SectionTitle } from "@/components/ui/card";
 import { AutoRefresh } from "@/components/messages/auto-refresh";
@@ -15,7 +15,7 @@ export const metadata = { title: "Coffre à leads" };
 
 
 export default async function LeadsPage() {
-  const me = await requireProspection();
+  const me = await requireCoffre();
   const [listes, team] = await Promise.all([
     prisma.leadListe.findMany({ orderBy: { createdAt: "desc" }, take: 100, include: { commercial: { select: { firstName: true, email: true } }, auteur: { select: { firstName: true, email: true } } } }),
     prisma.user.findMany({ where: { role: { in: MODULES.prospection } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true } }),

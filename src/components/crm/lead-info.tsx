@@ -34,7 +34,7 @@ function valeur(c: Colonne, v: unknown, d: LeadRow) {
   return s;
 }
 
-export function LeadInfoButton({ prospectId, lead }: { prospectId: string; lead: LeadInfo }) {
+export function LeadInfoButton({ prospectId, lead, coffre = false }: { prospectId: string; lead: LeadInfo; coffre?: boolean }) {
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
@@ -69,7 +69,7 @@ export function LeadInfoButton({ prospectId, lead }: { prospectId: string; lead:
           ) : (
             <div className="space-y-5">
               <p className="text-sm text-text">
-                {lead.listeId ? <>Issu de la liste <Link href={`/crm/leads/${lead.listeId}`} className="font-semibold text-title hover:underline">{lead.liste}</Link>, générée {lead.generee}.</> : <>Infos générées depuis la fiche {lead.generee}.</>}
+                {lead.listeId ? <>Issu de la liste {coffre ? <Link href={`/crm/leads/${lead.listeId}`} className="font-semibold text-title hover:underline">{lead.liste}</Link> : <span className="font-semibold text-title">{lead.liste}</span>}, générée {lead.generee}.</> : <>Infos générées depuis la fiche {lead.generee}.</>}
               </p>
               {GROUPES.map((g) => (
                 <section key={g.titre}>

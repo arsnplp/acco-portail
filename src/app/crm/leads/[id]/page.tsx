@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeftIcon, ExternalLinkIcon, MapPinIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { MODULES } from "@/lib/roles";
-import { requireProspection } from "@/lib/auth";
+import { requireCoffre } from "@/lib/auth";
 import { cn } from "@/lib/cn";
 import { AutoRefresh } from "@/components/messages/auto-refresh";
 import { fmtDayTime, teamName } from "@/lib/crm";
@@ -17,7 +17,7 @@ export const metadata = { title: "Liste de leads" };
 const scoreCls = (s: number) => (s >= 85 ? "bg-green/20 text-green" : s >= 70 ? "bg-yellow/20 text-yellow" : "bg-surface-2 text-text");
 
 export default async function LeadListePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tout?: string }> }) {
-  const me = await requireProspection();
+  const me = await requireCoffre();
   const { id } = await params;
   const tout = (await searchParams).tout === "1";
   const [liste, team] = await Promise.all([

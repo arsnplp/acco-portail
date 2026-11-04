@@ -9,6 +9,7 @@ import type { LeadRow } from "@/lib/leads/colonnes";
 import { prisma } from "@/lib/prisma";
 import { MODULES } from "@/lib/roles";
 import { requireProspection } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { Badge } from "@/components/ui/badge";
 import { Logo } from "@/components/crm/logo";
 import { ETAPE_IMAGE, STATUT, contactName, fmtDayTime, fmtTime, logoUrl, relanceInfo, teamName, parisDay, todayBounds } from "@/lib/crm";
@@ -89,7 +90,7 @@ export default async function ProspectPage({ params, searchParams }: { params: P
           </div>
         </div>
         <div className="flex w-full items-center gap-2 sm:w-auto">
-          <LeadInfoButton prospectId={p.id} lead={p.lead ? { listeId: p.lead.listeId, liste: `${p.lead.liste.secteur} · ${p.lead.liste.region}`, generee: fmtDayTime(p.lead.liste.createdAt), donnees: p.lead.donnees as LeadRow } : p.infos ? { listeId: null, liste: null, generee: p.infosAt ? fmtDayTime(p.infosAt) : "", donnees: p.infos as LeadRow } : null} />
+          <LeadInfoButton prospectId={p.id} coffre={can(me, "pilotage")} lead={p.lead ? { listeId: p.lead.listeId, liste: `${p.lead.liste.secteur} · ${p.lead.liste.region}`, generee: fmtDayTime(p.lead.liste.createdAt), donnees: p.lead.donnees as LeadRow } : p.infos ? { listeId: null, liste: null, generee: p.infosAt ? fmtDayTime(p.infosAt) : "", donnees: p.infos as LeadRow } : null} />
           {phone && <a href={`tel:${phone.replace(/\s/g, "")}`} className="flex h-11 flex-1 items-center justify-center gap-2 rounded-card bg-title px-4 text-sm font-semibold text-bg sm:flex-none"><PhoneIcon size={16} aria-hidden /> {phone}</a>}
           {/* Nouveau message Gmail dans un onglet (un lien mailto: ne fait rien sans logiciel de mail installé). */}
           {email && <a href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}`} target="_blank" rel="noreferrer" aria-label="Écrire un mail (Gmail)" title={`Écrire à ${email} avec Gmail`} className="flex size-11 items-center justify-center rounded-card border border-border text-text hover:text-title"><MailIcon size={17} /></a>}
