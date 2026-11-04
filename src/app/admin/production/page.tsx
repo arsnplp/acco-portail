@@ -9,6 +9,7 @@ import { ActivityIcon } from "lucide-react";
 import { ProductionBoard, type SiteCard } from "./board";
 import { whereSitesPour } from "@/lib/perimetre";
 import { estExterne } from "@/lib/permissions";
+import { estCommercial } from "@/lib/roles";
 import { etatProduction } from "@/lib/production";
 
 export const metadata = { title: "Production" };
@@ -21,6 +22,8 @@ export default async function ProductionPage({ searchParams }: { searchParams: P
   const me = await requireTeam();
   const { dev } = await searchParams;
   const externe = estExterne(me);
+  // Vue des commerciaux : seulement le tableau des sites, sans les tuiles de pilotage ni le flux d'activité.
+  const tableauSeul = externe || estCommercial(me);
   const [sites, equipe, activites, validations, modifsOuvertes] = await Promise.all([
     prisma.site.findMany({
       where: { status: "EN_CREATION", ...whereSitesPour(me) },
@@ -28,8 +31,8 @@ export default async function ProductionPage({ searchParams }: { searchParams: P
       select: { id: true, name: true, projectStep: true, etapeAt: true, createdAt: true, previewUrl: true, developpeurId: true, version: true, deadlineV1: true, deadlineV2: true, deadlineLivraison: true, client: { select: { id: true, name: true, logoMiniPath: true } }, developpeur: { select: { firstName: true, email: true } }, _count: { select: { changeRequests: { where: { status: { not: "TERMINEE" } } } } } },
     }),
     prisma.user.findMany({ where: { role: { in: ["ADMIN", "DEV", "EXPERT", "SPECIALISTE", "COMMERCIAL"] } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true, role: true } }),
-    externe ? [] : prisma.activite.findMany({ orderBy: { createdAt: "desc" }, take: 60, include: { user: { select: { firstName: true, email: true } } } }),
-    externe ? [] : prisma.validation.findMany({ where: { statut: "EN_ATTENTE", type: { in: ["MAQUETTE", "BRIEF_TECHNIQUE", "BRIEF_COMMERCIAL", "GO_LIVE"] } }, include: { site: { select: { id: true, name: true } }, assigne: { select: { firstName: true, email: true } } } }),
+    externe || estCommercial(me) ? [] : prisma.activite.findMany({ orderBy: { createdAt: "desc" }, take: 60, include: { user: { select: { firstName: true, email: true } } } }),
+    externe || estCommercial(me) ? [] : prisma.validation.findMany({ where: { statut: "EN_ATTENTE", type: { in: ["MAQUETTE", "BRIEF_TECHNIQUE", "BRIEF_COMMERCIAL", "GO_LIVE"] } }, include: { site: { select: { id: true, name: true } }, assigne: { select: { firstName: true, email: true } } } }),
     prisma.changeRequest.count({ where: { status: { in: ["RECUE", "EN_COURS", "A_VALIDER"] }, site: { status: "EN_LIGNE", ...whereSitesPour(me) } } }),
   ]);
   const etats = await Promise.all(sites.map((s) => etatProduction(s.id)));
@@ -59,7 +62,7 @@ export default async function ProductionPage({ searchParams }: { searchParams: P
           <p className="mt-1 text-sm text-text">{cards.length} site{cards.length > 1 ? "s" : ""} en cours · glissez une carte pour changer d’étape (vers « Livré » en bas pour mettre en ligne), cliquez pour ouvrir le site.</p>
         </div>
       </div>
-      {!externe && (
+      {!tableauSeul && (
         <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           <Tuile titre="Par étape" lignes={parEtape.map((p) => `${p.label} : ${p.n}`)} />
           <Tuile titre="Validations en attente" lignes={validations.length === 0 ? ["Aucune"] : validations.slice(0, 5).map((v) => `${v.type === "MAQUETTE" ? "Maquette" : v.type === "GO_LIVE" ? "Mise en ligne" : v.type === "BRIEF_TECHNIQUE" ? "Brief (technique)" : "Brief (commercial)"} · ${v.site?.name ?? ""} → ${teamName(v.assigne)}`)} href="/admin/validations" />
@@ -69,7 +72,7 @@ export default async function ProductionPage({ searchParams }: { searchParams: P
       )}
       <ProductionBoard initial={cards} devs={devs} meId={me.id} initialDev={dev ?? "all"} />
 
-      {!externe && <div className="max-w-3xl">
+      {!tableauSeul && <div className="max-w-3xl">
         <section>
           <SectionTitle icon={ActivityIcon}>Flux d’activité</SectionTitle>
           {activites.length === 0 ? <p className="text-sm text-text">Le flux se remplit au fil des actions : étapes franchies, modifications traitées, articles publiés, comptes rendus.</p> : (
