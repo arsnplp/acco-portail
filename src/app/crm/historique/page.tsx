@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { MODULES } from "@/lib/roles";
 import { requireAdmin } from "@/lib/auth";
 import { cn } from "@/lib/cn";
+import { bascule, multi } from "@/lib/filtres";
 import { Avatar } from "@/components/ui/avatar";
 import { ECHANGE, ECHANGE_COULEUR, contactName, fmtTime, initialsOf, parisDay, parisMidnight, teamName, todayBounds } from "@/lib/crm";
 
@@ -17,15 +18,16 @@ export default async function HistoriquePage({ searchParams }: { searchParams: P
   await requireAdmin();
   const sp = await searchParams;
   const jours = Number(PERIODES.find((x) => x.v === sp.p)?.v ?? 7);
-  const who = sp.c && sp.c !== "all" ? sp.c : null;
-  const type = TYPES.includes(sp.t as EchangeType) ? (sp.t as EchangeType) : null;
+  // Puces à choix multiples : plusieurs personnes et plusieurs types à la fois (vide = tous).
+  const whos = multi(sp.c).filter((x) => x !== "all");
+  const types = multi(sp.t).filter((x) => TYPES.includes(x as EchangeType)) as EchangeType[];
   const { end } = todayBounds();
   const since = jours === 1 ? todayBounds().start : new Date(end.getTime() - jours * 86400_000);
 
   const [team, items] = await Promise.all([
     prisma.user.findMany({ where: { role: { in: MODULES.prospection } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true, avatarUrl: true } }),
     prisma.echange.findMany({
-      where: { auteurId: who ?? { not: null }, date: { gte: since, lt: end }, type: type ?? { not: "NOTE" }, prospectId: { not: null } },
+      where: { auteurId: whos.length ? { in: whos } : { not: null }, date: { gte: since, lt: end }, type: types.length ? { in: types } : { not: "NOTE" }, prospectId: { not: null } },
       orderBy: { date: "desc" },
       take: 400,
       select: {
@@ -41,14 +43,14 @@ export default async function HistoriquePage({ searchParams }: { searchParams: P
   const days = new Map<string, typeof items>();
   for (const e of items) { const d = parisDay(e.date); days.set(d, [...(days.get(d) ?? []), e]); }
   const href = (q: Record<string, string | null>) => {
-    const base: Record<string, string> = { p: String(jours), c: who ?? "all", t: type ?? "" };
+    const base: Record<string, string> = { p: String(jours), c: whos.join(","), t: types.join(",") };
     for (const [k, v] of Object.entries(q)) base[k] = v ?? "";
     return `/crm/historique?${new URLSearchParams(Object.fromEntries(Object.entries(base).filter(([, v]) => v)))}`;
   };
   const dayLabel = (d: string) => new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", weekday: "long", day: "numeric", month: "long" }).format(parisMidnight(d));
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-6">
+    <main className="mx-auto max-w-5xl px-4 py-6 lg:px-8 lg:py-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl">Historique</h1>
@@ -60,21 +62,21 @@ export default async function HistoriquePage({ searchParams }: { searchParams: P
       </div>
 
       <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
-        <Link href={href({ c: "all" })} className={cn("flex shrink-0 items-center gap-2 rounded-full border py-1 pr-3 pl-1", !who ? "border-title bg-surface-2" : "border-border hover:border-text")}>
+        <Link href={href({ c: null })} className={cn("flex shrink-0 items-center gap-2 rounded-full border py-1 pr-3 pl-1", whos.length === 0 ? "border-title bg-surface-2" : "border-border hover:border-text")}>
           <span className="flex size-7 items-center justify-center rounded-full bg-surface-2 text-[10px] font-semibold text-title">Tous</span>
           <span className="text-sm text-title">Équipe</span><span className="text-xs text-text">{counts.reduce((a, c) => a + c._count, 0)}</span>
         </Link>
         {team.map((u) => (
-          <Link key={u.id} href={href({ c: u.id })} className={cn("flex shrink-0 items-center gap-2 rounded-full border py-1 pr-3 pl-1", who === u.id ? "border-title bg-surface-2" : "border-border hover:border-text")}>
+          <Link key={u.id} href={href({ c: bascule(whos, u.id).join(",") })} title="Cliquer pour ajouter ou retirer" className={cn("flex shrink-0 items-center gap-2 rounded-full border py-1 pr-3 pl-1", whos.includes(u.id) ? "border-title bg-surface-2" : "border-border hover:border-text")}>
             <Avatar initials={initialsOf(teamName(u))} src={u.avatarUrl} size={28} />
             <span className="text-sm text-title">{teamName(u)}</span><span className="text-xs text-text">{countOf(u.id)}</span>
           </Link>
         ))}
       </div>
       <div className="mt-3 flex flex-wrap gap-1.5">
-        <Link href={href({ t: null })} className={cn("rounded-full border px-3 py-1 text-xs", !type ? "border-title bg-title font-semibold text-bg" : "border-border text-text hover:text-title")}>Tous types</Link>
+        <Link href={href({ t: null })} className={cn("rounded-full border px-3 py-1 text-xs", types.length === 0 ? "border-title bg-title font-semibold text-bg" : "border-border text-text hover:text-title")}>Tous types</Link>
         {TYPES.map((t) => (
-          <Link key={t} href={href({ t })} className={cn("flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs", type === t ? "border-title bg-title font-semibold text-bg" : "border-border text-text hover:text-title")}>
+          <Link key={t} href={href({ t: bascule(types, t).join(",") })} title="Cliquer pour ajouter ou retirer" className={cn("flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs", types.includes(t) ? "border-title bg-title font-semibold text-bg" : "border-border text-text hover:text-title")}>
             <span className="size-2 rounded-full" style={{ background: ECHANGE_COULEUR[t] }} />{ECHANGE[t].short}
           </Link>
         ))}

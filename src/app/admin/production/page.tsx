@@ -52,7 +52,7 @@ export default async function ProductionPage({ searchParams }: { searchParams: P
   const devs = equipe.filter((u) => u.role !== "COMMERCIAL").map((u) => ({ id: u.id, name: teamName(u) }));
 
   return (
-    <main className="mx-auto max-w-[1600px] px-4 py-6">
+    <main className="mx-auto max-w-[1600px] px-4 py-6 lg:px-8 lg:py-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl">Production</h1>

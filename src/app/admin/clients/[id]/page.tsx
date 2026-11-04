@@ -48,7 +48,7 @@ export default async function ClientDetailPage({ params, searchParams }: { param
   const ctx = { clientId: client.id, me, finance: can(me, "finance"), externe, sp };
 
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">
+    <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-6 lg:px-8 lg:py-8">
       <BackLink fallback="/admin/clients" label="Clients" />
       <header className="mt-3 flex flex-wrap items-start gap-4">
         <LogoForm clientId={client.id} logo={client.logoMiniPath} name={client.name} externe={externe} />

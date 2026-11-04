@@ -8,7 +8,7 @@ export default async function CrmParametresPage({ searchParams }: { searchParams
   const me = await requireProspection();
   const { google } = await searchParams;
   return (
-    <main className="mx-auto max-w-3xl px-4 py-6">
+    <main className="mx-auto max-w-4xl px-4 py-6 lg:px-8 lg:py-8">
       <h1 className="text-2xl">Paramètres</h1>
       <p className="mt-1 text-sm text-text">{me.firstName ?? me.email}</p>
       <MesParametres user={me} google={google} next="/crm/parametres" />

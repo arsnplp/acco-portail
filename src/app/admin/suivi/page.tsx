@@ -106,7 +106,7 @@ export default async function SuiviPage({ searchParams }: { searchParams: Promis
   ].filter((s) => s.el);
   const ordonnees = [...sections.filter((s) => s.n > 0), ...sections.filter((s) => s.n === 0)];
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">
+    <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-6 lg:px-8 lg:py-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div><h1 className="text-2xl">Suivi client</h1><p className="mt-1 text-sm text-text">{clients.length} client{clients.length > 1 ? "s" : ""} {moi ? "dans ma responsabilité" : "au total"} · chaque bloc ouvre le dossier concerné.</p></div>
         {!externe && <div className="flex rounded-full border border-border p-0.5 text-sm"><Link href="/admin/suivi" className={cn("rounded-full px-3 py-1.5", moi ? "bg-title font-semibold text-bg" : "text-text hover:text-title")}>Ma responsabilité</Link><Link href="/admin/suivi?vue=tous" className={cn("rounded-full px-3 py-1.5", !moi ? "bg-title font-semibold text-bg" : "text-text hover:text-title")}>Tous les clients</Link></div>}

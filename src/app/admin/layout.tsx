@@ -19,7 +19,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
   return (
     <>
-      <Header width="max-w-3xl" initials={initials(user)} avatarUrl={user.avatarUrl} accountHref="/admin/parametres" right={<><span className="mr-1 text-xs text-text">{externe ? "Prestataire" : "Équipe"}</span><MessagesIcon user={user} /></>} />
+      <Header width="max-w-[1600px] lg:px-8" initials={initials(user)} avatarUrl={user.avatarUrl} accountHref="/admin/parametres" right={<><span className="mr-1 text-xs text-text">{externe ? "Prestataire" : "Équipe"}</span><MessagesIcon user={user} /></>} />
       <AdminNav role={user.role} externe={externe} direction={can(user, "pilotage")} commercial={estCommercial(user)} />
       {children}
     </>

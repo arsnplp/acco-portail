@@ -4,6 +4,8 @@ import { FilterIcon, SearchIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { MODULES } from "@/lib/roles";
 import { requireProspection } from "@/lib/auth";
+import { MultiSelect } from "@/components/ui/multi-select";
+import { multi } from "@/lib/filtres";
 import { CLOS, MOTIFS_ABANDON, MOTIFS_PERTE, PIPELINE, SEQUENCE_APPELS, STATUT, TOUS_STATUTS, contactName, formatTel, teamName, todayBounds } from "@/lib/crm";
 import { Liste, type Row } from "./liste";
 
@@ -24,16 +26,18 @@ export default async function ProspectsPage({ searchParams }: { searchParams: Pr
   const isAdmin = me.role === "ADMIN";
   const q = (sp.q ?? "").trim();
   const s = sp.s ?? "";
-  const statutFiltre: ProspectStatut | null = TOUS_STATUTS.includes(s as ProspectStatut) ? (s as ProspectStatut) : null;
+  // Choix multiples : statuts (groupes « ouverts » / « clos » ou statuts précis), commerciaux (moi, sans, personnes), cibles, motifs.
+  const fs = multi(s), fc = multi(sp.c).filter((x) => x !== "all"), fcible = multi(sp.cible), fmotif = multi(sp.motif);
+  const statutsChoisis = [...new Set(fs.flatMap((x) => (x === "ouverts" ? PIPELINE : x === "clos" ? CLOS : TOUS_STATUTS.includes(x as ProspectStatut) ? [x as ProspectStatut] : [])))];
   const jours = ["7", "30", "90", "365"].includes(sp.j ?? "") ? Number(sp.j) : null;
   const page = Math.max(1, Number(sp.p) || 1);
   const { end } = todayBounds();
 
   const where: Prisma.ProspectWhereInput = {
-    ...(statutFiltre ? { statut: statutFiltre } : s === "ouverts" ? { statut: { in: PIPELINE } } : s === "clos" ? { statut: { in: CLOS } } : {}),
-    ...(sp.c === "me" ? { commercialId: me.id } : sp.c === "none" ? { commercialId: null } : sp.c && sp.c !== "all" ? { commercialId: sp.c } : {}),
-    ...(sp.cible ? { cible: { nom: sp.cible } } : {}),
-    ...(sp.motif ? { motifPerte: sp.motif } : {}),
+    ...(statutsChoisis.length ? { statut: { in: statutsChoisis } } : {}),
+    ...(fc.length ? { OR: fc.map((c) => (c === "me" ? { commercialId: me.id } : c === "none" ? { commercialId: null } : { commercialId: c })) } : {}),
+    ...(fcible.length ? { cible: { nom: { in: fcible } } } : {}),
+    ...(fmotif.length ? { motifPerte: { in: fmotif } } : {}),
     ...(jours ? { updatedAt: { gte: new Date(end.getTime() - (jours + 1) * 86400_000) } } : {}),
     ...(sp.notes === "1" ? { echanges: { some: { origine: { in: ["saisie", "import"] }, type: { not: "NRP" }, notes: { not: null } } } } : {}),
     ...(q ? {
@@ -87,7 +91,7 @@ export default async function ProspectsPage({ searchParams }: { searchParams: Pr
   ];
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-6">
+    <main className="mx-auto max-w-[1600px] px-4 py-6 lg:px-8 lg:py-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl">Tous les prospects</h1>
@@ -103,24 +107,13 @@ export default async function ProspectsPage({ searchParams }: { searchParams: Pr
           <SearchIcon size={15} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted" aria-hidden />
           <input name="q" defaultValue={q} placeholder="Société, contact, email, téléphone" className="h-10 w-full rounded-full border border-border bg-surface pr-3 pl-9 text-sm text-title placeholder:text-muted outline-none focus:border-blue" />
         </label>
-        <select name="s" defaultValue={s} aria-label="Statut" className={sel}>
-          <option value="">Tous les statuts</option><option value="ouverts">Ouverts (pipeline)</option><option value="clos">Clos (gagné, perdu, abandon)</option>
-          {TOUS_STATUTS.map((x) => <option key={x} value={x}>{STATUT[x].label}</option>)}
-        </select>
-        <select name="c" defaultValue={sp.c ?? "all"} aria-label="Commercial" className={sel}>
-          <option value="all">Tous les commerciaux</option><option value="me">Moi</option>
-          {team.filter((u) => u.id !== me.id).map((u) => <option key={u.id} value={u.id}>{teamName(u)}</option>)}
-          <option value="none">Sans commercial</option>
-        </select>
-        <select name="cible" defaultValue={sp.cible ?? ""} aria-label="Cible" className={sel}><option value="">Toutes cibles</option>{cibles.map((c) => <option key={c.nom}>{c.nom}</option>)}</select>
+        <MultiSelect size="md" name="s" label="Tous les statuts" defaultValue={fs} options={[{ value: "ouverts", label: "Ouverts (pipeline)", group: "Groupes" }, { value: "clos", label: "Clos (gagné, perdu, abandon)", group: "Groupes" }, ...TOUS_STATUTS.map((x) => ({ value: x, label: STATUT[x].label, group: "Statuts" }))]} />
+        <MultiSelect size="md" name="c" label="Tous les commerciaux" defaultValue={fc} options={[{ value: "me", label: "Moi" }, ...team.filter((u) => u.id !== me.id).map((u) => ({ value: u.id, label: teamName(u) })), { value: "none", label: "Sans commercial" }]} />
+        <MultiSelect size="md" name="cible" label="Toutes cibles" defaultValue={fcible} options={cibles.map((c) => ({ value: c.nom, label: c.nom }))} />
         <select name="appels" defaultValue={sp.appels ?? ""} aria-label="Séquence d’appels" className={sel}>
           <option value="">Appels : peu importe</option><option value="0">Jamais appelé</option><option value="enc">Séquence incomplète (1 à {SEQUENCE_APPELS - 1} appels)</option><option value="fait">Séquence faite ({SEQUENCE_APPELS} appels et plus)</option>
         </select>
-        <select name="motif" defaultValue={sp.motif ?? ""} aria-label="Motif" className={sel}>
-          <option value="">Tous motifs</option>
-          <optgroup label="Perte">{MOTIFS_PERTE.map((m) => <option key={m}>{m}</option>)}</optgroup>
-          <optgroup label="Abandon">{MOTIFS_ABANDON.filter((m) => !MOTIFS_PERTE.includes(m)).map((m) => <option key={m}>{m}</option>)}</optgroup>
-        </select>
+        <MultiSelect size="md" name="motif" label="Tous motifs" defaultValue={fmotif} options={[...MOTIFS_PERTE.map((m) => ({ value: m, label: m, group: "Perte" })), ...MOTIFS_ABANDON.filter((m) => !MOTIFS_PERTE.includes(m)).map((m) => ({ value: m, label: m, group: "Abandon" }))]} />
         <select name="j" defaultValue={sp.j ?? ""} aria-label="Période" className={sel}>
           <option value="">Modifiés : toujours</option><option value="7">Modifiés depuis 7 jours</option><option value="30">30 jours</option><option value="90">3 mois</option><option value="365">12 mois</option>
         </select>

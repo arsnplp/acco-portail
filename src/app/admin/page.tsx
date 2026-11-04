@@ -47,7 +47,7 @@ export default async function AdminHome() {
   ];
 
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
+    <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 lg:px-8 lg:py-12">
       <h1 className="text-3xl">Bonjour{user.firstName ? ` ${user.firstName}` : ""}</h1>
       <p className="mt-1 text-sm text-text">Où va-t-on aujourd’hui ?</p>
       <div className="mt-6"><Espaces items={modules} /></div>

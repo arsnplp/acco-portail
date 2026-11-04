@@ -82,7 +82,7 @@ export default async function CalendrierPage({ searchParams }: { searchParams: P
   const chips = [{ id: "me", label: "Moi" }, { id: "all", label: "Toute l’équipe" }, ...team.filter((u) => u.id !== me.id).map((u) => ({ id: u.id, label: teamName(u) }))];
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-5">
+    <main className="mx-auto max-w-[1600px] px-4 py-5 lg:px-8 lg:py-8">
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-1">
           <Link href={href({ d: prevD })} aria-label="Précédent" className="flex size-9 items-center justify-center rounded-full border border-border text-text hover:text-title"><ChevronLeftIcon size={17} /></Link>

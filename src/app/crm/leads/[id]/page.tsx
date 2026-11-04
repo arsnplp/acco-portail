@@ -45,7 +45,7 @@ export default async function LeadListePage({ params, searchParams }: { params: 
   };
 
   return (
-    <main className="mx-auto max-w-[1600px] px-4 py-6">
+    <main className="mx-auto max-w-[1600px] px-4 py-6 lg:px-8 lg:py-8">
       {liste.statut === "GENERATION" && <AutoRefresh seconds={6} />}
       <Link href="/crm/leads" className="inline-flex items-center gap-1.5 text-sm text-text hover:text-title"><ArrowLeftIcon size={15} aria-hidden /> Coffre à leads</Link>
       <div className="mt-3 flex flex-wrap items-center gap-3">

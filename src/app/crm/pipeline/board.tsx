@@ -8,7 +8,7 @@ import {
 } from "@dnd-kit/core";
 import type { ProspectStatut } from "@prisma/client";
 import Link from "next/link";
-import { ArchiveIcon, ChevronDownIcon, PhoneIcon, UsersIcon, PlayIcon, SearchIcon, TrophyIcon, XCircleIcon } from "lucide-react";
+import { ArchiveIcon, PhoneIcon, PlayIcon, SearchIcon, TrophyIcon, XCircleIcon } from "lucide-react";
 import { NrpMeter } from "@/components/crm/nrp-meter";
 import { cn } from "@/lib/cn";
 import { EtapeBanner } from "@/components/crm/etape-banner";
@@ -16,6 +16,8 @@ import { CLOS, matchRecherche, MOTIFS_ABANDON, MOTIFS_PERTE, PIPELINE, initialsO
 import { Dialog } from "@/components/ui/dialog";
 import { moveProspect } from "../actions";
 import { Logo } from "@/components/crm/logo";
+import { MultiSelect } from "@/components/ui/multi-select";
+import { multi } from "@/lib/filtres";
 
 export type CardData = {
   id: string; societe: string; statut: ProspectStatut; relanceAt: string | null; contact: string | null;
@@ -27,10 +29,11 @@ type Member = { id: string; name: string; avatarUrl: string | null };
 export function Board({ initial, team, cibles, meId, initialFilter }: { initial: CardData[]; team: Member[]; cibles: string[]; meId: string; initialFilter: string }) {
   const router = useRouter();
   const [cards, setCards] = useState(initial);
-  const [who, setWhoState] = useState(initialFilter === "me" ? meId : initialFilter);
-  const setWho = (v: string) => { setWhoState(v); document.cookie = `acco_pipeline_c=${encodeURIComponent(v === meId ? "me" : v)}; path=/; SameSite=Lax`; };
+  // Filtres à choix multiples : « me » = moi, « none » = sans commercial, sinon des identifiants ; vide = tous.
+  const [who, setWhoState] = useState<string[]>(multi(initialFilter).filter((x) => x !== "all"));
+  const setWho = (v: string[]) => { setWhoState(v); document.cookie = `acco_pipeline_c=${encodeURIComponent(v.length ? v.join(",") : "all")}; path=/; SameSite=Lax`; };
   const [q, setQ] = useState("");
-  const [cible, setCible] = useState("");
+  const [cible, setCible] = useState<string[]>([]);
   const [dragging, setDragging] = useState<CardData | null>(null);
   const [lost, setLost] = useState<{ card: CardData; statut: "PERDU" | "ABANDON" } | null>(null);
   const [, start] = useTransition();
@@ -43,8 +46,8 @@ export function Board({ initial, team, cibles, meId, initialFilter }: { initial:
   );
 
   const visible = cards.filter((c) =>
-    (who === "all" || (who === "none" ? !c.commercialId : c.commercialId === who)) &&
-    (!cible || c.cible === cible) &&
+    (who.length === 0 || who.some((w) => (w === "me" ? c.commercialId === meId : w === "none" ? !c.commercialId : c.commercialId === w))) &&
+    (cible.length === 0 || (!!c.cible && cible.includes(c.cible))) &&
     matchRecherche(q, [c.societe, c.contact], c.tels),
   );
 
@@ -62,27 +65,18 @@ export function Board({ initial, team, cibles, meId, initialFilter }: { initial:
     move(card.id, to);
   }
 
-  const chips: { id: string; label: string }[] = [{ id: "all", label: "Tous" }, { id: meId, label: "Moi" }, ...team.filter((m) => m.id !== meId).map((m) => ({ id: m.id, label: m.name })), { id: "none", label: "Sans commercial" }];
+  const chips: { value: string; label: string }[] = [{ value: "me", label: "Moi" }, ...team.filter((m) => m.id !== meId).map((m) => ({ value: m.id, label: m.name })), { value: "none", label: "Sans commercial" }];
 
   return (
-    <main className="mx-auto max-w-[1600px] px-4 py-4">
+    <main className="mx-auto max-w-[1600px] px-4 py-4 lg:px-8 lg:py-6">
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <label className="relative inline-flex w-full items-center sm:w-56">
-          <UsersIcon size={15} className="pointer-events-none absolute left-3.5 text-text" aria-hidden />
-          <select value={who} onChange={(e) => setWho(e.target.value)} aria-label="Commercial" className="h-10 w-full appearance-none rounded-full border border-border bg-surface pr-9 pl-9 text-sm font-semibold text-title outline-none hover:border-text">
-            {chips.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
-          </select>
-          <ChevronDownIcon size={15} className="pointer-events-none absolute right-3.5 text-text" aria-hidden />
-        </label>
+        <MultiSelect size="md" label="Tous les commerciaux" value={who} onChange={setWho} options={chips} className="w-full sm:w-56" />
         <div className="ml-auto flex w-full gap-2 sm:w-auto">
           <label className="relative flex-1 sm:w-64 sm:flex-none">
             <SearchIcon size={15} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted" aria-hidden />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Société, contact, téléphone" className="h-10 w-full rounded-full border border-border bg-surface pr-3 pl-9 text-sm text-title placeholder:text-muted outline-none focus:border-blue" />
           </label>
-          <select value={cible} onChange={(e) => setCible(e.target.value)} className="h-10 max-w-40 rounded-full border border-border bg-surface px-3 text-sm text-title outline-none" aria-label="Cible">
-            <option value="">Toutes cibles</option>
-            {cibles.map((c) => <option key={c}>{c}</option>)}
-          </select>
+          <MultiSelect size="md" label="Toutes cibles" value={cible} onChange={setCible} options={cibles.map((c) => ({ value: c, label: c }))} className="w-44" />
         </div>
       </div>
 
@@ -90,7 +84,7 @@ export function Board({ initial, team, cibles, meId, initialFilter }: { initial:
         <div className="relative -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-4 lg:mx-0 lg:grid lg:grid-cols-5 lg:overflow-visible lg:px-0">
           {PIPELINE.map((s) => (
             <Column key={s} statut={s} cards={visible.filter((c) => c.statut === s)} members={members} onOpen={(id) => router.push(`/crm/prospects/${id}`)}
-              sessionHref={`/crm/session?${new URLSearchParams({ statut: s, c: who === meId ? "me" : who, ...(cible ? { cible } : {}) })}`} />
+              sessionHref={`/crm/session?${new URLSearchParams({ statut: s, c: who.length ? who.join(",") : "all", ...(cible.length ? { cible: cible.join(",") } : {}) })}`} />
           ))}
         </div>
         {dragging && (

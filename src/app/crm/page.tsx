@@ -97,7 +97,7 @@ export default async function MaJournee({ searchParams }: { searchParams: Promis
   };
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-6">
+    <main className="mx-auto max-w-5xl px-4 py-6 lg:px-8 lg:py-8">
       <p className="text-sm text-text capitalize">{fmtDay(now)}</p>
       <h1 className="text-2xl">{autre ? journeeDe(teamName(autre)) : `${hour < 18 ? "Bonjour" : "Bonsoir"} ${me.firstName ?? ""}`}</h1>
       <p className="mt-1 text-sm text-text">

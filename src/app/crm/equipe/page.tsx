@@ -25,7 +25,7 @@ export default async function EquipePage() {
   ]);
   const membres = members.map((m) => ({ id: m.id, nom: `${teamName(m)} (${ROLE_LABEL[m.role]})` }));
   return (
-    <main className="mx-auto max-w-2xl px-4 py-6">
+    <main className="mx-auto max-w-4xl px-4 py-6 lg:px-8 lg:py-8">
       <h1 className="text-2xl">Équipe</h1>
       <p className="mt-1 text-sm text-text">Le rôle ouvre les modules ; le mode est la vue de démarrage ; les droits unitaires s’ajoutent un à un (Lucas : Direction sans administration). Tout changement est journalisé.</p>
       <SectionTitle icon={UsersIcon}>Membres</SectionTitle>

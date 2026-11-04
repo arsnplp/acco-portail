@@ -57,7 +57,7 @@ export default async function ProspectPage({ params, searchParams }: { params: P
   const contrats = await prisma.contrat.findMany({ where: { prospectId: p.id }, orderBy: { createdAt: "desc" }, select: { id: true, reference: true, titre: true, statut: true, signeAt: true } });
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-4">
+    <main className="mx-auto max-w-[1600px] px-4 py-4 lg:px-8 lg:py-6">
       {/* Bandeau de l’étape où en est le prospect (téléphone : pleine largeur). */}
       {ETAPE_IMAGE[p.statut] && <EtapeBanner statut={p.statut} className="-mx-4 -mt-4 mb-4 h-28 sm:hidden" />}
       {/* Ordinateur : grand bandeau de l'étape. */}

@@ -19,10 +19,13 @@ export function sessionQuery(s: SessionParams, extraSkip?: string) {
 }
 
 export function sessionWhere(s: SessionParams, meId: string, todayStart: Date): Prisma.ProspectWhereInput {
+  const cs = s.c.split(",").filter((x) => x && x !== "all");
+  const cibles = s.cible.split(",").filter(Boolean);
   return {
     statut: s.statut,
-    ...(s.c === "me" ? { commercialId: meId } : s.c === "none" ? { commercialId: null } : s.c !== "all" ? { commercialId: s.c } : {}),
-    ...(s.cible ? { cible: { nom: s.cible } } : {}),
+    // Plusieurs commerciaux ou cibles séparés par des virgules (filtres à choix multiples du pipeline).
+    ...(cs.length ? { OR: cs.map((c) => (c === "me" ? { commercialId: meId } : c === "none" ? { commercialId: null } : { commercialId: c })) } : {}),
+    ...(cibles.length ? { cible: { nom: { in: cibles } } } : {}),
     id: { notIn: s.skip },
     echanges: { none: { auteurId: meId, date: { gte: todayStart } } }, // déjà traité aujourd'hui par moi : on passe
   };

@@ -5,6 +5,8 @@ import { requireTeam } from "@/lib/auth";
 import { estExterne } from "@/lib/permissions";
 import { whereClientsPour } from "@/lib/perimetre";
 import { AdminPage } from "@/components/admin/page";
+import { MultiSelect } from "@/components/ui/multi-select";
+import { multi } from "@/lib/filtres";
 import { Badge } from "@/components/ui/badge";
 import { LogoClient } from "@/components/ui/logo-client";
 import { fmtDate } from "@/lib/format";
@@ -22,11 +24,16 @@ export default async function TachesPage({ searchParams }: { searchParams: Promi
   const me = await requireTeam();
   const sp = await searchParams;
   const vue = sp.vue === "equipe" ? "equipe" : "moi";
-  const statut = sp.statut === "FAIT" || sp.statut === "ANNULEE" || sp.statut === "tous" ? sp.statut : "A_FAIRE";
+  const STATUTS = ["A_FAIRE", "FAIT", "ANNULEE"] as const;
+  type St = (typeof STATUTS)[number];
+  // Choix multiples : statuts (« À faire » par défaut, « tous » = aucun filtre), collaborateurs, clients, types.
+  const statuts: St[] = sp.statut === "tous" ? [] : (multi(sp.statut).filter((x) => (STATUTS as readonly string[]).includes(x)) as St[]);
+  if (sp.statut === undefined) statuts.push("A_FAIRE"); // arrivée sans filtre : « À faire » ; tout décoché = tous les statuts
+  const fqui = multi(sp.qui), fclient = multi(sp.client), ftype = multi(sp.type).filter((x) => x in TYPE_LABEL);
   const now = new Date();
   const [taches, equipe, clients] = await Promise.all([
     prisma.tacheClient.findMany({
-      where: { ...(vue === "moi" ? { responsableId: me.id } : sp.qui ? { responsableId: sp.qui } : {}), ...(statut !== "tous" && { statut }), ...(sp.client && { clientId: sp.client }), ...(sp.site && { siteId: sp.site }), ...(sp.type && { type: sp.type as never }), ...(sp.echeance === "retard" && { echeance: { lt: now } }), ...(sp.echeance === "semaine" && { echeance: { lte: new Date(now.getTime() + 7 * 86400_000) } }), ...(sp.echeance === "sans" && { echeance: null }), client: whereClientsPour(me) },
+      where: { ...(vue === "moi" ? { responsableId: me.id } : fqui.length ? { responsableId: { in: fqui } } : {}), ...(statuts.length && { statut: { in: statuts } }), ...(fclient.length && { clientId: { in: fclient } }), ...(sp.site && { siteId: sp.site }), ...(ftype.length && { type: { in: ftype as never[] } }), ...(sp.echeance === "retard" && { echeance: { lt: now } }), ...(sp.echeance === "semaine" && { echeance: { lte: new Date(now.getTime() + 7 * 86400_000) } }), ...(sp.echeance === "sans" && { echeance: null }), client: whereClientsPour(me) },
       orderBy: [{ echeance: { sort: "asc", nulls: "last" } }, { createdAt: "desc" }], take: 300,
       include: { client: { select: { id: true, name: true, logoMiniPath: true } }, site: { select: { id: true, name: true } }, responsable: { select: { firstName: true, email: true } } },
     }),
@@ -43,10 +50,10 @@ export default async function TachesPage({ searchParams }: { searchParams: Promi
         <div className="flex rounded-full border border-border p-0.5 text-sm"><Link href={href({ vue: "moi", qui: "" })} className={cn("rounded-full px-3 py-1.5", vue === "moi" ? "bg-title font-semibold text-bg" : "text-text hover:text-title")}>Mes tâches</Link><Link href={href({ vue: "equipe" })} className={cn("rounded-full px-3 py-1.5", vue === "equipe" ? "bg-title font-semibold text-bg" : "text-text hover:text-title")}>Équipe</Link></div>
         <form method="get" action="/admin/taches" className="flex flex-1 flex-wrap items-center gap-2">
           <input type="hidden" name="vue" value={vue} />
-          {vue === "equipe" && <select name="qui" defaultValue={sp.qui ?? ""} className={sel} aria-label="Collaborateur"><option value="">Tous</option>{membres.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</select>}
-          <select name="client" defaultValue={sp.client ?? ""} className={sel} aria-label="Client"><option value="">Tous les clients</option>{clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-          <select name="type" defaultValue={sp.type ?? ""} className={sel} aria-label="Type"><option value="">Tous les types</option>{Object.entries(TYPE_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
-          <select name="statut" defaultValue={statut} className={sel} aria-label="Statut"><option value="A_FAIRE">À faire</option><option value="FAIT">Faites</option><option value="ANNULEE">Annulées</option><option value="tous">Toutes</option></select>
+          {vue === "equipe" && <MultiSelect name="qui" label="Toute l’équipe" defaultValue={fqui} options={membres.map((m) => ({ value: m.id, label: m.name }))} />}
+          <MultiSelect name="client" label="Tous les clients" defaultValue={fclient} options={clients.map((c) => ({ value: c.id, label: c.name }))} />
+          <MultiSelect name="type" label="Tous les types" defaultValue={ftype} options={Object.entries(TYPE_LABEL).map(([k, l]) => ({ value: k, label: l }))} />
+          <MultiSelect name="statut" label="Tous les statuts" defaultValue={statuts} options={[{ value: "A_FAIRE", label: "À faire" }, { value: "FAIT", label: "Faites" }, { value: "ANNULEE", label: "Annulées" }]} />
           <select name="echeance" defaultValue={sp.echeance ?? ""} className={sel} aria-label="Échéance"><option value="">Toute échéance</option><option value="retard">En retard</option><option value="semaine">Sous 7 jours</option><option value="sans">Sans échéance</option></select>
           <button type="submit" className="h-9 rounded-full border border-border px-3 text-xs text-text hover:text-title">Filtrer</button>
         </form>

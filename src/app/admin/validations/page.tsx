@@ -14,7 +14,7 @@ export default async function ValidationsPage() {
   const me = await requireTeam();
   const [attente, recentes] = await Promise.all([enAttentePour(me.id), decideesRecentes(me.id)]);
   return (
-    <main className="mx-auto max-w-3xl px-4 py-6">
+    <main className="mx-auto max-w-5xl px-4 py-6 lg:px-8 lg:py-8">
       <h1 className="text-2xl">Validations</h1>
       <p className="mt-1 text-sm text-text">Chaque circuit garde son contexte : prix et contrats (Bilel, Lucas), briefs et maquettes (commercial puis technique), mise en ligne (Arsène), envois groupés.</p>
       <SectionTitle icon={ClipboardCheckIcon}>En attente de ma validation ({attente.length})</SectionTitle>

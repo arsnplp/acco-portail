@@ -25,7 +25,7 @@ export default async function LeadsPage() {
   const prets = listes.filter((l) => l.statut === "PRETE").reduce((a, l) => a + l.obtenus, 0);
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-6">
+    <main className="mx-auto max-w-5xl px-4 py-6 lg:px-8 lg:py-8">
       {generating && <AutoRefresh seconds={6} />}
       <h1 className="text-2xl">Coffre à leads</h1>
       <p className="mt-1 text-sm text-text">Générez des listes de prospects vérifiés, sans doublon avec le CRM, puis envoyez-les dans « À contacter » en un clic.{prets ? ` ${prets} lead${prets > 1 ? "s" : ""} prêt${prets > 1 ? "s" : ""} à utiliser.` : ""}</p>

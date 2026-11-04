@@ -4,13 +4,15 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { DndContext, DragOverlay, MouseSensor, TouchSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
 import type { ProjectStep } from "@prisma/client";
-import { CalendarIcon, ChevronDownIcon, ExternalLinkIcon, PencilRulerIcon, UsersIcon } from "lucide-react";
+import { CalendarIcon, ExternalLinkIcon, PencilRulerIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { PROJECT_STEPS } from "@/lib/labels";
 import { fmtDay, initialsOf, relanceInfo } from "@/lib/crm";
 import { livrerSite, moveSiteEtape } from "../sites/actions";
 import { PackageCheckIcon, TriangleAlertIcon } from "lucide-react";
 import { LogoClient } from "@/components/ui/logo-client";
+import { MultiSelect } from "@/components/ui/multi-select";
+import { multi } from "@/lib/filtres";
 
 export type SiteCard = {
   id: string; name: string; client: string; clientId: string; logo: string | null; etape: ProjectStep; developpeurId: string | null; dev: string | null;
@@ -22,11 +24,12 @@ type Dev = { id: string; name: string };
 export function ProductionBoard({ initial, devs, meId, initialDev }: { initial: SiteCard[]; devs: Dev[]; meId: string; initialDev: string }) {
   const router = useRouter();
   const [cards, setCards] = useState(initial);
-  const [who, setWho] = useState(initialDev === "me" ? meId : initialDev);
+  // Choix multiples : « me » = mes projets, « none » = sans développeur, sinon des identifiants ; vide = tous.
+  const [who, setWho] = useState<string[]>(multi(initialDev).filter((x) => x !== "all"));
   const [dragging, setDragging] = useState<SiteCard | null>(null);
   const [, start] = useTransition();
   const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: { distance: 6 } }), useSensor(TouchSensor, { activationConstraint: { delay: 300, tolerance: 8 } }));
-  const visible = useMemo(() => cards.filter((c) => who === "all" || (who === "none" ? !c.developpeurId : c.developpeurId === who)), [cards, who]);
+  const visible = useMemo(() => cards.filter((c) => who.length === 0 || who.some((w) => (w === "me" ? c.developpeurId === meId : w === "none" ? !c.developpeurId : c.developpeurId === w))), [cards, who, meId]);
 
   function onEnd(e: DragEndEvent) {
     setDragging(null);
@@ -47,15 +50,8 @@ export function ProductionBoard({ initial, devs, meId, initialDev }: { initial: 
 
   return (
     <div className="mt-4">
-      <label className="relative mb-3 inline-flex w-full items-center sm:w-64">
-        <UsersIcon size={15} className="pointer-events-none absolute left-3.5 text-text" aria-hidden />
-        <select value={who} onChange={(e) => setWho(e.target.value)} aria-label="Développeur" className="h-10 w-full appearance-none rounded-full border border-border bg-surface pr-9 pl-9 text-sm font-semibold text-title outline-none hover:border-text">
-          <option value="all">Tous les développeurs</option><option value={meId}>Mes projets</option>
-          {devs.filter((d) => d.id !== meId).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-          <option value="none">Sans développeur</option>
-        </select>
-        <ChevronDownIcon size={15} className="pointer-events-none absolute right-3.5 text-text" aria-hidden />
-      </label>
+      <MultiSelect size="md" label="Tous les développeurs" value={who} onChange={setWho} className="mb-3 w-full sm:w-64"
+        options={[{ value: "me", label: "Mes projets" }, ...devs.filter((d) => d.id !== meId).map((d) => ({ value: d.id, label: d.name })), { value: "none", label: "Sans développeur" }]} />
       <DndContext sensors={sensors} onDragStart={(e: DragStartEvent) => setDragging(cards.find((c) => c.id === e.active.id) ?? null)} onDragEnd={onEnd} onDragCancel={() => setDragging(null)}>
         <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-4 lg:mx-0 lg:grid lg:grid-cols-6 lg:overflow-visible lg:px-0">
           {PROJECT_STEPS.map((s) => <Column key={s.key} etape={s.key} label={s.label} cards={visible.filter((c) => c.etape === s.key)} onOpen={(id) => router.push(`/admin/sites/${id}`)} />)}
