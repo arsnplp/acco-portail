@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { isGestionnaire, requireGestionnaire, requireTeam } from "@/lib/auth";
+import { isGestionnaire, requireGestionnaire, requireTeam, requireUser } from "@/lib/auth";
+import { homeFor } from "@/lib/roles";
 import { can } from "@/lib/permissions";
 import { FONCTION_LABEL, type FonctionIA } from "@/lib/ia";
 import { disconnectGoogle, disconnectUserGoogle } from "@/lib/google-oauth";
@@ -117,4 +119,15 @@ export async function saveServices(_prev: ServicesState, formData: FormData): Pr
   }
   revalidatePath("/admin", "layout");
   return { errors, infos, ok: Object.keys(errors).length === 0 };
+}
+
+/** Casquette unique : un administrateur aussi commercial (Bilel) choisit de travailler en Direction ou en simple commercial. */
+export async function basculerRole(formData: FormData) {
+  const me = await requireUser();
+  const voulu = String(formData.get("role") ?? "");
+  if (me.roleReel !== "ADMIN" || isGestionnaire({ email: me.email, role: me.roleReel })) redirect("/admin/parametres");
+  if (voulu !== "ADMIN" && voulu !== "COMMERCIAL") return;
+  await prisma.user.update({ where: { id: me.id }, data: { roleActif: voulu === "COMMERCIAL" ? "COMMERCIAL" : null } });
+  revalidatePath("/", "layout");
+  redirect(voulu === "COMMERCIAL" ? "/crm" : homeFor("ADMIN", me.modeDefaut));
 }

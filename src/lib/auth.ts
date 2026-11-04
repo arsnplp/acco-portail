@@ -33,7 +33,10 @@ export const getCurrentUser = cache(async () => {
     update: { email },
     include: { memberships: { include: { client: true }, orderBy: { createdAt: "asc" } } },
   });
-  return user;
+  // Casquette unique (Bilel) : un administrateur passé « simple commercial » est vu partout comme un COMMERCIAL
+  // (menus, droits, périmètre) ; `roleReel` garde son rôle d'origine pour lui permettre de revenir.
+  const commercial = user.role === "ADMIN" && user.roleActif === "COMMERCIAL";
+  return { ...user, role: (commercial ? "COMMERCIAL" : user.role) as Role, roleReel: user.role };
 });
 
 export type CurrentUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;

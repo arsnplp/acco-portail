@@ -6,9 +6,9 @@ import { NewPasswordForm } from "@/app/nouveau-mot-de-passe/form";
 import { oauthConfigured } from "@/lib/google-oauth";
 import { isGestionnaire } from "@/lib/roles";
 import type { CurrentUser } from "@/lib/auth";
-import { BellIcon, LockIcon, LogOut, MailIcon } from "lucide-react";
+import { BellIcon, BriefcaseIcon, LockIcon, LogOut, MailIcon } from "lucide-react";
 import { AdminNotifForm } from "./notif-form";
-import { disconnectMyGoogleAction } from "./actions";
+import { basculerRole, disconnectMyGoogleAction } from "./actions";
 import { AgendaSyncButton } from "./agenda-button";
 
 export const GOOGLE_MSG: Record<string, string> = {
@@ -26,8 +26,20 @@ export async function MesParametres({ user, google, next }: { user: CurrentUser;
     prisma.user.findUnique({ where: { id: user.id }, select: { googleEmail: true, googleRefreshToken: true } }),
   ]);
   const connecte = !!me?.googleRefreshToken;
+  const casquette = user.roleReel === "ADMIN" && !isGestionnaire({ email: user.email, role: user.roleReel });
   return (
     <>
+      {casquette && (<>
+        <SectionTitle icon={BriefcaseIcon}>Ma casquette</SectionTitle>
+        <form action={basculerRole} className="rounded-card border border-border bg-surface p-4">
+          <p className="text-sm text-text">Une seule casquette à la fois. En « Commercial », vous avez exactement la vue et les droits d’un commercial (pas de Pilotage, d’Équipe ni de coffre à leads) ; repassez en « Direction » ici quand vous en avez besoin.</p>
+          <div className="mt-3 flex rounded-full border border-border p-0.5 text-sm">
+            <button type="submit" name="role" value="ADMIN" className={user.role === "ADMIN" ? "rounded-full bg-title px-4 py-1.5 font-semibold text-bg" : "rounded-full px-4 py-1.5 text-text hover:text-title"}>Direction (administrateur)</button>
+            <button type="submit" name="role" value="COMMERCIAL" className={user.role === "COMMERCIAL" ? "rounded-full bg-title px-4 py-1.5 font-semibold text-bg" : "rounded-full px-4 py-1.5 text-text hover:text-title"}>Commercial</button>
+          </div>
+          <p className="mt-2 text-xs text-muted">Actuellement : {user.role === "ADMIN" ? "Direction" : "Commercial"}.</p>
+        </form>
+      </>)}
       <SectionTitle icon={MailIcon}>Mon compte Google (emails et agenda)</SectionTitle>
       <div className="space-y-3 rounded-card border border-border bg-surface p-4">
         {google && <p className={`text-sm ${google === "ok" ? "text-green" : "text-pink"}`}>{GOOGLE_MSG[google] ?? ""}</p>}

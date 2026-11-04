@@ -336,6 +336,7 @@ model User {
   role               Role     @default(CLIENT)
   droits             String[] @default([]) // droits unitaires en plus du rôle : pilotage, equipe, reglages, validation_commerciale, go_live, dates_production, finance, ia_admin (src/lib/permissions.ts)
   modeDefaut         Mode? // vue de travail au démarrage (Bilel : Commercial, Arsène : Production)
+  roleActif          Role? // administrateur aussi commercial (Bilel) : COMMERCIAL = il travaille comme simple commercial, une seule casquette à la fois
   googleRefreshToken String? // compte Google personnel (équipe) : lecture de sa boîte Gmail pour l'historique des fiches CRM
   googleEmail        String?
   createdAt          DateTime @default(now())
