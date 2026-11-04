@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlarmClockIcon, CalendarClockIcon, CheckIcon, PhoneCallIcon, PhoneIcon } from "lucide-react";
+import { AlarmClockIcon, CalendarClockIcon, CheckIcon, PhoneCallIcon, PhoneIcon, VideoIcon } from "lucide-react";
 import type { ProspectStatut } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { MODULES } from "@/lib/roles";
@@ -35,7 +35,7 @@ export default async function MaJournee({ searchParams }: { searchParams: Promis
   const in7 = new Date(end.getTime() + 6 * 86400_000);
   const contactSel = { orderBy: [{ principal: "desc" as const }, { createdAt: "asc" as const }], take: 1, select: { prenom: true, nom: true, telephone: true } };
 
-  const [rappels, due, rdvs, callsToday] = await Promise.all([
+  const [rappels, due, rdvs, callsToday, rdvsJour] = await Promise.all([
     // Rappels à heure fixe du jour (toutes étapes sauf fiches closes), du plus tôt au plus tard.
     prisma.prospect.findMany({
       where: { ...mine, rappelAt: { gte: start, lt: end }, statut: { notIn: CLOS } },
@@ -53,6 +53,12 @@ export default async function MaJournee({ searchParams }: { searchParams: Promis
       include: { commercial: { select: { firstName: true, email: true } }, prospect: { select: { id: true, societe: true, telephone: true, contacts: contactSel } } },
     }),
     prisma.echange.count({ where: { ...(equipe ? { auteurId: { not: null } } : { auteurId: cibleId }), date: { gte: start }, type: { in: ["NRP", "APPEL", "PRISE_RDV"] } } }),
+    // RDV du jour, prospects et clients signés confondus (présentations, suivis, livraisons).
+    prisma.rendezVous.findMany({
+      where: { ...(equipe ? {} : { commercialId: cibleId }), resultat: "PREVU", debut: { gte: start, lt: end } },
+      orderBy: { debut: "asc" },
+      include: { commercial: { select: { firstName: true, email: true } }, prospect: { select: { id: true, societe: true, contacts: contactSel } }, client: { select: { id: true, name: true } }, site: { select: { name: true } } },
+    }),
   ]);
 
   // Planning du jour : rappels à heure fixe + RDV du jour, dans l'ordre chronologique.
@@ -118,7 +124,31 @@ export default async function MaJournee({ searchParams }: { searchParams: Promis
       </div>
       {!equipe && !autre && <div className="mt-4"><EnablePush compact texte="Recevez une notification à l’heure de vos rappels de relance." /></div>}
 
-      {/* 1. Planning à heure fixe, en premier, dans l'ordre de la journée */}
+      {/* 0. Les rendez-vous du jour, en premier */}
+      <SectionTitle icon={CalendarClockIcon} action={<Link href="/crm/calendrier" className="text-sm text-text hover:text-title">Calendrier</Link>}>Rendez-vous du jour</SectionTitle>
+      {rdvsJour.length === 0 ? <p className="text-sm text-text">Aucun rendez-vous aujourd’hui.</p> : (
+        <ul className="divide-y divide-border rounded-card border border-border bg-surface">
+          {rdvsJour.map((r) => {
+            const href = r.prospect ? `/crm/prospects/${r.prospect.id}` : r.client ? `/admin/clients/${r.client.id}` : "/crm/calendrier";
+            const nom = r.prospect ? contactName(r.prospect.contacts[0]) ?? r.prospect.societe : r.client?.name ?? r.titre ?? "Rendez-vous";
+            const sous = [r.prospect && contactName(r.prospect.contacts[0]) ? r.prospect.societe : null, r.client && r.titre ? r.titre : null, r.site?.name ?? null, r.lieu ?? null, equipe && r.commercial ? teamName(r.commercial) : null].filter(Boolean).join(" · ");
+            const passe = r.debut.getTime() + r.dureeMin * 60_000 < now.getTime();
+            return (
+              <li key={r.id} className={cn("flex items-center gap-3 px-4 py-3", passe && "opacity-60")}>
+                <span className="w-14 shrink-0 font-title text-lg font-extrabold tabular-nums text-title">{fmtTime(r.debut)}</span>
+                <Link href={href} className="min-w-0 flex-1">
+                  <p className="truncate font-title text-[15px] font-semibold text-title">{nom}</p>
+                  <p className="truncate text-xs text-text">{sous || `${r.dureeMin} min`}</p>
+                </Link>
+                {r.client && <span className="shrink-0 rounded-full border border-green/40 bg-green/10 px-2 py-0.5 text-[11px] font-semibold text-green">Client</span>}
+                {r.meetUrl && <a href={r.meetUrl} target="_blank" rel="noreferrer" aria-label="Rejoindre la visio" className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border text-text hover:border-blue hover:text-blue"><VideoIcon size={15} /></a>}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {/* 1. Planning à heure fixe, dans l'ordre de la journée */}
       <SectionTitle icon={AlarmClockIcon}>À heure fixe</SectionTitle>
       {planning.length === 0 ? (
         <p className="text-sm text-text">Aucun rappel ni RDV à heure fixe aujourd’hui. Ajoutez une heure à une relance (dans « Noter un échange ») pour la retrouver ici et recevoir un rappel.</p>

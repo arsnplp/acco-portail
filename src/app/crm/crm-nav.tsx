@@ -24,7 +24,6 @@ function secondaires({ admin, direction }: NavDroits): Item[] {
   return [
     { href: "/crm/prospects", label: "Tous les prospects", icon: ListChecksIcon, exact: true, hint: "Filtres avancés, repêchage, actions en masse" },
     { href: "/crm/stats", label: "Stats", icon: ChartColumnIcon, hint: "Chiffres de l’équipe et graphiques" },
-    { href: "/admin/suivi", label: "Suivi de mes clients", icon: ListChecksIcon, hint: "Sites en cours, RDV à planifier, relances, demandes" },
     ...(direction ? [
       { href: "/crm/leads", label: "Coffre à leads", icon: VaultIcon, hint: "Direction : générer et utiliser des listes" },
       { href: "/crm/historique", label: "Historique", icon: HistoryIcon, hint: "Tous les échanges notés" },
@@ -36,10 +35,9 @@ function secondaires({ admin, direction }: NavDroits): Item[] {
 
 function useNav(admin: NavDroits) {
   const pathname = usePathname();
-  const production = pathname.startsWith("/crm/production");
   const active = (i: Item) => (i.exact ? pathname === i.href : pathname.startsWith(i.href)) || (i.href === "/crm/pipeline" && pathname.startsWith("/crm/prospects/") && !pathname.endsWith("/nouveau"));
   const plus = secondaires(admin);
-  return { pathname, production, active, plus, plusActive: plus.some(active) };
+  return { pathname, active, plus, plusActive: plus.some(active) };
 }
 
 function PlusList({ items, active, onPick }: { items: Item[]; active: (i: Item) => boolean; onPick: () => void }) {
@@ -57,9 +55,9 @@ function PlusList({ items, active, onPick }: { items: Item[]; active: (i: Item) 
   );
 }
 
-/** Choix du mode + onglets (ordinateur), dans l'en-tête. Prospection et Production sont deux modes séparés. */
+/** Choix Prospection / Suivi + onglets (ordinateur), dans l'en-tête. « Suivi » ouvre le suivi des clients (sites en cours, RDV à planifier, relances, demandes). */
 export function CrmNav({ admin }: { admin: NavDroits }) {
-  const { pathname, production, active, plus, plusActive } = useNav(admin);
+  const { pathname, active, plus, plusActive } = useNav(admin);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -73,11 +71,10 @@ export function CrmNav({ admin }: { admin: NavDroits }) {
   return (
     <>
       <div className="flex rounded-full border border-border p-0.5 text-xs font-semibold sm:ml-2">
-        <Link href="/crm" className={cn("rounded-full px-3 py-1.5", !production ? "bg-title text-bg" : "text-text hover:text-title")}>Prospection</Link>
-        <Link href="/crm/production" className={cn("rounded-full px-3 py-1.5", production ? "bg-title text-bg" : "text-text hover:text-title")}>Production</Link>
+        <Link href="/crm" className="rounded-full bg-title px-3 py-1.5 text-bg">Prospection</Link>
+        <Link href="/admin/suivi" className="rounded-full px-3 py-1.5 text-text hover:text-title">Suivi</Link>
       </div>
-      {!production && (
-        <nav className="ml-2 hidden items-center gap-0.5 sm:flex xl:gap-1" aria-label="Espace Commercial">
+      <nav className="ml-2 hidden items-center gap-0.5 sm:flex xl:gap-1" aria-label="Espace Commercial">
           {PRINCIPAUX.map((i) => (
             <Link key={i.href} href={i.href} title={i.label} className={cn("flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1.5 text-sm xl:px-3", active(i) ? "bg-surface-2 text-title" : "text-text hover:text-title")}>
               <i.icon size={15} strokeWidth={1.75} aria-hidden /> <span className="hidden lg:inline">{i.label}</span>
@@ -94,14 +91,14 @@ export function CrmNav({ admin }: { admin: NavDroits }) {
             )}
           </div>
         </nav>
-      )}
+
     </>
   );
 }
 
 /** Barre du bas sur téléphone (hors de l'en-tête : son flou d'arrière-plan piégerait la position fixe) + tiroir « Plus ». */
 export function CrmBottomNav({ admin }: { admin: NavDroits }) {
-  const { pathname, production, active, plus, plusActive } = useNav(admin);
+  const { pathname, active, plus, plusActive } = useNav(admin);
   const [open, setOpen] = useState(false);
   useEffect(() => { const t = setTimeout(() => setOpen(false), 0); return () => clearTimeout(t); }, [pathname]);
   useEffect(() => {
@@ -109,7 +106,6 @@ export function CrmBottomNav({ admin }: { admin: NavDroits }) {
     const prev = document.body.style.overflow; document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = prev; };
   }, [open]);
-  if (production) return null;
   const cell = (on: boolean) => cn("flex h-full w-full flex-col items-center justify-center gap-1 text-[11px] font-medium", on ? "text-title" : "text-text");
 
   return (
