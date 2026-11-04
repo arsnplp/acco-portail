@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Logo } from "@/components/crm/logo";
 import { ETAPE_IMAGE, STATUT, contactName, fmtDayTime, fmtTime, logoUrl, relanceInfo, teamName, parisDay, todayBounds } from "@/lib/crm";
 import { CONTRAT_STATUT } from "@/lib/contrats";
+import { descriptionRdv } from "@/lib/rdv-modele";
 import { FileSignatureIcon } from "lucide-react";
 import { EchangeForm, ProspectForm, Contacts, Historique, AssignControl, RdvList } from "./forms";
 
@@ -108,7 +109,10 @@ export default async function ProspectPage({ params, searchParams }: { params: P
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         <div className="space-y-6">
-          <EchangeForm prospectId={p.id} statut={p.statut} session={sess ? sessionQuery(sess) : ""} today={parisDay()} />
+          <EchangeForm prospectId={p.id} statut={p.statut} session={sess ? sessionQuery(sess) : ""} today={parisDay()}
+            contacts={p.contacts.filter((c) => c.email).map((c, i) => ({ email: c.email!.toLowerCase(), nom: contactName(c) ?? c.email!, defaut: i === 0 }))}
+            equipe={team.filter((u) => u.id !== (p.commercialId ?? me.id)).map((u) => ({ email: u.email.toLowerCase(), nom: teamName(u) }))}
+            modele={await descriptionRdv({ prenom: principal?.prenom ?? "", societe: p.societe, commercial: teamName(p.commercial ?? me), lieu: "" })} />
           <Historique
             prospectId={p.id} meId={me.id} isAdmin={me.role === "ADMIN"}
             syncInfo={sync?.errors.length ? sync.errors.join(" ") : null}

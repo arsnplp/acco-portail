@@ -112,7 +112,7 @@ export async function logEchange(prospectId: string, _prev: CrmState, f: FormDat
 
   await prisma.$transaction(async (tx) => {
     await tx.echange.create({ data: { prospectId, type, notes: reportAt ? `${notes ? notes + "\n" : ""}RDV reporté au ${fmtDayTime(reportAt)}` : notes, auteurId: me.id } });
-    if (rdvAt) await tx.rendezVous.create({ data: { prospectId, commercialId: prospect.commercialId ?? me.id, debut: rdvAt, lieu: txt(f, "rdvLieu") } });
+    if (rdvAt) await tx.rendezVous.create({ data: { prospectId, commercialId: prospect.commercialId ?? me.id, debut: rdvAt, lieu: txt(f, "rdvLieu"), meet: f.get("rdvMeet") === "on", invites: f.getAll("rdvInvites").map((e) => String(e).trim().toLowerCase()).filter((e) => e.includes("@")), description: txt(f, "rdvDescription") } });
     if (type === "RDV" || type === "NO_SHOW") {
       // Le RDV concerné : le dernier prévu déjà commencé, sinon le dernier passé (ex. importé « fait »), sinon le prochain prévu.
       const soon = new Date(Date.now() + 3 * 3600_000);

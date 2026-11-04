@@ -58,16 +58,18 @@ export async function syncAgendaForUser(userId: string): Promise<{ ok: boolean; 
   if (!(await userGoogleClient(userId))) return { ok: false, rdv: 0, echeances: 0, error: "Compte Google non connecté." };
   const depuis = new Date(Date.now() - 86400_000);
   const [rdvs, sites] = await Promise.all([
-    prisma.rendezVous.findMany({ where: { commercialId: userId, resultat: "PREVU", debut: { gte: depuis } }, include: { prospect: { select: { id: true, societe: true, telephone: true, contacts: { orderBy: [{ principal: "desc" }, { createdAt: "asc" }], take: 1, select: { prenom: true, nom: true, telephone: true } } } }, client: { select: { id: true, name: true } }, site: { select: { name: true } } } }),
+    prisma.rendezVous.findMany({ where: { commercialId: userId, resultat: "PREVU", debut: { gte: depuis } }, include: { prospect: { select: { id: true, societe: true, telephone: true, contacts: { orderBy: [{ principal: "desc" }, { createdAt: "asc" }], take: 1, select: { prenom: true, nom: true, telephone: true } } } }, client: { select: { id: true, name: true } }, site: { select: { name: true } }, commercial: { select: { firstName: true, lastName: true, email: true } } } }),
     prisma.site.findMany({ where: { status: "EN_CREATION", OR: [{ developpeurId: userId }, { client: { commercialId: userId } }] }, select: { id: true, name: true, deadlineV1: true, deadlineV2: true, deadlineLivraison: true, client: { select: { name: true } } } }),
   ]);
-  const voulus = new Map<string, Ev>();
+  const voulus = new Map<string, Ev & { rdvId?: string }>();
   for (const r of rdvs) {
+    // Invitation aux contacts et aux collègues choisis, visio Meet si demandée (une fois : le lien est ensuite conservé), description du modèle de l'agence.
+    const commun = { fin: new Date(r.debut.getTime() + r.dureeMin * 60_000), lieu: r.lieu, invites: r.invites, meet: r.meet && !r.meetUrl, rdvId: r.id };
     if (r.prospect) {
       const qui = contactName(r.prospect.contacts[0]);
-      voulus.set(`rdv:${r.id}`, { titre: `RDV ${qui ?? r.prospect.societe}${qui ? ` · ${r.prospect.societe}` : ""}`, debut: r.debut, fin: new Date(r.debut.getTime() + r.dureeMin * 60_000), lieu: r.lieu, description: `${r.prospect.contacts[0]?.telephone ?? r.prospect.telephone ?? ""}\n${APP}/crm/prospects/${r.prospect.id}` });
+      voulus.set(`rdv:${r.id}`, { ...commun, titre: `RDV ${qui ?? r.prospect.societe}${qui ? ` · ${r.prospect.societe}` : ""}`, debut: r.debut, description: r.description ?? `${r.prospect.contacts[0]?.telephone ?? r.prospect.telephone ?? ""}\n${APP}/crm/prospects/${r.prospect.id}` });
     } else if (r.client) {
-      voulus.set(`rdv-client:${r.id}`, { titre: `${r.titre ?? "RDV"} · ${r.client.name}${r.site ? ` (${r.site.name})` : ""}`, debut: r.debut, fin: new Date(r.debut.getTime() + r.dureeMin * 60_000), lieu: r.lieu, description: `${APP}/admin/clients/${r.client.id}?onglet=taches` });
+      voulus.set(`rdv-client:${r.id}`, { ...commun, titre: `${r.titre ?? "RDV"} · ${r.client.name}${r.site ? ` (${r.site.name})` : ""}`, debut: r.debut, description: r.description ?? `${APP}/admin/clients/${r.client.id}?onglet=taches` });
     }
   }
   for (const s of sites) {
@@ -80,9 +82,9 @@ export async function syncAgendaForUser(userId: string): Promise<{ ok: boolean; 
   try {
     const connus = await prisma.agendaEvent.findMany({ where: { userId } });
     for (const [cle, ev] of voulus) {
-      // Un RDV client déjà poussé garde son lien Meet et ses invités : on ne le réécrit pas ici (le pull Google → app le suit).
-      if (cle.startsWith("rdv-client:") && connus.some((c) => c.cle === cle)) { rdv++; continue; }
-      await upsertAgendaEvent(userId, cle, ev); if (cle.startsWith("rdv")) rdv++; else echeances++;
+      const r = await upsertAgendaEvent(userId, cle, ev);
+      if (r.meetUrl && ev.rdvId) await prisma.rendezVous.update({ where: { id: ev.rdvId }, data: { meetUrl: r.meetUrl } }).catch(() => null);
+      if (cle.startsWith("rdv")) rdv++; else echeances++;
     }
     // Plus à venir (RDV annulé, échéance retirée) : on retire de l'agenda. Les RDV passés restent dans l'historique Google.
     const passes = new Set((await prisma.rendezVous.findMany({ where: { commercialId: userId, debut: { lt: depuis }, resultat: { in: ["PREVU", "FAIT"] } }, select: { id: true, prospectId: true } })).map((r) => `${r.prospectId ? "rdv" : "rdv-client"}:${r.id}`));

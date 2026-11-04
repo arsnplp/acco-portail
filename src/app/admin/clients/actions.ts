@@ -183,7 +183,7 @@ export async function creerRdvClientAction(clientId: string, _prev: ActionState,
   const dureeMin = Math.max(15, parseInt(d.duree || "60", 10) || 60);
   const client = await prisma.client.findUnique({ where: { id: clientId }, select: { name: true } });
   const organisateur = d.commercialId && d.commercialId !== me.id && !can(me, "attribuer") ? me.id : d.commercialId || me.id;
-  const rdv = await prisma.rendezVous.create({ data: { clientId, siteId: d.siteId || null, commercialId: organisateur, titre: d.titre?.trim() || null, debut, dureeMin, lieu: d.lieu?.trim() || null } });
+  const rdv = await prisma.rendezVous.create({ data: { clientId, siteId: d.siteId || null, commercialId: organisateur, titre: d.titre?.trim() || null, debut, dureeMin, lieu: d.lieu?.trim() || null, meet: d.meet === "on", invites: formData.getAll("invites").map((e) => String(e).toLowerCase()).filter((e) => e.includes("@")) } });
   // Dans l'agenda Google du membre si son compte est connecté (silencieux sinon) ; invités = contacts cochés ; Meet sur demande.
   const contactsClient = new Set((await prisma.prospectContact.findMany({ where: { OR: [{ clientId }, { prospect: { clientId } }], email: { not: null } }, select: { email: true } })).map((c) => c.email!.toLowerCase()));
   const invites = formData.getAll("invites").map((e) => String(e).toLowerCase()).filter((e) => contactsClient.has(e));

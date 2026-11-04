@@ -1562,6 +1562,9 @@ model RendezVous {
   dureeMin      Int         @default(60)
   lieu          String?
   meetUrl       String?
+  meet          Boolean     @default(false) // visio Google Meet demandée à la création de l'événement
+  invites       String[]    @default([]) // emails invités (contacts du prospect/client, membres de l'équipe)
+  description   String? // texte de l'invitation Google (modèle de l'agence, modifiable)
   googleEventId String? // événement créé ou lu dans Google Agenda (synchro bidirectionnelle)
   resultat      RdvResultat @default(PREVU)
   reportDeId    String? // RDV recalé après un no show : ne compte pas comme un nouveau RDV pris

@@ -1,0 +1,1 @@
+ALTER TABLE "RendezVous" ADD COLUMN "meet" BOOLEAN NOT NULL DEFAULT false, ADD COLUMN "invites" TEXT[] DEFAULT ARRAY[]::TEXT[], ADD COLUMN "description" TEXT;

@@ -9,7 +9,7 @@ import { disconnectGoogle, disconnectUserGoogle } from "@/lib/google-oauth";
 
 export async function saveSettings(formData: FormData) {
   await requireGestionnaire();
-  for (const key of ["google_review_url", "referral_reward_label"]) {
+  for (const key of ["google_review_url", "referral_reward_label", "rdv_description_modele"]) {
     const value = String(formData.get(key) ?? "").trim();
     await prisma.setting.upsert({ where: { key }, create: { key, value }, update: { value } });
   }

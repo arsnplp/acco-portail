@@ -3,7 +3,7 @@ import { AdminPage } from "@/components/admin/page";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Field, Input } from "@/components/ui/field";
+import { Field, Input, Textarea } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { oauthConfigured, connectedGoogleEmail } from "@/lib/google-oauth";
 import { listProperties } from "@/lib/google-search";
@@ -14,6 +14,7 @@ import { secretsStatus, featureToggles } from "@/lib/settings";
 import { KeyRoundIcon, Link2Icon, SettingsIcon } from "lucide-react";
 import { GOOGLE_MSG, MesParametres } from "./moi";
 import { IaIntegrationsForm } from "./ia-form";
+import { RDV_MODELE_DEFAUT } from "@/lib/rdv-modele";
 import { can } from "@/lib/permissions";
 import { BotIcon } from "lucide-react";
 
@@ -73,6 +74,7 @@ export default async function ParametresPage({ searchParams }: { searchParams: P
       <form action={saveSettings} className="space-y-3 rounded-card border border-border bg-surface p-4">
         <Field label="Lien « Laisser un avis » sur la fiche Google d’Acco"><Input name="google_review_url" defaultValue={get("google_review_url")} placeholder="https://g.page/r/…/review" /></Field>
         <Field label="Récompense de parrainage"><Input name="referral_reward_label" defaultValue={get("referral_reward_label")} placeholder="1 mois d’abonnement offert" /></Field>
+        <Field label="Modèle d’invitation de rendez-vous (Google Agenda)" hint="variables : {{prenom}} {{societe}} {{commercial}} {{lieu}}"><Textarea name="rdv_description_modele" defaultValue={get("rdv_description_modele") || RDV_MODELE_DEFAUT} className="min-h-40 text-sm" /></Field>
         <SubmitButton size="sm">Enregistrer</SubmitButton>
       </form>
     </AdminPage>
