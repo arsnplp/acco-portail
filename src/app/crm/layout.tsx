@@ -7,6 +7,7 @@ import { Rappels } from "./rappels";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { getTheme } from "@/lib/theme";
 import { can } from "@/lib/permissions";
+import { MessagesIcon } from "@/components/nav/messages-icon";
 
 /** Espace Commercial (CRM) : séparé du reste de l'admin, ouvert à l'équipe (admins et commerciaux). */
 export default async function CrmLayout({ children }: { children: React.ReactNode }) {
@@ -24,6 +25,7 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
           </Link>
           <CrmNav admin={droits} />
           <div className="ml-auto flex items-center gap-2">
+            <MessagesIcon user={user} />
             <ThemeToggle initial={theme} />
             <Link href={admin ? "/admin/parametres" : "/crm/parametres"} aria-label="Paramètres"><Avatar initials={initials(user)} src={user.avatarUrl} size={32} /></Link>
           </div>

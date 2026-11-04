@@ -22,7 +22,6 @@ const ITEMS: Array<[string, string, "suivi" | "prospection"]> = [
   ["/admin/campagnes", "Campagnes", "prospection"],
   ["/admin/offres", "Offres", "prospection"],
   ["/admin/commandes", "Commandes", "prospection"],
-  ["/admin/messages", "Messages", "suivi"],
   ["/admin/recommandations", "Recommandations", "prospection"],
   ["/admin/documents", "Documents", "suivi"],
 ];
