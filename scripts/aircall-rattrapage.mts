@@ -27,12 +27,14 @@ async function main() {
   for (const e of aFaire) await prisma.echange.update({ where: { id: e.id }, data: { meta: { ...(e.meta as object), analysePending: true } } });
   // 2. Relever les analyses par lots de 12 (≈ 60 requêtes), avec une pause de 40 s entre deux lots.
   let total = 0;
+  const ignorer = new Set<string>(); // chaque appel n'est relevé qu'une fois par passage (sinon on tourne sur les plus récents, encore sans analyse)
   for (let lot = 0; lot < 50; lot++) {
-    const n = await rafraichirAnalyses({ depuis, limite: 12 });
-    total += n;
-    const restant = await prisma.echange.count({ where: { externalId: { startsWith: "aircall:" }, date: { gte: depuis }, meta: { path: ["analysePending"], equals: true } } });
-    console.log(`lot ${lot + 1} : ${n} appels mis à jour, ${restant} encore en attente`);
-    if (restant === 0 || n === 0) break;
+    const r = await rafraichirAnalyses({ depuis, limite: 12, ignorer });
+    r.traites.forEach((id) => ignorer.add(id));
+    total += r.n;
+    const restant = await prisma.echange.count({ where: { externalId: { startsWith: "aircall:" }, date: { gte: depuis }, meta: { path: ["analysePending"], equals: true }, id: { notIn: [...ignorer] } } });
+    console.log(`lot ${lot + 1} : ${r.n} appels mis à jour, ${restant} encore à relever`);
+    if (restant === 0 || r.traites.length === 0) break;
     await new Promise((r) => setTimeout(r, 40_000));
   }
   // 3. Les appels dont Aircall n'a produit aucune analyse (anciens, hors fenêtre de 48 h) ne doivent plus être repassés.

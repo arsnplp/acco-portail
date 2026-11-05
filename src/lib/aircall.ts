@@ -213,12 +213,14 @@ async function notesWithResume(echangeId: string, meta: AircallMeta) {
  * Analyses IA arrivées depuis : repasse sur les appels marqués « en attente » (et, pour un rattrapage, sur ceux écrits sans
  * enregistrement ni analyse). `limite` appels par passage, chacun coûte 5 requêtes (quota Aircall : 120 par minute).
  */
-export async function rafraichirAnalyses({ depuis, limite = 12, idsDejaVus = new Set<number>() }: { depuis: Date; limite?: number; idsDejaVus?: Set<number> }) {
-  const pending = await prisma.echange.findMany({ where: { externalId: { startsWith: "aircall:" }, date: { gte: depuis }, meta: { path: ["analysePending"], equals: true } }, select: { id: true, meta: true, prospectId: true, clientId: true }, orderBy: { date: "desc" }, take: limite });
+export async function rafraichirAnalyses({ depuis, limite = 12, idsDejaVus = new Set<number>(), ignorer = new Set<string>() }: { depuis: Date; limite?: number; idsDejaVus?: Set<number>; ignorer?: Set<string> }) {
+  const pending = await prisma.echange.findMany({ where: { externalId: { startsWith: "aircall:" }, date: { gte: depuis }, meta: { path: ["analysePending"], equals: true }, ...(ignorer.size ? { id: { notIn: [...ignorer] } } : {}) }, select: { id: true, meta: true, prospectId: true, clientId: true }, orderBy: { date: "desc" }, take: limite });
   const idx = await buildIndex([]);
   let n = 0;
+  const traites: string[] = [];
   for (const e of pending) {
     const m = e.meta as AircallMeta;
+    traites.push(e.id);
     if (idsDejaVus.has(m.aircallId)) continue; // déjà traité par la synchro
     try {
       const c = (await get<{ call: AircallCall }>(`/calls/${m.aircallId}`))?.call;
@@ -228,7 +230,7 @@ export async function rafraichirAnalyses({ depuis, limite = 12, idsDejaVus = new
       if (/429/.test((err as Error).message)) break; // quota épuisé : on reprendra au prochain passage
     }
   }
-  return n;
+  return { n, traites, restants: pending.length === limite };
 }
 
 /** Synchronisation d'une fiche : appels Aircall de ses numéros. Renvoie le nombre d'échanges écrits. */
