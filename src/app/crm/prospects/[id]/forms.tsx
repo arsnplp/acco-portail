@@ -11,7 +11,8 @@ import { StatutPicker } from "@/components/crm/statut-picker";
 import { Field, FormError, Input, Select, Textarea } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { SectionTitle } from "@/components/ui/card";
-import { AircallBloc, AircallTitre, GmailBloc, isAircallMeta, isGmailMeta } from "@/components/crm/echange-detail";
+import { AircallBloc, AircallTitre, GmailBloc } from "@/components/crm/echange-detail";
+import { isAircallMeta, isGmailMeta } from "@/lib/echange-meta";
 import { assignProspect, deleteContact, deleteEchange, deleteProspect, logEchange, saveContact, setRdvResultat, syncProspectNow, updateProspect, type CrmState } from "../../actions";
 import { BoutonAppel } from "@/components/crm/bouton-appel";
 

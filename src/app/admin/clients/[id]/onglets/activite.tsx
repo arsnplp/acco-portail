@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { AircallBloc, GmailBloc, isAircallMeta, isGmailMeta } from "@/components/crm/echange-detail";
+import { AircallBloc, GmailBloc } from "@/components/crm/echange-detail";
+import { isAircallMeta, isGmailMeta } from "@/lib/echange-meta";
 import { fmtDayTime, parisDay, teamName } from "@/lib/crm";
 import { MODULES } from "@/lib/roles";
 import { CANAL_LABEL, timelineClient, type Canal } from "@/lib/timeline";
