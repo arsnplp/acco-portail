@@ -378,6 +378,8 @@ model User {
   campagnes            Campagne[]
   vues                 SavedView[]
   usagesIA             UsageIA[]
+  signalementsEnvoyes  Signalement[]           @relation("SignalementDe")
+  signalementsRecus    Signalement[]           @relation("SignalementVers")
 }
 
 /// Contrat (plusieurs par client) : généré par l'app (PDF), signé par acceptation en ligne ou scan, archivé immuable.
@@ -739,8 +741,8 @@ model Article {
   site   Site  @relation(fields: [siteId], references: [id], onDelete: Cascade)
   auteur User? @relation(fields: [auteurId], references: [id], onDelete: SetNull)
 
-  @@index([siteId, statut])
   @@unique([siteId, prevuPour])
+  @@index([siteId, statut])
 }
 
 /// Flux d'activité de l'agence : tâches terminées, étapes franchies, notes, statuts… (Production et Pilotage).
@@ -1491,14 +1493,15 @@ model Prospect {
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
 
-  cible      Cible?            @relation(fields: [cibleId], references: [id], onDelete: SetNull)
-  commercial User?             @relation("ProspectCommercial", fields: [commercialId], references: [id], onDelete: SetNull)
-  client     Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  contacts   ProspectContact[]
-  echanges   Echange[]
-  rendezVous RendezVous[]
-  contrats   Contrat[]
-  lead       Lead?
+  cible        Cible?            @relation(fields: [cibleId], references: [id], onDelete: SetNull)
+  commercial   User?             @relation("ProspectCommercial", fields: [commercialId], references: [id], onDelete: SetNull)
+  client       Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  contacts     ProspectContact[]
+  echanges     Echange[]
+  rendezVous   RendezVous[]
+  contrats     Contrat[]
+  signalements Signalement[]
+  lead         Lead?
 
   @@index([statut, relanceAt])
   @@index([rappelAt])
@@ -1508,6 +1511,26 @@ model Prospect {
 }
 
 /// Contact d'un prospect et/ou d'un client (même ligne avant et après signature : une seule source de vérité).
+/// Signalement de la Direction au commercial attitré d'une fiche prospect : demande d'informations ou de rectification.
+/// Arrive dans ses Messages (icône de l'en-tête, push) ; cliquable vers la fiche ; lu à l'ouverture de la fiche, traité sur clic.
+model Signalement {
+  id         String    @id @default(cuid())
+  prospectId String
+  deId       String? // auteur (Direction)
+  versId     String? // commercial destinataire
+  message    String
+  luAt       DateTime?
+  traiteAt   DateTime?
+  createdAt  DateTime  @default(now())
+
+  prospect Prospect @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  de       User?    @relation("SignalementDe", fields: [deId], references: [id], onDelete: SetNull)
+  vers     User?    @relation("SignalementVers", fields: [versId], references: [id], onDelete: SetNull)
+
+  @@index([versId, luAt])
+  @@index([prospectId, traiteAt])
+}
+
 model ProspectContact {
   id               String   @id @default(cuid())
   prospectId       String?

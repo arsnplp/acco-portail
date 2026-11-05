@@ -12,7 +12,7 @@ const euros = (c: number) => (c / 100).toLocaleString("fr-FR", { style: "currenc
 
 /**
  * Administration > IA et intégrations (00.6, 00.7) : tout ce qui consomme des crédits est désactivé par défaut et se
- * déclenche sur clic ; plafond mensuel ; compteur ; chaque connecteur avec son état, sa dernière synchro et ses erreurs.
+ * déclenche sur clic ; plafond mensuel ; compteur ; chaque connecteur avec son état (OK / En erreur quand la dernière synchro a échoué), sa dernière synchro ; le détail de l'erreur seulement pour le gestionnaire.
  */
 export async function IaIntegrationsForm({ gestionnaire = false }: { gestionnaire?: boolean }) {
   const [toggles, plafond, usage, connecteurs, flags] = await Promise.all([featureToggles(), plafondCents(), usageDuMois(), etatConnecteurs(), prisma.setting.findMany({ where: { key: { startsWith: "ia_" } } })]);
@@ -47,10 +47,16 @@ export async function IaIntegrationsForm({ gestionnaire = false }: { gestionnair
               {c.connecteur === "financier"
                 ? <div className="flex items-center justify-between gap-3 px-4 py-3 opacity-60"><span className="text-sm text-text-strong">{c.label}</span><span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted">Bientôt disponible</span></div>
                 : <Toggle name={`feature_${c.connecteur === "business_profile" ? "business_api" : c.connecteur}`} label={c.label} defaultChecked={c.actif} />}
-              <div className="px-4 pb-3 text-xs text-text">
-                {c.connecteur !== "financier" && (c.derniereSync ? `Dernière synchronisation : ${fmtDayTime(c.derniereSync)}` : "Jamais synchronisé")}
-                {c.erreurs.length > 0 && <ul className="mt-1 space-y-0.5 text-pink">{c.erreurs.map((e, i) => <li key={i}>{fmtDayTime(e.createdAt)} · {e.message}</li>)}</ul>}
-              </div>
+              {c.connecteur !== "financier" && (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 pb-3 text-xs text-text">
+                  {c.bloque
+                    ? <span className="rounded-full border border-pink/50 bg-pink/10 px-2 py-0.5 font-semibold text-pink">En erreur</span>
+                    : c.actif ? <span className="rounded-full border border-green/40 bg-green/10 px-2 py-0.5 font-semibold text-green">OK</span> : null}
+                  <span>{c.derniereSync ? `Dernière synchronisation : ${fmtDayTime(c.derniereSync)}` : "Jamais synchronisé"}</span>
+                  {/* Le détail de l'erreur n'est montré qu'au gestionnaire : les autres voient seulement l'état. */}
+                  {c.bloque && gestionnaire && <span className="basis-full text-pink">{fmtDayTime(c.bloque.createdAt)} · {c.bloque.message}</span>}
+                </div>
+              )}
             </div>
           ))}
         </div>

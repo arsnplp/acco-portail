@@ -1,6 +1,7 @@
 /**
  * Rattrapage Aircall : complète enregistrement, résumé, sujets, sentiment et transcription des appels déjà en base
- * (écrits en « métadonnées seulement » entre le 2 et le 5 nov. 2026, ou analyses jamais relevées).
+ * (écrits en « métadonnées seulement » entre le 2 et le 5 nov. 2026, ou analyses jamais relevées), et fait rédiger par Claude
+ * le résumé des appels qui ont une transcription mais pas de résumé Aircall (si « Résumé des appels Aircall » est coché).
  * Usage : npx tsx --env-file=.env --tsconfig tsconfig.json scripts/aircall-rattrapage.mts [jours=30] [--dry]
  * Respecte le quota Aircall (120 requêtes/min) : 12 appels par lot, pause entre les lots.
  */
@@ -18,8 +19,8 @@ async function main() {
     select: { id: true, meta: true, date: true },
   });
   const aFaire = candidats.filter((e) => {
-    const m = e.meta as { dureeSec: number; resume?: string | null; analysePending?: boolean; enregistrement?: boolean };
-    return m.dureeSec >= 20 && !m.resume && (m.enregistrement === undefined || !m.analysePending);
+    const m = e.meta as { dureeSec: number; resume?: string | null; analysePending?: boolean; enregistrement?: boolean; transcription?: unknown };
+    return m.dureeSec >= 20 && !m.resume && (m.enregistrement === undefined || !m.analysePending || !!m.transcription);
   });
   console.log(`${candidats.length} appels répondus depuis ${jours} j, ${aFaire.length} à compléter${dry ? " (simulation, rien n’est écrit)" : ""}.`);
   if (dry) return;

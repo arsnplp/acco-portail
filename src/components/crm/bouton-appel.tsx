@@ -4,11 +4,13 @@ import { useEffect, useState, type MouseEvent, type PointerEvent, type ReactNode
 import { PhoneCallIcon, XIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { appelerAircall } from "@/app/crm/appel-action";
+import { e164Client } from "@/components/crm/aircall-dock";
 
-type Etat = { kind: "idle" } | { kind: "pending" } | { kind: "ok"; ligne: string | null } | { kind: "erreur"; message: string };
+type Etat = { kind: "idle" } | { kind: "pending" } | { kind: "ok"; ligne: string | null; integre?: boolean } | { kind: "erreur"; message: string };
 
 /**
- * Bouton d'appel (click-to-call) : l'appel sonne dans Aircall Workspace du collaborateur, sans sortir de l'app.
+ * Bouton d'appel (click-to-call) : compose dans le téléphone Aircall intégré (AircallDock) s'il est connecté, sinon l'appel
+ * sonne dans Aircall Workspace du collaborateur via l'API ; dans les deux cas sans sortir de l'app.
  * Sans compte Aircall (ou Aircall non configuré), repli sur le téléphone de l'appareil (lien tel:) comme avant.
  * En cas d'indisponibilité (Workspace fermé, déjà en ligne), un message l'explique avec un lien de secours.
  */
@@ -32,6 +34,15 @@ export function BoutonAppel({ tel, className, children, onClick, stopPropagation
     if (etat.kind === "pending") return;
     setEtat({ kind: "pending" });
     try {
+      // 1. Téléphone Aircall intégré (volet en bas à droite) s'il est connecté : on compose dedans, on raccroche dedans.
+      const dock = window.__accoAircall;
+      const num = e164Client(tel);
+      if (dock?.isLoggedIn() && num) {
+        const d = await dock.dial(num);
+        if (d.ok) { setEtat({ kind: "ok", ligne: null, integre: true }); return; }
+        if (d.code === "in_call") { setEtat({ kind: "erreur", message: "Vous êtes déjà en ligne dans le téléphone intégré : raccrochez d’abord." }); return; }
+      }
+      // 2. Sinon, l'API Aircall fait sonner Aircall Workspace (application ou onglet) du collaborateur.
       const r = await appelerAircall(tel);
       if (r.ok) { setEtat({ kind: "ok", ligne: r.ligne }); return; }
       if (r.raison === "pas_de_compte" || r.raison === "non_configure") { setEtat({ kind: "idle" }); window.location.href = href; return; }
@@ -52,7 +63,7 @@ export function BoutonAppel({ tel, className, children, onClick, stopPropagation
             <PhoneCallIcon size={18} className={cn("mt-0.5 shrink-0", etat.kind === "ok" ? "text-green" : "text-pink")} aria-hidden />
             <div className="min-w-0 flex-1">
               {etat.kind === "ok" ? (
-                <p className="text-title">Appel lancé dans Aircall{etat.ligne ? ` (ligne ${etat.ligne})` : ""} : décrochez dans Workspace, le numéro {tel} est composé.</p>
+                <p className="text-title">{etat.integre ? `Appel de ${tel} lancé dans le téléphone intégré (en bas à droite) : raccrochez-y avec le bouton rouge.` : `Appel lancé dans Aircall${etat.ligne ? ` (ligne ${etat.ligne})` : ""} : décrochez dans Workspace, le numéro ${tel} est composé.`}</p>
               ) : (
                 <>
                   <p className="text-title">{etat.message}</p>

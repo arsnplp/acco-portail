@@ -39,11 +39,16 @@ async function headers() {
 }
 
 /** Appel GET à l'API ; null si la ressource n'existe pas (404 : pas de transcription, pas de résumé…). */
-async function get<T>(path: string, params?: Record<string, string | number>, retry = 1): Promise<T | null> {
+async function get<T>(path: string, params?: Record<string, string | number>, retry = 3): Promise<T | null> {
   const url = `${API}${path}${params ? `?${new URLSearchParams(Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)])))}` : ""}`;
   const res = await fetch(url, { headers: await headers(), signal: AbortSignal.timeout(15_000), cache: "no-store" });
   if (res.status === 404) return null;
-  if (res.status === 429 && retry > 0) { await new Promise((r) => setTimeout(r, 1500)); return get<T>(path, params, retry - 1); }
+  if (res.status === 429 && retry > 0) {
+    // Quota Aircall : 120 requêtes par minute. On attend la fin de la fenêtre (en-tête X-AircallApi-Reset), 2 à 8 s à défaut.
+    const reset = Number(res.headers.get("x-aircallapi-reset")) * 1000 - Date.now();
+    await new Promise((r) => setTimeout(r, Math.min(65_000, Math.max(2_000 * 2 ** (3 - retry), reset > 0 ? reset + 500 : 0))));
+    return get<T>(path, params, retry - 1);
+  }
   if (res.status === 401 || res.status === 403) throw new Error(`Aircall refuse l’accès (${res.status}) : vérifiez les clés et la licence AI Assist.`);
   if (!res.ok) throw new Error(`Aircall répond ${res.status} sur ${path}.`);
   return (await res.json()) as T;
@@ -123,8 +128,15 @@ async function withInsights(meta: AircallMeta, c: AircallCall): Promise<AircallM
   if (!meta.repondu || meta.dureeSec < 20) return meta;
   const endedMs = (c.ended_at ?? c.started_at) * 1000;
   const i = await insights(c.id);
+  // Aircall ne produit un résumé que pour une partie des appels : à défaut, Claude le rédige depuis la transcription (sous interrupteur et plafond IA).
+  let resumeIA = meta.resumeIA ?? false;
+  if (!i.resume && i.transcription && (i.transcription.length >= 2 || meta.dureeSec >= 60)) {
+    const { resumeAppel } = await import("@/lib/ai");
+    const r = await resumeAppel(i.transcription, { agent: meta.agent });
+    if (r) { i.resume = r; resumeIA = true; }
+  }
   const complet = !!(i.resume && i.transcription);
-  return { ...meta, ...i, analysePending: !complet && Date.now() - endedMs < 48 * 3600_000 };
+  return { ...meta, ...i, resumeIA, analysePending: !complet && Date.now() - endedMs < 48 * 3600_000 };
 }
 
 /** Note lisible de l'appel (pour l'historique général, les stats et la recherche). */
@@ -164,7 +176,8 @@ async function upsertCall(c: AircallCall, prospectId: string | null, idx: Index,
   if (existing) {
     // Déjà en base : on complète seulement les analyses encore attendues (ou absentes : appels écrits en « métadonnées seulement »).
     const m = existing.meta as AircallMeta | null;
-    if (!m || (!m.analysePending && m.enregistrement !== undefined)) return false;
+    const aResumer = !!m?.transcription && !m.resume; // transcription sans résumé : Claude peut le rédiger
+    if (!m || (!m.analysePending && m.enregistrement !== undefined && !aResumer)) return false;
     const meta = await withInsights({ ...baseMeta(c), ...m, enregistrement: !!c.recording || !!m.enregistrement, messagerie: !!c.voicemail || !!m.messagerie }, c);
     await prisma.echange.update({ where: { id: existing.id }, data: { meta: meta as unknown as Prisma.InputJsonObject, ...(meta.resume && !m.resume ? { notes: await notesWithResume(existing.id, meta) } : {}) } });
     return true;
@@ -210,7 +223,10 @@ export async function rafraichirAnalyses({ depuis, limite = 12, idsDejaVus = new
     try {
       const c = (await get<{ call: AircallCall }>(`/calls/${m.aircallId}`))?.call;
       if (c && (await upsertCall(c, e.prospectId, idx, e.clientId))) n++;
-    } catch (err) { console.warn("[aircall] analyse", m.aircallId, (err as Error).message); }
+    } catch (err) {
+      console.warn("[aircall] analyse", m.aircallId, (err as Error).message);
+      if (/429/.test((err as Error).message)) break; // quota épuisé : on reprendra au prochain passage
+    }
   }
   return n;
 }

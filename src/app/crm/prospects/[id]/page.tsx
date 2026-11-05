@@ -18,6 +18,7 @@ import { descriptionRdv } from "@/lib/rdv-modele";
 import { FileSignatureIcon } from "lucide-react";
 import { EchangeForm, ProspectForm, Contacts, Historique, AssignControl, RdvList } from "./forms";
 import { BoutonAppel } from "@/components/crm/bouton-appel";
+import { SignalerButton, SignalementsBanner } from "@/components/crm/signalement";
 
 export const metadata = { title: "Fiche prospect" };
 
@@ -56,6 +57,10 @@ export default async function ProspectPage({ params, searchParams }: { params: P
   const nrp = p.echanges.filter((e) => e.type === "NRP").length;
   const echanges = [...p.echanges, ...clientEchanges].sort((a, b) => b.date.getTime() - a.date.getTime());
   const contrats = await prisma.contrat.findMany({ where: { prospectId: p.id }, orderBy: { createdAt: "desc" }, select: { id: true, reference: true, titre: true, statut: true, signeAt: true } });
+  // Signalements de la Direction non traités ; ceux adressés à l'utilisateur sont marqués lus à l'ouverture de la fiche.
+  const direction = can(me, "pilotage");
+  const signalements = await prisma.signalement.findMany({ where: { prospectId: p.id, traiteAt: null }, orderBy: { createdAt: "desc" }, include: { de: { select: { firstName: true, email: true } }, vers: { select: { firstName: true, email: true } } } });
+  if (signalements.some((s) => s.versId === me.id && !s.luAt)) await prisma.signalement.updateMany({ where: { prospectId: p.id, versId: me.id, luAt: null }, data: { luAt: new Date() } });
 
   return (
     <main className="mx-auto max-w-[1600px] px-4 py-4 lg:px-8 lg:py-6">
@@ -63,6 +68,7 @@ export default async function ProspectPage({ params, searchParams }: { params: P
       {ETAPE_IMAGE[p.statut] && <EtapeBanner statut={p.statut} className="-mx-4 -mt-4 mb-4 h-28 sm:hidden" />}
       {/* Ordinateur : grand bandeau de l'étape. */}
       {ETAPE_IMAGE[p.statut] && <EtapeBanner grand statut={p.statut} className="mb-6 hidden h-44 rounded-2xl sm:flex lg:h-52" />}
+      <SignalementsBanner meId={me.id} direction={direction} surligne={sp.signalement ?? null} items={signalements.map((s) => ({ id: s.id, message: s.message, createdAt: fmtDayTime(s.createdAt), de: s.de ? teamName(s.de) : null, vers: s.vers ? teamName(s.vers) : null, versId: s.versId }))} />
       {sess && (
         <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-card border border-yellow/40 bg-yellow/10 px-4 py-2.5 text-sm text-yellow">
           <ZapIcon size={16} aria-hidden />
@@ -91,7 +97,8 @@ export default async function ProspectPage({ params, searchParams }: { params: P
           </div>
         </div>
         <div className="flex w-full items-center gap-2 sm:w-auto">
-          <LeadInfoButton prospectId={p.id} coffre={can(me, "pilotage")} lead={p.lead ? { listeId: p.lead.listeId, liste: `${p.lead.liste.secteur} · ${p.lead.liste.region}`, generee: fmtDayTime(p.lead.liste.createdAt), donnees: p.lead.donnees as LeadRow } : p.infos ? { listeId: null, liste: null, generee: p.infosAt ? fmtDayTime(p.infosAt) : "", donnees: p.infos as LeadRow } : null} />
+          {direction && <SignalerButton prospectId={p.id} commercial={p.commercial ? teamName(p.commercial) : null} />}
+          <LeadInfoButton prospectId={p.id} coffre={direction} lead={p.lead ? { listeId: p.lead.listeId, liste: `${p.lead.liste.secteur} · ${p.lead.liste.region}`, generee: fmtDayTime(p.lead.liste.createdAt), donnees: p.lead.donnees as LeadRow } : p.infos ? { listeId: null, liste: null, generee: p.infosAt ? fmtDayTime(p.infosAt) : "", donnees: p.infos as LeadRow } : null} />
           {phone && <BoutonAppel tel={phone} className="flex h-11 flex-1 items-center justify-center gap-2 rounded-card bg-title px-4 text-sm font-semibold text-bg sm:flex-none"><PhoneIcon size={16} aria-hidden /> {phone}</BoutonAppel>}
           {/* Nouveau message Gmail dans un onglet (un lien mailto: ne fait rien sans logiciel de mail installé). */}
           {email && <a href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}`} target="_blank" rel="noreferrer" aria-label="Écrire un mail (Gmail)" title={`Écrire à ${email} avec Gmail`} className="flex size-11 items-center justify-center rounded-card border border-border text-text hover:text-title"><MailIcon size={17} /></a>}

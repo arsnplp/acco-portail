@@ -8,7 +8,8 @@ export type AircallMeta = {
   source: "aircall"; aircallId: number; direction: "inbound" | "outbound"; repondu: boolean; dureeSec: number; motifManque: string | null;
   agent: string | null; numero: string; ligne: string | null;
   enregistrement?: boolean; messagerie?: boolean;
-  resume?: string | null; sujets?: string[]; sentiment?: string | null; transcription?: { qui: "nous" | "prospect"; texte: string }[] | null;
+  resume?: string | null; resumeIA?: boolean; // résumé rédigé par Claude depuis la transcription (Aircall n’en avait pas)
+  sujets?: string[]; sentiment?: string | null; transcription?: { qui: "nous" | "prospect"; texte: string }[] | null;
   analysePending?: boolean; // les analyses IA arrivent quelques minutes après l'appel : on repasse tant qu'elles manquent (48 h au plus)
 };
 export const isAircallMeta = (m: unknown): m is AircallMeta => !!m && typeof m === "object" && (m as AircallMeta).source === "aircall";

@@ -3,7 +3,7 @@ import { MessageCircleIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { whereClientsPour } from "@/lib/perimetre";
 
-type U = Parameters<typeof whereClientsPour>[0];
+type U = Parameters<typeof whereClientsPour>[0] & { id: string };
 
 /** Messages non lus par l'équipe (écrits par des clients après la dernière lecture), sur le périmètre de l'utilisateur. */
 export async function messagesNonLus(user: U) {
@@ -13,9 +13,13 @@ export async function messagesNonLus(user: U) {
   return counts.reduce((a, b) => a + b, 0);
 }
 
-/** Icône Messages de l'en-tête (à côté du mode jour / nuit), avec le nombre de messages clients non lus. */
+/** Signalements de la Direction adressés à l'utilisateur, pas encore lus ni traités. */
+export const signalementsNonLus = (user: U) => prisma.signalement.count({ where: { versId: user.id, luAt: null, traiteAt: null } });
+
+/** Icône Messages de l'en-tête (à côté du mode jour / nuit) : messages clients non lus + signalements de la Direction non lus. */
 export async function MessagesIcon({ user }: { user: U }) {
-  const n = await messagesNonLus(user);
+  const [a, b] = await Promise.all([messagesNonLus(user), signalementsNonLus(user)]);
+  const n = a + b;
   return (
     <Link href="/admin/messages" aria-label={n ? `Messages (${n} non lu${n > 1 ? "s" : ""})` : "Messages"} title="Messages"
       className="relative flex size-9 shrink-0 items-center justify-center rounded-full border border-border text-text hover:border-text hover:text-title">

@@ -14,6 +14,23 @@ export async function texteIA(fonction: FonctionIA, system: string, user: string
   return res.content.filter((c) => c.type === "text").map((c) => c.text).join(" ").trim() || null;
 }
 
+/**
+ * Résumé d'un appel à partir de la transcription Aircall, quand Aircall n'a pas produit le sien.
+ * Modèle léger, 4 phrases au plus ; null si l'IA n'est pas autorisée (interrupteur, plafond, clé).
+ */
+export async function resumeAppel(transcription: { qui: "nous" | "prospect"; texte: string }[], contexte?: { societe?: string | null; agent?: string | null }) {
+  const texte = transcription.map((u) => `${u.qui === "nous" ? "Commercial" : "Prospect"} : ${u.texte}`).join("\n").slice(0, 24_000);
+  try {
+    return await texteIA("resume_appel",
+      "Tu résumes un appel téléphonique commercial d'une agence web française (Acco) pour l'historique CRM. 2 à 4 phrases courtes en français, factuelles : qui a été joint, ce qui a été dit, objections, décision ou prochaine étape (RDV, rappel, refus). Pas de titre, pas de liste, pas d'emoji, pas de jugement.",
+      `${contexte?.societe ? `Prospect : ${contexte.societe}.\n` : ""}${contexte?.agent ? `Commercial : ${contexte.agent}.\n` : ""}Transcription :\n${texte}\n\nRésume l'appel.`,
+      350);
+  } catch (e) {
+    console.warn("[ai] résumé d'appel impossible :", (e as Error).message);
+    return null;
+  }
+}
+
 export type RecapInput = {
   siteName: string; monthLabel: string;
   clicks: number; prevClicks: number | null; impressions: number; prevImpressions: number | null; position: number; prevPosition: number | null;

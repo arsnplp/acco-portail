@@ -2,9 +2,7 @@
 
 import { ExternalLinkIcon, MailIcon, PhoneIncomingIcon, PhoneMissedIcon, PhoneOutgoingIcon, SparklesIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { fmtDuree, isAircallMeta, isGmailMeta, type AircallMeta, type GmailMeta } from "@/lib/echange-meta";
-
-export { isAircallMeta, isGmailMeta };
+import { fmtDuree, type AircallMeta, type GmailMeta } from "@/lib/echange-meta";
 
 const SENTIMENT: Record<string, { label: string; cls: string }> = {
   POSITIVE: { label: "Positif", cls: "border-green/40 bg-green/10 text-green" },
@@ -24,7 +22,7 @@ export function AircallTitre({ m }: { m: AircallMeta }) {
   );
 }
 
-/** Détail d'un appel Aircall : lecteur, résumé IA, sujets, sentiment, transcription, puis ligne et numéro. */
+/** Détail d'un appel Aircall : lecteur, résumé (Aircall ou Claude), sujets, sentiment, puis ligne et numéro. La transcription n'est pas affichée. */
 export function AircallBloc({ echangeId, m, compact = false }: { echangeId: string; m: AircallMeta; compact?: boolean }) {
   const s = m.sentiment ? SENTIMENT[m.sentiment] ?? { label: m.sentiment, cls: "border-border text-text" } : null;
   const sujets = m.sujets ?? [];
@@ -39,28 +37,17 @@ export function AircallBloc({ echangeId, m, compact = false }: { echangeId: stri
       )}
       {m.messagerie && !m.enregistrement && <p className="text-xs text-text">Message vocal laissé (écoutable dans Aircall).</p>}
       {m.resume ? (
-        <p className="flex gap-2 text-sm text-text-strong"><SparklesIcon size={14} className="mt-0.5 shrink-0 text-claude" aria-hidden /><span className="whitespace-pre-line">{m.resume}</span></p>
+        <p className="flex gap-2 text-sm text-text-strong" title={m.resumeIA ? "Résumé rédigé par Claude à partir de la transcription Aircall" : "Résumé Aircall"}><SparklesIcon size={14} className="mt-0.5 shrink-0 text-claude" aria-hidden /><span className="whitespace-pre-line">{m.resume}</span></p>
       ) : m.analysePending ? (
-        <p className="flex items-center gap-2 text-xs text-muted"><SparklesIcon size={12} className="text-claude" aria-hidden /> Analyse IA Aircall en cours (elle arrive quelques minutes après l’appel).</p>
+        <p className="flex items-center gap-2 text-xs text-muted"><SparklesIcon size={12} className="text-claude" aria-hidden /> Résumé en cours (il arrive quelques minutes après l’appel).</p>
+      ) : m.transcription ? (
+        <p className="text-xs text-muted">Pas de résumé pour cet appel (résumé IA désactivé ou plafond atteint, Administration → IA et intégrations).</p>
       ) : null}
       {(sujets.length > 0 || s) && (
         <div className="flex flex-wrap items-center gap-1.5">
           {s && <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-semibold", s.cls)}>{s.label}</span>}
           {sujets.map((t) => <span key={t} className="rounded-full border border-border px-2 py-0.5 text-[11px] text-text">{t}</span>)}
         </div>
-      )}
-      {m.transcription && !compact && (
-        <details className="group">
-          <summary className="cursor-pointer text-xs font-semibold text-text hover:text-title">Transcription ({m.transcription.length} prises de parole)</summary>
-          <ol className="mt-2 max-h-80 space-y-1.5 overflow-y-auto pr-1 text-xs">
-            {m.transcription.map((u, i) => (
-              <li key={i} className={cn("flex gap-2", u.qui === "nous" ? "text-text-strong" : "text-text")}>
-                <span className={cn("w-14 shrink-0 font-semibold", u.qui === "nous" ? "text-blue" : "text-yellow")}>{u.qui === "nous" ? "Nous" : "Prospect"}</span>
-                <span>{u.texte}</span>
-              </li>
-            ))}
-          </ol>
-        </details>
       )}
       <p className="text-[11px] text-muted">{infos}</p>
     </div>

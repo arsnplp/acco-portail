@@ -8,6 +8,7 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { getTheme } from "@/lib/theme";
 import { can } from "@/lib/permissions";
 import { MessagesIcon } from "@/components/nav/messages-icon";
+import { AircallDock } from "@/components/crm/aircall-dock";
 
 /** Espace Commercial (CRM) : séparé du reste de l'admin, ouvert à l'équipe (admins et commerciaux). */
 export default async function CrmLayout({ children }: { children: React.ReactNode }) {
@@ -34,6 +35,7 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
       {children}
       <CrmBottomNav admin={droits} />
       <Rappels />
+      <AircallDock />
     </div>
   );
 }
