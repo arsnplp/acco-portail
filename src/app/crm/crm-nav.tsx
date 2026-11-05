@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  CalendarDaysIcon, ChartColumnIcon, ChevronDownIcon, EllipsisIcon, GaugeIcon, HistoryIcon, KanbanSquareIcon, ListChecksIcon, PlusIcon, SunIcon,
+  CalendarDaysIcon, ChartColumnIcon, ChevronDownIcon, EllipsisIcon, GaugeIcon, HistoryIcon, KanbanSquareIcon, ListChecksIcon, MegaphoneIcon, PlusIcon, SunIcon,
   UsersIcon, VaultIcon, XIcon, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -27,6 +27,7 @@ function secondaires({ admin, direction }: NavDroits): Item[] {
     ...(direction ? [
       { href: "/crm/leads", label: "Coffre à leads", icon: VaultIcon, hint: "Direction : générer et utiliser des listes" },
       { href: "/crm/historique", label: "Historique", icon: HistoryIcon, hint: "Tous les échanges notés" },
+      { href: "/crm/signalements", label: "Signalements", icon: MegaphoneIcon, hint: "Direction : demandes aux commerciaux, en cours et faites" },
       { href: "/admin/pilotage", label: "Pilotage", icon: GaugeIcon, hint: "Direction : MRR, activité, projection" },
     ] : []),
     ...(admin ? [{ href: "/crm/equipe", label: "Équipe", icon: UsersIcon, hint: "Comptes, rôles, droits et délégations" }] : []),
