@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { BellRingIcon, PhoneIcon, XIcon } from "lucide-react";
 import { fmtTime } from "@/lib/crm";
+import { BoutonAppel } from "@/components/crm/bouton-appel";
 
 type Rappel = { id: string; at: string; nom: string; societe: string; telephone: string | null };
 const key = (r: Rappel) => `acco-rappel:${r.id}:${r.at}`;
@@ -39,7 +40,7 @@ export function Rappels() {
             <p className="truncate text-sm font-semibold text-title">Rappel {fmtTime(r.at)} : {r.nom}</p>
             <p className="truncate text-xs text-yellow/80">{r.nom !== r.societe ? r.societe : "Relance prévue"}</p>
           </Link>
-          {r.telephone && <a href={`tel:${r.telephone.replace(/\s/g, "")}`} onClick={() => dismiss(r)} aria-label="Appeler" className="flex size-9 shrink-0 items-center justify-center rounded-full bg-yellow text-bg"><PhoneIcon size={16} /></a>}
+          {r.telephone && <BoutonAppel tel={r.telephone} onClick={() => dismiss(r)} aria-label="Appeler" className="flex size-9 shrink-0 items-center justify-center rounded-full bg-yellow text-bg"><PhoneIcon size={16} /></BoutonAppel>}
           <button type="button" onClick={() => dismiss(r)} aria-label="Fermer le rappel" className="flex size-8 shrink-0 items-center justify-center rounded-full text-yellow/80 hover:text-title"><XIcon size={16} /></button>
         </div>
       ))}

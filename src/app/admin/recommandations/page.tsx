@@ -9,6 +9,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { timeAgo } from "@/lib/format";
 import { markContacted, markSigned, closeReferral } from "./actions";
 import { GiftIcon, PhoneIcon } from "lucide-react";
+import { BoutonAppel } from "@/components/crm/bouton-appel";
 
 export const metadata = { title: "Recommandations" };
 
@@ -34,7 +35,7 @@ export default async function RecommandationsAdminPage() {
                   <p className="font-semibold text-title">{r.contactName}</p>
                   <p className="text-xs text-text">Recommandé par {r.referrer.name} · {r.kind === "LIEN" ? "via son lien" : "contact donné"} · {timeAgo(r.createdAt)}</p>
                   <p className="mt-2 text-sm text-text-strong">
-                    {r.contactPhone && <a href={`tel:${r.contactPhone.replace(/\s/g, "")}`} className="underline">{r.contactPhone}</a>}{r.contactPhone && r.contactEmail ? " · " : ""}
+                    {r.contactPhone && <BoutonAppel tel={r.contactPhone} className="underline">{r.contactPhone}</BoutonAppel>}{r.contactPhone && r.contactEmail ? " · " : ""}
                     {r.contactEmail && <a href={`mailto:${r.contactEmail}`} className="underline">{r.contactEmail}</a>}
                   </p>
                   {r.note && <p className="mt-1 text-sm text-text">« {r.note} »</p>}

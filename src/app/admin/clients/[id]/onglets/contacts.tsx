@@ -9,6 +9,7 @@ import { timelineClient } from "@/lib/timeline";
 import { ContactForm, ContactDeleteButton, ReattribuerForm } from "../forms";
 import { dedupe } from "./apercu";
 import { lien, type Ctx } from "./ctx";
+import { BoutonAppel } from "@/components/crm/bouton-appel";
 
 /** Onglet Contacts (4.3) : plusieurs interlocuteurs, contact principal, échanges reliés à chaque personne ; réattribution du référent. */
 export async function ContactsOnglet({ clientId, externe, me }: Ctx) {
@@ -33,7 +34,7 @@ export async function ContactsOnglet({ clientId, externe, me }: Ctx) {
                   <p className="flex items-center gap-1.5 truncate font-semibold text-title">{nom}{c.principal && <StarIcon size={12} className="shrink-0 fill-yellow text-yellow" aria-label="Contact principal" />}{c.optOutCommercial && <Badge tone="neutral">désinscrit des messages commerciaux</Badge>}</p>
                   <p className="truncate text-xs text-text">{[c.fonction, c.telephone, c.email].filter(Boolean).join(" · ") || "—"}</p>
                 </div>
-                {c.telephone && <a href={`tel:${c.telephone.replace(/\s/g, "")}`} className="text-xs text-text hover:text-title">Appeler</a>}
+                {c.telephone && <BoutonAppel tel={c.telephone} className="text-xs text-text hover:text-title">Appeler</BoutonAppel>}
                 {c.email && <a href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(c.email)}`} target="_blank" rel="noreferrer" className="text-xs text-text hover:text-title">Écrire</a>}
               </summary>
               <div className="grid gap-4 border-t border-border p-4 md:grid-cols-2">

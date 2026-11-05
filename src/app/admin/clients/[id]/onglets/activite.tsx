@@ -67,7 +67,7 @@ export async function ActiviteOnglet({ clientId, sp, mode, externe }: Ctx & { mo
                   <span className="rounded-full border border-border px-1.5 text-[10px]">{CANAL_LABEL[e.canal]}</span>
                 </div>
                 {e.texte && !call && !mail && <p className="mt-1 text-sm whitespace-pre-line text-text-strong">{e.texte.length > 600 ? e.texte.slice(0, 600) + "…" : e.texte}</p>}
-                {call && <AircallBloc m={call} />}
+                {call && e.echangeId && <AircallBloc echangeId={e.echangeId} m={call} />}
                 {mail && <GmailBloc m={mail} />}
               </li>
             );

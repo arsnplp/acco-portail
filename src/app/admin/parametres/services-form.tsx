@@ -19,7 +19,7 @@ const SERVICES: Array<{ title: string; icon: LucideIcon; feature?: FeatureKey; f
     keys: [{ key: "turnstile_site_key", label: "Site key (publique)", help: "À coller aussi dans le snippet des sites." }, { key: "turnstile_secret_key", label: "Secret key", help: "dash.cloudflare.com → Turnstile." }] },
   { title: "Resend (emails)", icon: MailIcon, keys: [{ key: "resend_api_key", label: "Clé API Resend", help: "resend.com → API Keys. Domaine acco-lab.fr déjà vérifié." }] },
   { title: "Aircall (téléphonie)", icon: PhoneCallIcon,
-    keys: [{ key: "aircall_api_id", label: "API ID", help: "dashboard.aircall.io → Intégrations → API Keys." }, { key: "aircall_api_token", label: "API token", help: "Métadonnées d’appels seulement ; l’activation se fait dans « IA et intégrations »." }] },
+    keys: [{ key: "aircall_api_id", label: "API ID", help: "dashboard.aircall.io → Intégrations → API Keys." }, { key: "aircall_api_token", label: "API token", help: "Les résumés, sujets, sentiment et transcription demandent une licence AI Assist sur l’utilisateur Aircall. L’activation se fait dans « IA et intégrations »." }] },
   { title: "Avis Google", icon: StarIcon, keys: [],
     note: "L’API Business Profile s’active dans « IA et intégrations », une fois l’accès validé par Google et le compte Google connecté. Sans elle, aucun avis n’est affiché (pas de données fictives)." },
 ];

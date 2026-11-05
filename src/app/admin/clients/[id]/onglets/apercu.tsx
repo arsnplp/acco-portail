@@ -17,6 +17,7 @@ import { parisDay } from "@/lib/crm";
 import { can } from "@/lib/permissions";
 import { agitCommeReferent } from "@/lib/delegations";
 import { lien, type Ctx } from "./ctx";
+import { BoutonAppel } from "@/components/crm/bouton-appel";
 
 /** Page principale (4.2) : identité, contacts, contrats, sites, référent, dernières interactions, alertes, finance, notes internes, En bref / synthèse IA. */
 export async function Apercu({ clientId, me, finance, externe, ia }: Ctx & { ia: boolean }) {
@@ -74,7 +75,7 @@ export async function Apercu({ clientId, me, finance, externe, ia }: Ctx & { ia:
         <SectionTitle icon={UsersIcon} action={externe ? undefined : <InfosForm client={{ id: client.id, name: client.name, address: client.address, phone: client.phone, email: client.email, siren: client.siren, secteur: client.secteur }} />}>Identité</SectionTitle>
         <Card className="space-y-2">
           <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
-            {client.phone && <a href={`tel:${client.phone.replace(/\s/g, "")}`} className="flex items-center gap-1.5 text-title hover:underline"><PhoneIcon size={14} className="text-text" aria-hidden /> {client.phone}</a>}
+            {client.phone && <BoutonAppel tel={client.phone} className="flex items-center gap-1.5 text-title hover:underline"><PhoneIcon size={14} className="text-text" aria-hidden /> {client.phone}</BoutonAppel>}
             {client.email && <a href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(client.email)}`} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-title hover:underline"><MessageSquareIcon size={14} className="text-text" aria-hidden /> {client.email}</a>}
             {client.address && <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-text-strong hover:underline"><MapPinIcon size={14} className="text-text" aria-hidden /> {client.address}</a>}
             {client.siren && <span className="text-text">SIREN {client.siren}</span>}
@@ -94,7 +95,7 @@ export async function Apercu({ clientId, me, finance, externe, ia }: Ctx & { ia:
                   <p className="flex items-center gap-1.5 truncate font-semibold text-title">{contactName(c) ?? "Contact"}{c.principal && <StarIcon size={12} className="shrink-0 fill-yellow text-yellow" aria-label="Contact principal" />}{c.optOutCommercial && <Badge tone="neutral">désinscrit</Badge>}</p>
                   <p className="truncate text-xs text-text">{[c.fonction, c.telephone, c.email].filter(Boolean).join(" · ") || "—"}</p>
                 </div>
-                {c.telephone && <a href={`tel:${c.telephone.replace(/\s/g, "")}`} className="text-xs text-text hover:text-title">Appeler</a>}
+                {c.telephone && <BoutonAppel tel={c.telephone} className="text-xs text-text hover:text-title">Appeler</BoutonAppel>}
                 {c.email && <a href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(c.email)}`} target="_blank" rel="noreferrer" className="text-xs text-text hover:text-title">Écrire</a>}
               </li>
             ))}

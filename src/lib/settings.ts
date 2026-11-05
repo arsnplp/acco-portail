@@ -25,7 +25,7 @@ export const FEATURES = {
   feature_claude_code: { label: "Claude Code sur les demandes de modification (worker du Mac)", needs: ["claude_code_api_key"] as SecretKey[], defaut: false },
   feature_turnstile: { label: "Anti-spam Cloudflare Turnstile sur les formulaires", needs: ["turnstile_site_key", "turnstile_secret_key"] as SecretKey[], defaut: true },
   feature_business_api: { label: "Vrais avis Google (API Business Profile validée)", needs: [] as SecretKey[], defaut: false },
-  feature_aircall: { label: "Aircall : métadonnées des appels (date, durée, numéro, collaborateur) dans l’historique", needs: ["aircall_api_id", "aircall_api_token"] as SecretKey[], defaut: true },
+  feature_aircall: { label: "Aircall : appels, enregistrements et analyses IA dans l’historique, click-to-call", needs: ["aircall_api_id", "aircall_api_token"] as SecretKey[], defaut: true },
   feature_gmail: { label: "Gmail : lecture des échanges avec les clients et envoi des emails depuis l’app", needs: [] as SecretKey[], defaut: true },
   feature_calendar: { label: "Google Agenda : RDV et échéances dans les agendas des membres", needs: [] as SecretKey[], defaut: true },
   feature_search_console: { label: "Google Search Console : chiffres SEO du portail (tâche quotidienne)", needs: [] as SecretKey[], defaut: true },

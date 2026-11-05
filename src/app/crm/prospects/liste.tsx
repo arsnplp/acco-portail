@@ -133,7 +133,7 @@ export function Liste({ rows, team, isAdmin }: { rows: Row[]; team: Member[]; is
                             {call && <AircallTitre m={call} />}<span>{fmtDayTime(e.date)}</span>{e.auteur && !(call && e.origine === "aircall") && <span>· {e.auteur}</span>}
                           </p>
                           {e.notes && e.origine !== "aircall" && !mail && <p className="mt-0.5 whitespace-pre-line text-text-strong">{e.notes.length > 400 ? e.notes.slice(0, 400) + "…" : e.notes}</p>}
-                          {call && <AircallBloc m={call} compact />}
+                          {call && <AircallBloc echangeId={e.id} m={call} compact />}
                           {mail && <GmailBloc m={mail} />}
                         </div>
                       );

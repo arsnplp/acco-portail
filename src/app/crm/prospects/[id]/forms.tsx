@@ -13,6 +13,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { SectionTitle } from "@/components/ui/card";
 import { AircallBloc, AircallTitre, GmailBloc, isAircallMeta, isGmailMeta } from "@/components/crm/echange-detail";
 import { assignProspect, deleteContact, deleteEchange, deleteProspect, logEchange, saveContact, setRdvResultat, syncProspectNow, updateProspect, type CrmState } from "../../actions";
+import { BoutonAppel } from "@/components/crm/bouton-appel";
 
 const box = "rounded-card border border-border bg-surface p-4";
 
@@ -187,7 +188,7 @@ export function Historique({ prospectId, items, meId, isAdmin, syncInfo }: { pro
                   {canDelete(e) && <button type="button" onClick={() => confirm("Supprimer cet échange ?") && start(() => deleteEchange(e.id))} className="ml-auto hidden text-muted hover:text-pink group-hover:inline" aria-label="Supprimer"><Trash2Icon size={13} /></button>}
                 </div>
                 {e.notes && e.origine !== "aircall" && !mail && <p className="mt-1 text-sm whitespace-pre-line text-text-strong">{e.notes.length > 600 ? e.notes.slice(0, 600) + "…" : e.notes}</p>}
-                {call && <AircallBloc m={call} />}
+                {call && <AircallBloc echangeId={e.id} m={call} />}
                 {mail && <GmailBloc m={mail} />}
               </li>
             );
@@ -238,7 +239,7 @@ export function Contacts({ prospectId, contacts }: { prospectId: string; contact
               <p className="flex items-center gap-1.5 truncate text-sm font-semibold text-title">{[c.prenom, c.nom].filter(Boolean).join(" ")}{c.principal && <StarIcon size={12} className="shrink-0 fill-yellow text-yellow" aria-label="Contact principal" />}</p>
               <p className="truncate text-xs text-text">{[c.fonction, c.telephone, c.email].filter(Boolean).join(" · ") || "—"}</p>
             </div>
-            {c.telephone && <a href={`tel:${c.telephone.replace(/\s/g, "")}`} className="text-xs text-text hover:text-title">Appeler</a>}
+            {c.telephone && <BoutonAppel tel={c.telephone} className="text-xs text-text hover:text-title">Appeler</BoutonAppel>}
             {c.email && <a href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(c.email)}`} target="_blank" rel="noreferrer" className="text-xs text-text hover:text-title">Écrire</a>}
             <button type="button" onClick={() => setEditing(c.id)} aria-label="Modifier" className="text-text hover:text-title"><PencilIcon size={14} /></button>
             <button type="button" onClick={() => confirm("Supprimer ce contact ?") && start(() => deleteContact(c.id))} aria-label="Supprimer" className="text-text hover:text-pink"><Trash2Icon size={14} /></button>

@@ -11,6 +11,7 @@ import { COLONNES, COLONNES_PRINCIPALES, LISTE_STATUT, ficheGoogle, type Colonne
 import { DeleteLeadButton, ListActions } from "../forms";
 import { StatsPanel } from "../stats-panel";
 import { listeStats } from "@/lib/leads/stats";
+import { BoutonAppel } from "@/components/crm/bouton-appel";
 
 export const metadata = { title: "Liste de leads" };
 
@@ -38,7 +39,7 @@ export default async function LeadListePage({ params, searchParams }: { params: 
     if (v === null || v === undefined || v === "") return <span className="text-muted">–</span>;
     const s = String(v);
     if ((c === "Site web" || c === "Facebook" || c === "Instagram") && /^https?:/.test(s)) return <a href={s} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-blue hover:underline">{c === "Site web" ? s.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "") : c}<ExternalLinkIcon size={11} /></a>;
-    if (c === "Téléphone") return <a href={`tel:${s.replace(/\s/g, "")}`} className="whitespace-nowrap hover:underline">{s}</a>;
+    if (c === "Téléphone") return <BoutonAppel tel={s} className="whitespace-nowrap hover:underline">{s}</BoutonAppel>;
     if (c === "Score") return <span className={cn("rounded-full px-2 py-0.5 text-xs font-bold tabular-nums", scoreCls(Number(s)))}>{s}</span>;
     if (c === "Faiblesses SEO") return <span className="block max-w-72 text-xs text-text">{s.split(" | ").join(" · ")}</span>;
     return s;

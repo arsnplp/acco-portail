@@ -7,6 +7,7 @@ import { ExternalLinkIcon, FileSearchIcon, InfoIcon, MapPinIcon, SparklesIcon } 
 import { Dialog } from "@/components/ui/dialog";
 import { COLONNES, ficheGoogle, type Colonne, type LeadRow } from "@/lib/leads/colonnes";
 import { enrichProspect } from "@/app/crm/actions";
+import { BoutonAppel } from "@/components/crm/bouton-appel";
 
 /** Infos d'un lead du coffre (listeId renseigné) ou infos générées depuis la fiche (« Générer les infos »). */
 type LeadInfo = { listeId: string | null; liste: string | null; generee: string; donnees: LeadRow } | null;
@@ -27,7 +28,7 @@ function valeur(c: Colonne, v: unknown, d: LeadRow) {
   if (v === null || v === undefined || v === "") return <span className="text-muted">–</span>;
   const s = String(v);
   if (/^https?:\/\//.test(s)) return <a href={s} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 break-all text-blue hover:underline">{s.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}<ExternalLinkIcon size={11} /></a>;
-  if (c === "Téléphone") return <a href={`tel:${s.replace(/\s/g, "")}`} className="hover:underline">{s}</a>;
+  if (c === "Téléphone") return <BoutonAppel tel={s} className="hover:underline">{s}</BoutonAppel>;
   if (c === "Faiblesses SEO") return <span>{s.split(" | ").join(" · ")}</span>;
   if (c === "État") return s === "A" ? "Active" : s === "C" ? "Fermée" : s;
   if (c === "Fiabilité identité") return `${s} / 100`;

@@ -18,6 +18,7 @@ import { moveProspect } from "../actions";
 import { Logo } from "@/components/crm/logo";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { multi } from "@/lib/filtres";
+import { BoutonAppel } from "@/components/crm/bouton-appel";
 
 export type CardData = {
   id: string; societe: string; statut: ProspectStatut; relanceAt: string | null; contact: string | null;
@@ -157,9 +158,9 @@ function Card({ card, member, overlay }: { card: CardData; member?: Member; over
           {card.contact && <p className="truncate text-xs text-text">{card.societe}</p>}
         </div>
         {card.telephone && (
-          <a href={`tel:${card.telephone.replace(/\s/g, "")}`} onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} aria-label={`Appeler ${card.contact ?? card.societe}`} className="flex size-8 shrink-0 items-center justify-center rounded-full border border-border text-text hover:border-green hover:text-green">
+          <BoutonAppel tel={card.telephone} stopPropagation aria-label={`Appeler ${card.contact ?? card.societe}`} className="flex size-8 shrink-0 items-center justify-center rounded-full border border-border text-text hover:border-green hover:text-green">
             <PhoneIcon size={14} />
-          </a>
+          </BoutonAppel>
         )}
       </div>
       <div className="mt-2.5 flex items-center gap-2 text-[11px]">

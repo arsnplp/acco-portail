@@ -9,6 +9,7 @@ import { Card, SectionTitle } from "@/components/ui/card";
 import { CLOS, STATUT, contactName, fmtDay, fmtTime, relanceInfo, teamName, todayBounds } from "@/lib/crm";
 import { EnablePush } from "@/components/push/enable-push";
 import { UrlSelect } from "@/components/crm/url-select";
+import { BoutonAppel } from "@/components/crm/bouton-appel";
 
 /** Relances sans heure : seulement les fiches en cours de suivi (« À contacter » se travaille en session depuis le pipeline). */
 const JOURNEE: ProspectStatut[] = ["A_RELANCER", "POSER_RDV", "A_SIGNER"];
@@ -170,7 +171,7 @@ export default async function MaJournee({ searchParams }: { searchParams: Promis
                   <span className={cn("flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold", e.cls)}>
                     {s.fait && <CheckIcon size={11} aria-hidden />}{e.label === "Maintenant" && <span className="size-1.5 animate-pulse rounded-full bg-yellow" />}{e.label}
                   </span>
-                  {s.phone && !s.fait && <a href={`tel:${s.phone.replace(/\s/g, "")}`} aria-label="Appeler" className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border text-text hover:border-green hover:text-green"><PhoneIcon size={15} /></a>}
+                  {s.phone && !s.fait && <BoutonAppel tel={s.phone} aria-label="Appeler" className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border text-text hover:border-green hover:text-green"><PhoneIcon size={15} /></BoutonAppel>}
                 </div>
               </li>
             );
@@ -191,7 +192,7 @@ export default async function MaJournee({ searchParams }: { searchParams: Promis
                   <p className="truncate text-xs text-text">{[contactName(c) ? p.societe : null, STATUT[p.statut].label, equipe && p.commercial ? teamName(p.commercial) : null].filter(Boolean).join(" · ")}</p>
                 </Link>
                 <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium", r.state === "late" ? "bg-pink/15 text-pink" : "bg-yellow/15 text-yellow")}>{r.label}</span>
-                {phone && <a href={`tel:${phone.replace(/\s/g, "")}`} aria-label="Appeler" className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border text-text hover:border-green hover:text-green"><PhoneIcon size={15} /></a>}
+                {phone && <BoutonAppel tel={phone} aria-label="Appeler" className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border text-text hover:border-green hover:text-green"><PhoneIcon size={15} /></BoutonAppel>}
               </li>
             );
           })}
