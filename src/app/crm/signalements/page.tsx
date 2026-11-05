@@ -7,24 +7,35 @@ import { redirect } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { fmtDayTime, teamName } from "@/lib/crm";
 import { SectionTitle } from "@/components/ui/card";
+import { MODULES } from "@/lib/roles";
+import { bascule, multi } from "@/lib/filtres";
+import { Avatar } from "@/components/ui/avatar";
+import { initialsOf } from "@/lib/crm";
 
 export const metadata = { title: "Signalements" };
 
 /** Direction : toutes les demandes faites aux commerciaux sur des fiches, en cours puis faites (pour vérifier le travail). */
-export default async function SignalementsPage({ searchParams }: { searchParams: Promise<{ v?: string }> }) {
+export default async function SignalementsPage({ searchParams }: { searchParams: Promise<{ v?: string; c?: string }> }) {
   const me = await requireProspection();
-  if (!can(me, "pilotage")) redirect("/crm");
+  if (!can(me, "pilotage")) redirect("/crm"); // Direction seulement (le menu ne le propose qu'à elle aussi)
   const sp = await searchParams;
   const vue = sp.v === "faits" ? "faits" : "cours";
+  // Tri par commercial : plusieurs cochés à la fois, rien de coché = tous.
+  const whos = multi(sp.c);
+  const parCommercial = whos.length ? { versId: { in: whos } } : {};
+  const href = (q: { v?: string; c?: string[] }) => { const u = new URLSearchParams(); const v = q.v ?? vue; if (v === "faits") u.set("v", "faits"); const c = q.c ?? whos; if (c.length) u.set("c", c.join(",")); const qs = u.toString(); return `/crm/signalements${qs ? `?${qs}` : ""}`; };
   const include = { prospect: { select: { id: true, societe: true, commercial: { select: { firstName: true, email: true } } } }, de: { select: { firstName: true, email: true } }, vers: { select: { firstName: true, email: true } } } as const;
-  const [enCours, faits, nFaits] = await Promise.all([
-    prisma.signalement.findMany({ where: { traiteAt: null }, orderBy: { createdAt: "desc" }, include }),
-    vue === "faits" ? prisma.signalement.findMany({ where: { traiteAt: { not: null } }, orderBy: { traiteAt: "desc" }, take: 200, include }) : [],
-    prisma.signalement.count({ where: { traiteAt: { not: null } } }),
+  const [enCours, faits, nFaits, team, counts] = await Promise.all([
+    prisma.signalement.findMany({ where: { traiteAt: null, ...parCommercial }, orderBy: { createdAt: "desc" }, include }),
+    vue === "faits" ? prisma.signalement.findMany({ where: { traiteAt: { not: null }, ...parCommercial }, orderBy: { traiteAt: "desc" }, take: 200, include }) : [],
+    prisma.signalement.count({ where: { traiteAt: { not: null }, ...parCommercial } }),
+    prisma.user.findMany({ where: { role: { in: MODULES.prospection } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true, avatarUrl: true } }),
+    prisma.signalement.groupBy({ by: ["versId"], where: vue === "faits" ? { traiteAt: { not: null } } : { traiteAt: null }, _count: true }),
   ]);
   const items = vue === "faits" ? faits : enCours;
+  const countOf = (id: string) => counts.find((c) => c.versId === id)?._count ?? 0;
   const onglet = (v: string, label: string, n: number) => (
-    <Link href={v === "cours" ? "/crm/signalements" : "/crm/signalements?v=faits"} className={cn("rounded-full px-3 py-1.5 text-sm", vue === v ? "bg-title font-semibold text-bg" : "text-text hover:text-title")}>{label} <span className={vue === v ? "opacity-70" : "text-xs"}>{n}</span></Link>
+    <Link href={href({ v })} className={cn("rounded-full px-3 py-1.5 text-sm", vue === v ? "bg-title font-semibold text-bg" : "text-text hover:text-title")}>{label} <span className={vue === v ? "opacity-70" : "text-xs"}>{n}</span></Link>
   );
 
   return (
@@ -35,6 +46,19 @@ export default async function SignalementsPage({ searchParams }: { searchParams:
           <p className="mt-1 text-sm text-text">Demandes de la Direction aux commerciaux sur des fiches prospects : en cours, puis faites pour vérification.</p>
         </div>
         <div className="flex rounded-full border border-border p-0.5">{onglet("cours", "En cours", enCours.length)}{onglet("faits", "Faits", nFaits)}</div>
+      </div>
+
+      <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
+        <Link href={href({ c: [] })} className={cn("flex shrink-0 items-center gap-2 rounded-full border py-1 pr-3 pl-1", whos.length === 0 ? "border-title bg-surface-2" : "border-border hover:border-text")}>
+          <span className="flex size-7 items-center justify-center rounded-full bg-surface-2 text-[10px] font-semibold text-title">Tous</span>
+          <span className="text-sm text-title">Commerciaux</span><span className="text-xs text-text">{counts.reduce((a, c) => a + c._count, 0)}</span>
+        </Link>
+        {team.map((u) => (
+          <Link key={u.id} href={href({ c: bascule(whos, u.id) })} title="Cliquer pour ajouter ou retirer" className={cn("flex shrink-0 items-center gap-2 rounded-full border py-1 pr-3 pl-1", whos.includes(u.id) ? "border-title bg-surface-2" : "border-border hover:border-text")}>
+            <Avatar initials={initialsOf(teamName(u))} src={u.avatarUrl} size={28} />
+            <span className="text-sm text-title">{teamName(u)}</span><span className="text-xs text-text">{countOf(u.id)}</span>
+          </Link>
+        ))}
       </div>
 
       <div className="mt-6">
