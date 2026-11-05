@@ -284,7 +284,7 @@ export async function rattacherAppel(echangeId: string, clientId: string) {
   await prisma.echange.updateMany({ where: { id: echangeId, origine: "aircall", prospectId: null, clientId: null }, data: { clientId, prospectId: p?.id ?? null } });
 }
 
-type AircallUser = { id: number; name: string; email: string; available: boolean; availability_status: string; default_number_id: number | null; numbers: { id: number; name: string; digits: string }[] };
+type AircallUser = { id: number; name: string; email: string; available: boolean; availability_status: string; default_number_id?: number | null; numbers?: { id: number; name: string; digits: string }[] };
 const USERS_TTL = 10 * 60_000;
 /** Utilisateurs Aircall (id, numéro par défaut), gardés 10 minutes en mémoire. */
 async function aircallUsers() {
@@ -308,13 +308,17 @@ export async function lancerAppel(emailCollaborateur: string, tel: string): Prom
   if (!to) return { ok: false, raison: "numero", message: "Numéro invalide." };
   let users: AircallUser[];
   try { users = await aircallUsers(); } catch (e) { return { ok: false, raison: "erreur", message: (e as Error).message }; }
-  const u = users.find((x) => x.email.toLowerCase() === emailCollaborateur.toLowerCase());
+  let u = users.find((x) => x.email.toLowerCase() === emailCollaborateur.toLowerCase());
   if (!u) return { ok: false, raison: "pas_de_compte", message: "Votre adresse n’a pas de compte Aircall : l’appel passe par le téléphone." };
-  const numberId = u.default_number_id ?? u.numbers[0]?.id;
+  // La liste /users ne donne pas toujours les lignes : on complète avec la fiche de l'utilisateur.
+  if (!u.default_number_id && !u.numbers?.length) {
+    try { u = (await get<{ user: AircallUser }>(`/users/${u.id}`))?.user ?? u; } catch { /* on tentera sans */ }
+  }
+  const numberId = u.default_number_id ?? u.numbers?.[0]?.id;
   if (!numberId) return { ok: false, raison: "pas_de_compte", message: "Aucune ligne Aircall n’est associée à votre compte." };
   try {
     const r = await post(`/users/${u.id}/calls`, { number_id: numberId, to });
-    if (r.ok) return { ok: true, ligne: u.numbers.find((n) => n.id === numberId)?.name ?? null };
+    if (r.ok) return { ok: true, ligne: u.numbers?.find((n) => n.id === numberId)?.name ?? null };
     if (r.status === 405) return { ok: false, raison: "indisponible", message: "Vous n’êtes pas disponible dans Aircall : ouvrez Aircall Workspace sur l’ordinateur, passez en « Disponible » et réessayez." };
     if (r.status === 400) return { ok: false, raison: "numero", message: "Aircall refuse ce numéro (ligne inactive ou numéro invalide)." };
     if (r.status === 401 || r.status === 403) return { ok: false, raison: "erreur", message: "Aircall refuse l’accès : vérifiez les clés API." };
