@@ -69,6 +69,17 @@ async function main() {
   const bilan = new Map<string, number>(); const add = (k: string) => bilan.set(k, (bilan.get(k) ?? 0) + 1);
 
   await prisma.$transaction(async (tx) => {
+    // Références ACCO-<année>-<n> numérotées dans la transaction (nouvelleReference() ne verrait pas les contrats créés ici).
+    const compteurs = new Map<number, number>();
+    const reference = async (d: Date) => {
+      const annee = d.getUTCFullYear();
+      if (!compteurs.has(annee)) {
+        const derniers = await tx.contrat.findMany({ where: { reference: { startsWith: `ACCO-${annee}-` } }, select: { reference: true } });
+        compteurs.set(annee, derniers.reduce((m, c) => Math.max(m, parseInt(c.reference.slice(`ACCO-${annee}-`.length), 10) || 0), 0));
+      }
+      const n = compteurs.get(annee)! + 1; compteurs.set(annee, n);
+      return `ACCO-${annee}-${String(n).padStart(4, "0")}`;
+    };
     for (const r of rows) {
       const legacyId = str(r.ID_Client), brut = str(r.Nom_Societe);
       if (!legacyId || !brut) continue;
@@ -89,7 +100,6 @@ async function main() {
       if (!fin) q.push("fin d’engagement");
       if (!x.contact) q.push("contact (nom, email)");
       q.push("SIREN", "adresse", "formule");
-      manques.push(`${name} : ${q.join(", ")}`);
 
       // Client du portail
       const existing = clientsExistants.find((c) => norm(c.name) === norm(name));
@@ -106,11 +116,28 @@ async function main() {
         add("sites créés");
       }
 
-      // Abonnement mensuel, ou paiement unique
-      if (!(await tx.subscription.findFirst({ where: { clientId } }))) {
-        if (x.paiementUnique) { await tx.subscription.create({ data: { clientId, label: "Création du site (payé en une fois par virement)", billing: "PONCTUEL", priceCents: Math.round(x.paiementUnique * 100), startedAt: debut ?? new Date(), commitmentEndsAt: fin } }); add("paiements uniques"); }
-        else if (tarif) { await tx.subscription.create({ data: { clientId, label: "Abonnement site", billing: "MENSUEL", priceCents: Math.round(tarif * 100), startedAt: debut ?? new Date(), commitmentEndsAt: fin } }); add("abonnements mensuels"); }
-      }
+      // Contrat signé (c'est lui qui alimente l'échéance, le mensuel et le MRR), avec le jour de prélèvement de la feuille
+      const jour = num(r.Jour_Facturation);
+      const siteId = (await tx.site.findFirst({ where: { clientId }, select: { id: true } }))?.id ?? null;
+      let contrat = await tx.contrat.findFirst({ where: { clientId } });
+      if (!contrat) {
+        const mois = debut && fin ? Math.max(1, Math.round((fin.getTime() - debut.getTime()) / (30.44 * 86400_000))) : 12;
+        contrat = await tx.contrat.create({ data: {
+          reference: await reference(debut ?? new Date()), clientId, siteId, commercialId, statut: "SIGNE", titre: x.paiementUnique ? "Création du site" : "Abonnement site",
+          montantMensuelHt: x.paiementUnique ? 0 : Math.round((tarif ?? 0) * 100), montantPonctuelHt: x.paiementUnique ? Math.round(x.paiementUnique * 100) : 0,
+          moyenPaiement: x.paiementUnique ? "VIREMENT" : null, dureeMois: mois, reconductionMois: 12, jourPrelevement: jour && jour >= 1 && jour <= 31 ? Math.round(jour) : null,
+          debutEngagement: debut, finEngagement: fin, signeAt: debut, premierPaiementAt: debut, sourceFinanciere: "import",
+        } });
+        add("contrats signés");
+      } else if (jour && !contrat.jourPrelevement) await tx.contrat.update({ where: { id: contrat.id }, data: { jourPrelevement: Math.round(jour) } });
+      if (!jour) q.push("jour de prélèvement");
+
+      // Ligne d'abonnement rattachée au contrat (pas comptée deux fois dans le MRR)
+      const sub = await tx.subscription.findFirst({ where: { clientId } });
+      if (!sub) {
+        if (x.paiementUnique) { await tx.subscription.create({ data: { clientId, siteId, contratId: contrat.id, label: "Création du site (payé en une fois par virement)", billing: "PONCTUEL", priceCents: Math.round(x.paiementUnique * 100), startedAt: debut ?? new Date(), commitmentEndsAt: fin } }); add("paiements uniques"); }
+        else if (tarif) { await tx.subscription.create({ data: { clientId, siteId, contratId: contrat.id, label: "Abonnement site", billing: "MENSUEL", priceCents: Math.round(tarif * 100), startedAt: debut ?? new Date(), commitmentEndsAt: fin } }); add("abonnements mensuels"); }
+      } else if (!sub.contratId) await tx.subscription.update({ where: { id: sub.id }, data: { contratId: contrat.id } });
 
       // Fiche commerciale « Gagné »
       let prospect = await tx.prospect.findFirst({ where: { OR: [{ legacyId }, { clientId }] } });
@@ -122,6 +149,7 @@ async function main() {
         const dejaLa = await tx.prospectContact.findFirst({ where: { prospectId: prospect.id, email: x.contact.email } });
         if (!dejaLa) { await tx.prospectContact.create({ data: { prospectId: prospect.id, prenom: x.contact.prenom ?? null, nom: x.contact.nom ?? null, email: x.contact.email, principal: true } }); add("contacts"); }
       }
+      manques.push(`${name} : ${q.join(", ")}`);
     }
     if (!confirm) throw new Error("APERCU");
   }, { timeout: 120_000, maxWait: 10_000 }).catch((e) => { if ((e as Error).message !== "APERCU") throw e; });

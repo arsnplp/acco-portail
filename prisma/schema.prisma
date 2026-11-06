@@ -401,6 +401,7 @@ model Contrat {
   dureeMois               Int            @default(24)
   reconductionMois        Int            @default(24)
   preavisJours            Int            @default(30)
+  jourPrelevement         Int? // jour du mois où le client est prélevé (1 à 31)
   debutEngagement         DateTime?
   finEngagement           DateTime?
   contenu                 Json? // clauses et variables du modèle au moment de la génération

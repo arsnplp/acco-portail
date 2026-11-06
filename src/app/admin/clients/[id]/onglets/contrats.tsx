@@ -44,7 +44,7 @@ export async function ContratsOnglet({ clientId, finance }: Ctx) {
               </div>
               <p className="mt-1 text-sm text-text-strong">
                 {finance ? <>{fmtPrice(c.montantMensuelHt)} HT / mois{c.montantPonctuelHt ? ` + ${fmtPrice(c.montantPonctuelHt)} ponctuel` : ""} · </> : null}
-                engagement {c.dureeMois} mois{c.debutEngagement ? ` du ${fmtDate(c.debutEngagement)}` : ""}{c.finEngagement ? ` au ${fmtDate(c.finEngagement)}` : ""} · reconduction {c.reconductionMois} mois · préavis {c.preavisJours} j
+                engagement {c.dureeMois} mois{c.debutEngagement ? ` du ${fmtDate(c.debutEngagement)}` : ""}{c.finEngagement ? ` au ${fmtDate(c.finEngagement)}` : ""}{c.jourPrelevement ? ` · prélevé le ${c.jourPrelevement} de chaque mois` : ""} · reconduction {c.reconductionMois} mois · préavis {c.preavisJours} j
               </p>
               <p className="text-xs text-text">{c.signeAt ? `Signé le ${fmtDate(c.signeAt)}${c.signataireNom ? ` par ${c.signataireNom}` : ""}` : c.envoyeAt ? `Envoyé le ${fmtDate(c.envoyeAt)}` : "Brouillon"}{c.moyenPaiement ? ` · ${MOYEN_PAIEMENT_LABEL[c.moyenPaiement]}` : ""}{c.scanPath ? " · scan signé joint" : ""}</p>
               {c.lignes.length > 0 && <ul className="mt-2 space-y-0.5 text-xs text-text">{c.lignes.map((l) => <li key={l.id}>{l.libelle}{l.site ? ` → ${l.site.name}` : ""}{finance ? ` · ${fmtPrice(l.montantHt)}${l.billing === "MENSUEL" ? " / mois" : ""}` : ""}</li>)}</ul>}
