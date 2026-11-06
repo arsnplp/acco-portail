@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { ClipboardListIcon } from "lucide-react";
+import { ClipboardListIcon, PaperclipIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireTeam } from "@/lib/auth";
 import { requireSiteAcces } from "@/lib/perimetre";
@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { BRIEF_SECTIONS, ETAT_SECTION, chargerBrief, completude, lireContenu, sectionDe } from "@/lib/brief";
 import { VALIDATION_LABEL } from "@/lib/validations";
 import { fmtDayTime, teamName } from "@/lib/crm";
-import { DemanderValidationButton, DerogationForm, SectionForm } from "./form";
+import { DemanderValidationButton, DerogationForm, PiecesBriefForm, SectionForm, SupprimerPieceButton } from "./form";
+import { DocumentRow } from "@/components/documents/list";
 
 export const metadata = { title: "Brief" };
 
@@ -20,6 +21,7 @@ export default async function BriefPage({ params }: { params: Promise<{ id: stri
   await requireSiteAcces(me, id);
   const site = await prisma.site.findUnique({ where: { id }, select: { id: true, name: true, clientId: true, client: { select: { name: true, commercial: { select: { firstName: true, email: true } } } } } });
   if (!site) notFound();
+  const pieces = await prisma.document.findMany({ where: { siteId: id, kind: "BRIEF" }, orderBy: { createdAt: "desc" } });
   const [brief, validations] = await Promise.all([chargerBrief(id), prisma.validation.findMany({ where: { siteId: id, type: { in: ["BRIEF_COMMERCIAL", "BRIEF_TECHNIQUE"] } }, orderBy: { createdAt: "asc" }, include: { assigne: { select: { firstName: true, email: true } }, decidePar: { select: { firstName: true, email: true } } } })]);
   const contenu = lireContenu(brief.contenu);
   const c = completude(contenu, !!brief.derogationAt);
@@ -42,6 +44,17 @@ export default async function BriefPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
       </div>
+
+      {/* Pièces jointes du brief : logos, textes, photos, cahier des charges… Internes à l'équipe, jamais montrées au client. */}
+      <section className="mt-5 rounded-card border border-border bg-surface p-4">
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <PaperclipIcon size={14} className="text-text" aria-hidden />
+          <p className="font-semibold text-title">Pièces jointes</p>
+          <span className="text-xs text-text">{pieces.length === 0 ? "aucune pour l’instant" : `${pieces.length} fichier${pieces.length > 1 ? "s" : ""}`} · logos, textes, photos, cahier des charges, visibles de l’équipe seulement</span>
+        </div>
+        {pieces.length > 0 && <div className="mb-3 grid gap-2">{pieces.map((d) => <DocumentRow key={d.id} d={d} action={externe ? undefined : <SupprimerPieceButton siteId={id} docId={d.id} />} />)}</div>}
+        {!externe && <PiecesBriefForm siteId={id} />}
+      </section>
 
       <div className="mt-5 space-y-3">
         {BRIEF_SECTIONS.map((s) => {

@@ -8,7 +8,7 @@ export const metadata = { title: "Documents du site" };
 export default async function SiteDocumentsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { site } = await requireClientSite(id);
-  const documents = await prisma.document.findMany({ where: { siteId: site.id, kind: { not: "FACTURE" } }, orderBy: { createdAt: "desc" } });
+  const documents = await prisma.document.findMany({ where: { siteId: site.id, kind: { notIn: ["FACTURE", "BRIEF"] } }, orderBy: { createdAt: "desc" } });
   return (
     <div>
       <div className="mb-4 flex items-center justify-between"><h2 className="text-lg">Documents de ce site</h2><Link href="/compte/documents" className="text-sm text-text hover:text-title">Tous mes documents →</Link></div>

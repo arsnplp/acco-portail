@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useTransition } from "react";
+import { Trash2Icon } from "lucide-react";
 import { Field, FormError, Input, Select, Textarea } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { demanderValidationBrief, derogerBrief, saveBriefSection, type BriefState } from "./actions";
+import { demanderValidationBrief, derogerBrief, deposerPieceBrief, saveBriefSection, supprimerPieceBrief, type BriefState } from "./actions";
 
 const ETATS: Array<[string, string]> = [["ATTENDU", "Attendu"], ["RECU", "Reçu"], ["INCOMPLET", "Incomplet"], ["VALIDE", "Validé"]];
 
@@ -42,5 +43,27 @@ export function DerogationForm({ siteId }: { siteId: string }) {
       <FormError message={state.error} />
       {state.ok && <p className="w-full text-xs text-green">{state.ok}</p>}
     </form>
+  );
+}
+
+/** Dépôt de pièces jointes au brief : un ou plusieurs fichiers à la fois (25 Mo max chacun). */
+export function PiecesBriefForm({ siteId }: { siteId: string }) {
+  const [state, action] = useActionState<BriefState, FormData>(deposerPieceBrief.bind(null, siteId), {});
+  return (
+    <form action={action} key={state.ok ?? "form"} className="space-y-2">
+      <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
+        <Field label="Titre" hint="(facultatif, pour un seul fichier)"><Input name="title" placeholder="Logo vectoriel, textes de la page d’accueil, photos de l’atelier…" /></Field>
+        <Field label="Fichiers"><Input type="file" name="file" multiple required accept=".pdf,image/*,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.svg,.ai,.psd" className="file:mr-3 file:rounded-sm file:border-0 file:bg-surface-2 file:px-3 file:py-1 file:text-sm file:text-title" /></Field>
+      </div>
+      <FormError message={state.error} />
+      <div className="flex items-center gap-3"><SubmitButton size="sm">Déposer</SubmitButton>{state.ok && <span className="text-sm text-green">{state.ok}</span>}</div>
+    </form>
+  );
+}
+
+export function SupprimerPieceButton({ siteId, docId }: { siteId: string; docId: string }) {
+  const [pending, start] = useTransition();
+  return (
+    <button type="button" disabled={pending} onClick={() => confirm("Supprimer cette pièce du brief ?") && start(() => supprimerPieceBrief(siteId, docId))} aria-label="Supprimer" className="flex size-10 items-center justify-center rounded-full border border-border text-text hover:text-pink disabled:opacity-60"><Trash2Icon size={15} /></button>
   );
 }

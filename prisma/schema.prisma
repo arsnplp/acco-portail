@@ -224,6 +224,7 @@ enum DocumentKind {
   FACTURE
   DEVIS
   AUTRE
+  BRIEF // pièce jointe au brief d'un site (logos, textes, photos, cahier des charges) : interne à l'équipe
 }
 
 enum ReferralKind {

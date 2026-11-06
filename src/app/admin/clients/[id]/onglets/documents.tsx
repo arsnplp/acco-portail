@@ -7,7 +7,7 @@ import { fmtDate } from "@/lib/format";
 import { CONTRAT_STATUT } from "@/lib/contrats";
 import type { Ctx } from "./ctx";
 
-const KIND = { CONTRAT: "Contrat", DEVIS: "Devis", AUTRE: "Document", FACTURE: "Facture" } as const;
+const KIND = { CONTRAT: "Contrat", DEVIS: "Devis", AUTRE: "Document", FACTURE: "Facture", BRIEF: "Pièce du brief" } as const;
 
 /** Onglet Documents (4.3, 00.10) : contrats signés, devis, briefs, pièces déposées et attendues, réception signée. Pas de factures (Pennylane). */
 export async function DocumentsOnglet({ clientId, externe }: Ctx) {

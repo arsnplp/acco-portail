@@ -9,6 +9,8 @@ import { chargerBrief, completude, lireContenu, majSection, type EtatSection } f
 import { demanderValidation, peutDecider } from "@/lib/validations";
 import { logActivite } from "@/lib/activite";
 import { teamName } from "@/lib/crm";
+import { uploadFile } from "@/lib/storage";
+import { createSupabaseAdmin } from "@/lib/supabase/admin";
 
 export type BriefState = { error?: string; ok?: string };
 const ETATS: EtatSection[] = ["ATTENDU", "RECU", "INCOMPLET", "VALIDE"];
@@ -57,4 +59,36 @@ export async function derogerBrief(siteId: string, _prev: BriefState, fd: FormDa
   await logActivite({ kind: "validation", texte: `${site.name} : dérogation d’Arsène sur les points non essentiels du brief (${note})`, href: `/admin/sites/${siteId}/brief`, userId: me.id, clientId: site.clientId, siteId });
   revalidatePath(`/admin/sites/${siteId}/brief`);
   return { ok: "Dérogation enregistrée : les points non essentiels manquants sont levés." };
+}
+
+/** Pièce jointe au brief (logo, textes, photos, cahier des charges…) : déposée par l'équipe, visible de l'équipe seulement. Aucune notification. */
+export async function deposerPieceBrief(siteId: string, _prev: BriefState, fd: FormData): Promise<BriefState> {
+  const me = await requireTeam();
+  await requireSiteAcces(me, siteId);
+  const site = await prisma.site.findUnique({ where: { id: siteId }, select: { clientId: true } });
+  if (!site) return { error: "Site introuvable." };
+  const fichiers = fd.getAll("file").filter((f): f is File => f instanceof File && f.size > 0);
+  if (fichiers.length === 0) return { error: "Choisissez au moins un fichier." };
+  const titre = String(fd.get("title") ?? "").trim();
+  let n = 0;
+  for (const file of fichiers) {
+    try {
+      const storagePath = await uploadFile("documents", `${site.clientId}/brief-${siteId}`, file);
+      await prisma.document.create({ data: { clientId: site.clientId, siteId, kind: "BRIEF", title: titre && fichiers.length === 1 ? titre : file.name.replace(/\.[a-z0-9]+$/i, ""), storagePath, fileName: file.name, sizeBytes: file.size } });
+      n++;
+    } catch (e) { return { error: `${file.name} : ${(e as Error).message}` }; }
+  }
+  await logActivite({ kind: "brief", texte: `${n} pièce${n > 1 ? "s" : ""} ajoutée${n > 1 ? "s" : ""} au brief`, href: `/admin/sites/${siteId}/brief`, userId: me.id, clientId: site.clientId, siteId }).catch(() => null);
+  revalidatePath(`/admin/sites/${siteId}/brief`);
+  return { ok: `${n} fichier${n > 1 ? "s" : ""} déposé${n > 1 ? "s" : ""}.` };
+}
+
+export async function supprimerPieceBrief(siteId: string, docId: string) {
+  const me = await requireTeam();
+  await requireSiteAcces(me, siteId);
+  const doc = await prisma.document.findFirst({ where: { id: docId, siteId, kind: "BRIEF" } });
+  if (!doc) return;
+  await prisma.document.delete({ where: { id: doc.id } });
+  await createSupabaseAdmin().storage.from("documents").remove([doc.storagePath]).catch(() => null);
+  revalidatePath(`/admin/sites/${siteId}/brief`);
 }

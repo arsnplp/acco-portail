@@ -5,8 +5,10 @@ export const DOC_KIND: Record<DocumentKind, { label: string; plural: string; ton
   FACTURE: { label: "Facture", plural: "Factures", tone: "yellow" },
   DEVIS: { label: "Devis", plural: "Devis", tone: "green" },
   AUTRE: { label: "Document", plural: "Autres documents", tone: "neutral" },
+  BRIEF: { label: "Pièce du brief", plural: "Pièces du brief", tone: "neutral" },
 };
 
+/** Sections des espaces documents (client et équipe). Les pièces du brief restent sur la page Brief du site. */
 export const DOC_SECTIONS: DocumentKind[] = ["CONTRAT", "FACTURE", "DEVIS", "AUTRE"];
 
 export function groupByKind<T extends Pick<Document, "kind">>(docs: T[]) {
