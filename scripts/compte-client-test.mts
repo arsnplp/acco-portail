@@ -1,39 +1,17 @@
-/**
- * Crée (ou réinitialise) un compte de connexion client de test, rattaché à un client existant,
- * pour voir l'espace client comme un vrai client. Affiche l'email et le mot de passe.
- *   npx tsx --env-file=.env scripts/compte-client-test.mts [--client "Acco"] [--email test.client@acco-lab.fr]
- */
-import { parseArgs } from "node:util";
-import { randomBytes } from "node:crypto";
-import { PrismaClient } from "@prisma/client";
+/** Compte client de test (client.test@acco-lab.fr, OWNER de « Boulangerie Test (démo) »). Usage : PW=motdepasse npx tsx --env-file=.env --tsconfig tsconfig.json scripts/compte-client-test.mts */
+import { prisma } from "../src/lib/prisma";
 import { createClient } from "@supabase/supabase-js";
-
-const { values: a } = parseArgs({ options: { client: { type: "string", default: "Acco" }, email: { type: "string", default: "test.client@acco-lab.fr" } } });
-const email = a.email!.toLowerCase();
-const password = `Test-${randomBytes(6).toString("base64url")}`;
-
-const prisma = new PrismaClient();
-const client = await prisma.client.findFirst({ where: { name: a.client } });
-if (!client) { console.error(`Client « ${a.client} » introuvable.`); process.exit(1); }
-const admin = await prisma.user.findUnique({ where: { email } });
-if (admin?.role === "ADMIN") { console.error("Cet email est un compte admin : choisissez-en un autre (--email)."); process.exit(1); }
-
+const email = "client.test@acco-lab.fr", password = process.env.PW!;
 const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
-let userId = admin?.id;
-if (userId) {
-  const { error } = await sb.auth.admin.updateUserById(userId, { password, email_confirm: true });
-  if (error) { console.error(error.message); process.exit(1); }
-} else {
-  const { data, error } = await sb.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { first_name: "Client test" } });
-  if (error || !data.user) { console.error(error?.message ?? "Création impossible"); process.exit(1); }
-  userId = data.user.id;
+async function main() {
+  const { data } = await sb.auth.admin.listUsers({ perPage: 1000 });
+  let id = data?.users.find((u) => u.email?.toLowerCase() === email)?.id;
+  if (id) { const { error } = await sb.auth.admin.updateUserById(id, { password, email_confirm: true }); if (error) throw error; }
+  else { const { data: c, error } = await sb.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { first_name: "Client", last_name: "Test" } }); if (error) throw error; id = c.user.id; }
+  await prisma.user.upsert({ where: { id }, create: { id, email, firstName: "Client", lastName: "Test", role: "CLIENT" }, update: { role: "CLIENT", firstName: "Client", lastName: "Test" } });
+  const client = await prisma.client.findFirstOrThrow({ where: { name: { startsWith: "Boulangerie Test" }, archivedAt: null }, select: { id: true, name: true } });
+  await prisma.clientMembership.upsert({ where: { clientId_userId: { clientId: client.id, userId: id } }, create: { clientId: client.id, userId: id, role: "OWNER" }, update: { role: "OWNER" } });
+  await prisma.conversation.upsert({ where: { clientId: client.id }, create: { clientId: client.id }, update: {} });
+  console.log("OK :", email, "→", client.name);
 }
-await prisma.user.upsert({ where: { id: userId }, create: { id: userId, email, firstName: "Client test", role: "CLIENT" }, update: { email } });
-await prisma.clientMembership.upsert({ where: { clientId_userId: { clientId: client.id, userId } }, create: { clientId: client.id, userId, role: "OWNER" }, update: { role: "OWNER" } });
-
-console.log(`✓ Compte client rattaché à « ${client.name} »`);
-console.log(`  Adresse : ${process.env.NEXT_PUBLIC_APP_URL ?? "https://app.acco-lab.fr"}/connexion`);
-console.log(`  Email   : ${email}`);
-console.log(`  Mot de passe : ${password}`);
-console.log("  (ouvrir dans une fenêtre de navigation privée pour ne pas déconnecter le compte admin)");
-await prisma.$disconnect();
+main().finally(() => prisma.$disconnect());
