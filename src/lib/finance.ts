@@ -12,8 +12,9 @@ const moisSuivant = (d: Date) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCM
 /** MRR = montants mensuels HT des contrats signés et non terminés ; à défaut de contrat, abonnements mensuels actifs sans contrat (import manuel). */
 export async function mrrActuel() {
   const [contrats, subs] = await Promise.all([
-    prisma.contrat.findMany({ where: { statut: "SIGNE" }, select: { id: true, clientId: true, montantMensuelHt: true, signeAt: true, finEngagement: true } }),
-    prisma.subscription.findMany({ where: { status: "ACTIF", billing: "MENSUEL", contratId: null }, select: { clientId: true, priceCents: true } }),
+    // Les clients archivés (démo, anciens clients) ne comptent pas dans le MRR.
+    prisma.contrat.findMany({ where: { statut: "SIGNE", OR: [{ clientId: null }, { client: { archivedAt: null } }] }, select: { id: true, clientId: true, montantMensuelHt: true, signeAt: true, finEngagement: true } }),
+    prisma.subscription.findMany({ where: { status: "ACTIF", billing: "MENSUEL", contratId: null, client: { archivedAt: null } }, select: { clientId: true, priceCents: true } }),
   ]);
   const parClient = new Map<string, number>();
   for (const c of contrats) if (c.clientId) parClient.set(c.clientId, (parClient.get(c.clientId) ?? 0) + c.montantMensuelHt);
@@ -71,4 +72,28 @@ export async function rentabiliteParClient() {
     const mensuel = parClient.get(c.id) ?? 0, cout = coutPar.get(c.id) ?? 0;
     return { id: c.id, name: c.name, logo: c.logoMiniPath, referent: c.commercial, mensuel, ponctuel: c.contrats.reduce((a, x) => a + x.montantPonctuelHt, 0), coutsMensuels: cout, marge: mensuel - cout, impaye: c.contrats.some((x) => x.impayeAt && !x.regulariseAt), sitesEnLigne: c.sites.filter((s) => s.status === "EN_LIGNE").length, depuis: c.createdAt };
   }).sort((a, b) => b.mensuel - a.mensuel);
+}
+
+/**
+ * MRR semaine par semaine (comme le graphe de Stripe) : pour chaque samedi depuis le premier contrat, somme des mensuels
+ * des contrats signés en cours ce jour-là (début d'engagement passé, fin d'engagement non dépassée).
+ */
+export async function mrrHebdo(semaines = 26) {
+  const contrats = await prisma.contrat.findMany({ where: { statut: { in: ["SIGNE", "TERMINE"] }, montantMensuelHt: { gt: 0 }, OR: [{ clientId: null }, { client: { archivedAt: null } }] }, select: { montantMensuelHt: true, debutEngagement: true, signeAt: true, finEngagement: true, updatedAt: true, statut: true } });
+  const debut = (c: typeof contrats[number]) => c.debutEngagement ?? c.signeAt;
+  const fin = (c: typeof contrats[number]) => (c.statut === "TERMINE" ? (c.finEngagement && c.finEngagement < c.updatedAt ? c.finEngagement : c.updatedAt) : c.finEngagement);
+  const premier = contrats.map(debut).filter((d): d is Date => !!d).sort((a, b) => a.getTime() - b.getTime())[0];
+  // Samedi courant (fin de semaine Stripe), puis on remonte semaine par semaine jusqu'au premier contrat (au moins `semaines`).
+  const now = new Date();
+  const samedi = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59));
+  samedi.setUTCDate(samedi.getUTCDate() + ((6 - samedi.getUTCDay() + 7) % 7));
+  const n = Math.max(semaines, premier ? Math.ceil((samedi.getTime() - premier.getTime()) / (7 * 86400_000)) + 2 : 0);
+  const points: { date: Date; mrr: number }[] = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(samedi.getTime() - i * 7 * 86400_000);
+    const jour = d > now ? now : d; // la semaine en cours s'arrête à aujourd'hui
+    const mrr = contrats.reduce((a, c) => { const db = debut(c), f = fin(c); return db && db <= jour && (!f || f >= jour) ? a + c.montantMensuelHt : a; }, 0);
+    points.push({ date: jour, mrr });
+  }
+  return points;
 }

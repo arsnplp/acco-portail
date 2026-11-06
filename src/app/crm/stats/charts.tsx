@@ -226,3 +226,41 @@ export function Funnel({ steps }: { steps: { label: string; value: number; color
     </ol>
   );
 }
+
+/**
+ * Courbe d'une seule série (MRR hebdomadaire, comme Stripe) : trait fin couleur Acco, grille discrète, survol avec repère
+ * vertical et bulle, tableau des valeurs en dessous (lecture sans couleur). Pas de légende : le titre nomme la série.
+ */
+export function LineChart({ points, format, height = 220 }: { points: { label: string; court: string; value: number }[]; format: (v: number) => string; height?: number }) {
+  const [hover, setHover] = useState<number | null>(null);
+  const W = 640, H = height, padL = 52, padR = 12, padT = 12, padB = 28;
+  const max = nice(Math.max(1, ...points.map((p) => p.value)));
+  const x = (i: number) => padL + (points.length > 1 ? (i * (W - padL - padR)) / (points.length - 1) : (W - padL - padR) / 2);
+  const y = (v: number) => padT + (H - padT - padB) * (1 - v / max);
+  const d = points.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.value).toFixed(1)}`).join(" ");
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((t) => t * max);
+  const labelsX = points.map((p, i) => ({ i, t: p.court })).filter(({ i }) => i === 0 || i === points.length - 1 || i % Math.max(1, Math.ceil(points.length / 6)) === 0);
+  const h = hover !== null ? points[hover] : null;
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Évolution du MRR par semaine"
+        onMouseLeave={() => setHover(null)}
+        onMouseMove={(e) => { const r = e.currentTarget.getBoundingClientRect(); const px = ((e.clientX - r.left) / r.width) * W; let best = 0; for (let i = 1; i < points.length; i++) if (Math.abs(x(i) - px) < Math.abs(x(best) - px)) best = i; setHover(best); }}>
+        {ticks.map((t) => <g key={t}><line x1={padL} x2={W - padR} y1={y(t)} y2={y(t)} className="stroke-border" strokeWidth={1} /><text x={padL - 8} y={y(t) + 4} textAnchor="end" className="fill-text text-[10px]">{format(t)}</text></g>)}
+        {labelsX.map(({ i, t }) => <text key={i} x={x(i)} y={H - 8} textAnchor={i === 0 ? "start" : i === points.length - 1 ? "end" : "middle"} className="fill-text text-[10px]">{t}</text>)}
+        <path d={d} fill="none" stroke="var(--green)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+        {h && hover !== null && (
+          <g>
+            <line x1={x(hover)} x2={x(hover)} y1={padT} y2={H - padB} className="stroke-text" strokeWidth={1} strokeDasharray="3 3" />
+            <circle cx={x(hover)} cy={y(h.value)} r={5} fill="var(--green)" className="stroke-bg" strokeWidth={2} />
+          </g>
+        )}
+      </svg>
+      <div className="mt-1 h-5 text-xs text-text">{h ? <><span className="font-semibold text-title">{format(h.value)}</span> · semaine du {h.label}</> : "Survolez la courbe pour lire une semaine."}</div>
+      <details className="mt-2">
+        <summary className="cursor-pointer text-xs text-text hover:text-title">Valeurs par semaine</summary>
+        <div className="mt-2 overflow-x-auto"><table className="text-xs"><thead><tr>{points.map((p) => <th key={p.label} className="whitespace-nowrap px-2 py-1 text-left font-semibold text-title">{p.label}</th>)}</tr></thead><tbody><tr>{points.map((p) => <td key={p.label} className="whitespace-nowrap px-2 py-1 tabular-nums text-text-strong">{format(p.value)}</td>)}</tr></tbody></table></div>
+      </details>
+    </div>
+  );
+}

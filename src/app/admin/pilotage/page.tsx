@@ -10,9 +10,10 @@ import { addDays, fmtDate, fmtPrice } from "@/lib/format";
 import { ROLE_LABEL, EQUIPE, estCommercial } from "@/lib/roles";
 import { fmtDayTime, teamName, PIPELINE, STATUT, VIZ } from "@/lib/crm";
 import { ActivityIcon, ChartColumnIcon, TrendingUpIcon, UsersIcon, WalletIcon } from "lucide-react";
-import { StackedBars, GroupedBars } from "@/app/crm/stats/charts";
+import { StackedBars, GroupedBars, LineChart } from "@/app/crm/stats/charts";
+import { MoreList } from "@/components/ui/more-list";
 import { activiteParCollaborateur, projectionMrr } from "@/lib/pilotage";
-import { CATEGORIES, rentabiliteParClient, visionFinanciere } from "@/lib/finance";
+import { CATEGORIES, mrrHebdo, rentabiliteParClient, visionFinanciere } from "@/lib/finance";
 import { PROJECT_STEPS } from "@/lib/labels";
 import { cn } from "@/lib/cn";
 import { ArchiverChargeButton, ChargeForm } from "./charges-form";
@@ -47,13 +48,16 @@ export default async function PilotagePage({ searchParams }: { searchParams: Pro
 
 async function VueEnsemble({ finance }: { finance: boolean }) {
   const in60 = addDays(60);
-  const [v, clients, sitesEnLigne, enCreation, engagements, validations, activites, risque] = await Promise.all([
+  const [v, clients, sitesEnLigne, enCreation, engagements, validations, activites, risque, hebdo] = await Promise.all([
     visionFinanciere(), prisma.client.count({ where: { archivedAt: null } }), prisma.site.count({ where: { status: "EN_LIGNE" } }), prisma.site.count({ where: { status: "EN_CREATION" } }),
     prisma.contrat.count({ where: { statut: "SIGNE", finEngagement: { gte: new Date(), lte: in60 } } }),
     prisma.validation.count({ where: { statut: "EN_ATTENTE" } }),
     prisma.activite.findMany({ orderBy: { createdAt: "desc" }, take: 25, include: { user: { select: { firstName: true, email: true } } } }),
     prisma.tacheClient.count({ where: { statut: "A_FAIRE", echeance: { lt: new Date() } } }),
+    finance ? mrrHebdo() : Promise.resolve([]),
   ]);
+  const court = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" });
+  const mrrPoints = hebdo.map((p) => ({ label: fmtDate(p.date), court: court.format(p.date), value: Math.round(p.mrr) / 100 }));
   const tiles = [
     ...(finance ? [{ n: euros(v.mrr), label: "MRR (contrats signés)" }, { n: euros(v.nouveauMrr), label: "nouveau MRR ce mois" }, { n: euros(v.chargesMois.total), label: "charges du mois (saisies)" }, { n: euros(v.resultat), label: "résultat mensuel estimé" }] : []),
     { n: String(clients), label: "clients actifs" }, { n: String(sitesEnLigne), label: "sites en ligne" }, { n: String(enCreation), label: "sites en production" },
@@ -66,8 +70,25 @@ async function VueEnsemble({ finance }: { finance: boolean }) {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{tiles.map((t) => <Card key={t.label}><p className="font-title text-2xl font-extrabold text-title">{t.n}</p><p className="mt-1 text-xs text-text">{t.label}</p></Card>)}</div>
       {finance && v.impayes.length > 0 && <ul className="mt-3 space-y-1 text-sm">{v.impayes.map((i) => <li key={i.id}><Link href={`/admin/contrats/${i.id}`} className="text-pink hover:underline">Impayé : {i.client?.name ?? i.reference} · {i.reference} · depuis le {i.impayeAt ? fmtDate(i.impayeAt) : ""}</Link></li>)}</ul>}
       <p className="mt-2 text-xs text-muted">Estimations basées sur les saisies (contrats, charges) : la comptabilité officielle reste dans Pennylane. Mise à jour en temps réel.</p>
-      <SectionTitle icon={ActivityIcon}>Événements récents</SectionTitle>
-      <ol className="space-y-2 border-l border-border pl-4">{activites.map((a) => <li key={a.id} className="relative text-sm"><span className="absolute top-2 -left-[21px] size-2 rounded-full bg-blue" />{a.href ? <Link href={a.href} className="text-text-strong hover:underline">{a.texte}</Link> : <span className="text-text-strong">{a.texte}</span>}<p className="text-xs text-text">{fmtDayTime(a.createdAt)}{a.user ? ` · ${teamName(a.user)}` : ""}</p></li>)}</ol>
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <div>
+          <SectionTitle icon={ActivityIcon}>Événements récents</SectionTitle>
+          {/* Cinq événements, le reste derrière « Voir plus » (MoreList), pour ne pas allonger la page. */}
+          <MoreList title="Événements récents" limit={5} labels={activites.map((a) => a.texte)} className="space-y-2 border-l border-border pl-4" items={activites.map((a) => (
+            <div key={a.id} className="relative text-sm"><span className="absolute top-2 -left-[21px] size-2 rounded-full bg-blue" />{a.href ? <Link href={a.href} className="text-text-strong hover:underline">{a.texte}</Link> : <span className="text-text-strong">{a.texte}</span>}<p className="text-xs text-text">{fmtDayTime(a.createdAt)}{a.user ? ` · ${teamName(a.user)}` : ""}</p></div>
+          ))} />
+        </div>
+        {finance && mrrPoints.length > 0 && (
+          <div>
+            <SectionTitle icon={TrendingUpIcon}>MRR</SectionTitle>
+            <Card>
+              <p className="font-title text-2xl font-extrabold text-title">{euros(v.mrr)}</p>
+              <p className="mb-3 text-xs text-text">par mois, contrats signés en cours · semaine par semaine depuis le premier contrat</p>
+              <LineChart points={mrrPoints} format={(n) => `${Math.round(n).toLocaleString("fr-FR")} €`} />
+            </Card>
+          </div>
+        )}
+      </div>
     </>
   );
 }
