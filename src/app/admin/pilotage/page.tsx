@@ -70,8 +70,7 @@ async function VueEnsemble({ finance }: { finance: boolean }) {
       <SectionTitle icon={ChartColumnIcon}>Santé de la société</SectionTitle>
       {/* Première rangée de tuiles seulement, le reste derrière « Voir plus ». */}
       <TuilesPliables tuiles={tiles} />
-      {finance && v.impayes.length > 0 && <ul className="mt-3 space-y-1 text-sm">{v.impayes.map((i) => <li key={i.id}><Link href={`/admin/contrats/${i.id}`} className="text-pink hover:underline">Impayé : {i.client?.name ?? i.reference} · {i.reference} · depuis le {i.impayeAt ? fmtDate(i.impayeAt) : ""}</Link></li>)}</ul>}
-      <div className="mt-5 grid gap-6 lg:grid-cols-2">
+      <div className="mt-5 grid gap-6 lg:grid-cols-2 lg:gap-10">
         {finance && mrrPoints.length > 0 && (
           <div>
             <SectionTitle icon={TrendingUpIcon}>MRR</SectionTitle>
@@ -80,9 +79,11 @@ async function VueEnsemble({ finance }: { finance: boolean }) {
               <p className="mb-3 text-xs text-text">par mois HT, contrats signés en cours · semaine par semaine depuis le premier contrat</p>
               <LineChart points={mrrPoints} unite=" €" />
             </Card>
+            {/* Impayés signalés (d'après Stripe ou à la main), sous la courbe. */}
+            {v.impayes.length > 0 && <ul className="mt-3 space-y-1 text-sm">{v.impayes.map((i) => <li key={i.id}><Link href={`/admin/contrats/${i.id}`} className="text-pink hover:underline">Impayé : {i.client?.name ?? i.reference} · {i.reference} · depuis le {i.impayeAt ? fmtDate(i.impayeAt) : ""}</Link></li>)}</ul>}
           </div>
         )}
-        <div>
+        <div className="lg:pl-6">
           <SectionTitle icon={ActivityIcon}>Événements récents</SectionTitle>
           {/* Cinq événements, le reste derrière « Voir plus » (MoreList), pour ne pas allonger la page. */}
           <MoreList title="Événements récents" limit={5} labels={activites.map((a) => a.texte)} className="space-y-2 border-l border-border pl-4" items={activites.map((a) => (
