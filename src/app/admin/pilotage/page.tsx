@@ -84,7 +84,7 @@ async function VueEnsemble({ finance }: { finance: boolean }) {
             <Card>
               <p className="font-title text-2xl font-extrabold text-title">{euros(v.mrr)}</p>
               <p className="mb-3 text-xs text-text">par mois, contrats signés en cours · semaine par semaine depuis le premier contrat</p>
-              <LineChart points={mrrPoints} format={(n) => `${Math.round(n).toLocaleString("fr-FR")} €`} />
+              <LineChart points={mrrPoints} unite=" €" />
             </Card>
           </div>
         )}

@@ -231,8 +231,10 @@ export function Funnel({ steps }: { steps: { label: string; value: number; color
  * Courbe d'une seule série (MRR hebdomadaire, comme Stripe) : trait fin couleur Acco, grille discrète, survol avec repère
  * vertical et bulle, tableau des valeurs en dessous (lecture sans couleur). Pas de légende : le titre nomme la série.
  */
-export function LineChart({ points, format, height = 220 }: { points: { label: string; court: string; value: number }[]; format: (v: number) => string; height?: number }) {
+export function LineChart({ points, unite = "", height = 220 }: { points: { label: string; court: string; value: number }[]; unite?: string; height?: number }) {
   const [hover, setHover] = useState<number | null>(null);
+  // Le formatage se fait ici : une fonction ne peut pas être passée d'un composant serveur à un composant client.
+  const format = (v: number) => `${Math.round(v).toLocaleString("fr-FR")}${unite}`;
   const W = 640, H = height, padL = 52, padR = 12, padT = 12, padB = 28;
   const max = nice(Math.max(1, ...points.map((p) => p.value)));
   const x = (i: number) => padL + (points.length > 1 ? (i * (W - padL - padR)) / (points.length - 1) : (W - padL - padR) / 2);
