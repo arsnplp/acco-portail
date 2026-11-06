@@ -12,6 +12,7 @@ import { fmtDayTime, teamName, PIPELINE, STATUT, VIZ } from "@/lib/crm";
 import { ActivityIcon, ChartColumnIcon, TrendingUpIcon, UsersIcon, WalletIcon } from "lucide-react";
 import { StackedBars, GroupedBars, LineChart } from "@/app/crm/stats/charts";
 import { MoreList } from "@/components/ui/more-list";
+import { TuilesPliables } from "@/components/ui/tuiles-pliables";
 import { activiteParCollaborateur, projectionMrr } from "@/lib/pilotage";
 import { CATEGORIES, mrrHebdo, rentabiliteParClient, visionFinanciere } from "@/lib/finance";
 import { PROJECT_STEPS } from "@/lib/labels";
@@ -67,10 +68,20 @@ async function VueEnsemble({ finance }: { finance: boolean }) {
   return (
     <>
       <SectionTitle icon={ChartColumnIcon}>Santé de la société</SectionTitle>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{tiles.map((t) => <Card key={t.label}><p className="font-title text-2xl font-extrabold text-title">{t.n}</p><p className="mt-1 text-xs text-text">{t.label}</p></Card>)}</div>
+      {/* Première rangée de tuiles seulement, le reste derrière « Voir plus ». */}
+      <TuilesPliables tuiles={tiles} />
       {finance && v.impayes.length > 0 && <ul className="mt-3 space-y-1 text-sm">{v.impayes.map((i) => <li key={i.id}><Link href={`/admin/contrats/${i.id}`} className="text-pink hover:underline">Impayé : {i.client?.name ?? i.reference} · {i.reference} · depuis le {i.impayeAt ? fmtDate(i.impayeAt) : ""}</Link></li>)}</ul>}
-      <p className="mt-2 text-xs text-muted">Estimations basées sur les saisies (contrats, charges) : la comptabilité officielle reste dans Pennylane. Mise à jour en temps réel.</p>
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      <div className="mt-5 grid gap-6 lg:grid-cols-2">
+        {finance && mrrPoints.length > 0 && (
+          <div>
+            <SectionTitle icon={TrendingUpIcon}>MRR</SectionTitle>
+            <Card>
+              <p className="font-title text-2xl font-extrabold text-title">{euros(v.mrr)}</p>
+              <p className="mb-3 text-xs text-text">par mois HT, contrats signés en cours · semaine par semaine depuis le premier contrat</p>
+              <LineChart points={mrrPoints} unite=" €" />
+            </Card>
+          </div>
+        )}
         <div>
           <SectionTitle icon={ActivityIcon}>Événements récents</SectionTitle>
           {/* Cinq événements, le reste derrière « Voir plus » (MoreList), pour ne pas allonger la page. */}
@@ -78,17 +89,8 @@ async function VueEnsemble({ finance }: { finance: boolean }) {
             <div key={a.id} className="relative text-sm"><span className="absolute top-2 -left-[21px] size-2 rounded-full bg-blue" />{a.href ? <Link href={a.href} className="text-text-strong hover:underline">{a.texte}</Link> : <span className="text-text-strong">{a.texte}</span>}<p className="text-xs text-text">{fmtDayTime(a.createdAt)}{a.user ? ` · ${teamName(a.user)}` : ""}</p></div>
           ))} />
         </div>
-        {finance && mrrPoints.length > 0 && (
-          <div>
-            <SectionTitle icon={TrendingUpIcon}>MRR</SectionTitle>
-            <Card>
-              <p className="font-title text-2xl font-extrabold text-title">{euros(v.mrr)}</p>
-              <p className="mb-3 text-xs text-text">par mois, contrats signés en cours · semaine par semaine depuis le premier contrat</p>
-              <LineChart points={mrrPoints} unite=" €" />
-            </Card>
-          </div>
-        )}
       </div>
+      <p className="mt-4 text-xs text-muted">Estimations basées sur les saisies (contrats, charges) : la comptabilité officielle reste dans Pennylane. Mise à jour en temps réel.</p>
     </>
   );
 }

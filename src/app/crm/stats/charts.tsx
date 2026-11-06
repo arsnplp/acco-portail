@@ -241,7 +241,8 @@ export function LineChart({ points, unite = "", height = 220 }: { points: { labe
   const y = (v: number) => padT + (H - padT - padB) * (1 - v / max);
   const d = points.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.value).toFixed(1)}`).join(" ");
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((t) => t * max);
-  const labelsX = points.map((p, i) => ({ i, t: p.court })).filter(({ i }) => i === 0 || i === points.length - 1 || i % Math.max(1, Math.ceil(points.length / 6)) === 0);
+  const pas = Math.max(1, Math.ceil(points.length / 6));
+  const labelsX = points.map((p, i) => ({ i, t: p.court })).filter(({ i }) => i === 0 || i === points.length - 1 || (i % pas === 0 && x(points.length - 1) - x(i) > 56 && x(i) - x(0) > 56));
   const h = hover !== null ? points[hover] : null;
   return (
     <div>
