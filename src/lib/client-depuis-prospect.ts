@@ -1,6 +1,6 @@
 /**
  * Un prospect passé « Gagné » devient un client du portail tout de suite (sans attendre le contrat) : fiche client, fil de
- * conversation, site en création avec son brief, contacts rattachés. Aucun compte de connexion ni email : l'invitation se fait
+ * conversation, contacts rattachés. Pas de site créé d'office : il s'ajoute depuis la fiche client (ou à la signature du contrat). Aucun compte de connexion ni email : l'invitation se fait
  * plus tard, à la main. Rapprochement contrôlé avec un client existant (même SIREN, même téléphone ou même nom) : pas de doublon.
  */
 import { prisma } from "@/lib/prisma";
@@ -16,11 +16,8 @@ export async function clientDepuisProspect(prospectId: string, userId?: string |
   let clientId = existant?.id ?? null, cree = false;
   if (!clientId) {
     const principal = p.contacts.find((x) => x.principal) ?? p.contacts[0];
-    const client = await prisma.client.create({ data: { name: p.societe, siren: p.siren, address: p.adresse, phone: p.telephone, email: principal?.email ?? null, commercialId: p.commercialId, engagementDebut: p.gagneAt ?? new Date(), conversation: { create: {} } } });
+    const client = await prisma.client.create({ data: { name: p.societe, siren: p.siren, siret: p.siret, address: p.adresse, phone: p.telephone, email: principal?.email ?? null, commercialId: p.commercialId, engagementDebut: p.gagneAt ?? new Date(), conversation: { create: {} } } });
     clientId = client.id; cree = true;
-    // Un site en création, avec son brief, pour que la production puisse démarrer dès le contrat et le premier paiement.
-    const host = p.siteWeb ? p.siteWeb.replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "") : null;
-    await prisma.site.create({ data: { clientId, name: host ?? p.societe, url: null, status: "EN_CREATION", projectStep: "CREER_MAQUETTE", developpeurId: null, brief: { create: { etat: "EN_COURS" } }, assets: { create: [{ kind: "LOGO", label: "Votre logo" }, { kind: "TEXTE", label: "Textes de présentation" }, { kind: "PHOTO", label: "Photos" }] } } });
   }
   await prisma.$transaction([
     prisma.prospect.update({ where: { id: prospectId }, data: { clientId, statut: "GAGNE", gagneAt: p.gagneAt ?? new Date() } }),

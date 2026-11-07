@@ -65,6 +65,23 @@ export async function createClient(_prev: ActionState, formData: FormData): Prom
   redirect(`/admin/clients/${client.id}`);
 }
 
+/** Informations légales du client (SIRET, forme juridique, TVA, RCS, capital, signataire) : base des contrats générés. */
+export async function updateClientLegal(clientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const me = await requireTeam();
+  await requireClientAcces(me, clientId);
+  const d = Object.fromEntries(formData) as Record<string, string>;
+  const t = (k: string) => d[k]?.trim() || null;
+  const siret = t("siret")?.replace(/\s/g, "") ?? null;
+  if (siret && !/^\d{14}$/.test(siret)) return { error: "Le SIRET compte 14 chiffres." };
+  const capital = t("capitalEuros") ? Number(t("capitalEuros")!.replace(/[^\d]/g, "")) : null;
+  await prisma.client.update({
+    where: { id: clientId },
+    data: { siret, siren: siret ? siret.slice(0, 9) : t("siren")?.replace(/\s/g, "") ?? undefined, formeJuridique: t("formeJuridique"), tvaIntra: t("tvaIntra")?.replace(/\s/g, "").toUpperCase() ?? null, rcsVille: t("rcsVille"), capitalEuros: capital && Number.isFinite(capital) ? capital : null, representantNom: t("representantNom"), representantFonction: t("representantFonction"), address: t("address") ?? undefined },
+  });
+  revalidatePath(`/admin/clients/${clientId}`);
+  return {};
+}
+
 export async function updateClient(clientId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
   const me = await requireTeam();
   await requireClientAcces(me, clientId);

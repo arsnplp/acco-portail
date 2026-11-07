@@ -8,7 +8,7 @@ import { LogoClient } from "@/components/ui/logo-client";
 import { cn } from "@/lib/cn";
 import {
   archiverClient, createSite, createSubscription, creerRdvClientAction, creerTacheClientAction, deleteClientContact, genererSyntheseClient, logClientEchange,
-  reattribuerClient, removeLogo, saveClientContact, setRdvClientResultat, terminerTacheAction, updateClient, uploadLogo, rattacherEmailAction, rattacherAppelAction, synchroniserEmailsAction, type ActionState,
+  reattribuerClient, removeLogo, saveClientContact, setRdvClientResultat, terminerTacheAction, updateClient, updateClientLegal, uploadLogo, rattacherEmailAction, rattacherAppelAction, synchroniserEmailsAction, type ActionState,
 } from "../actions";
 import { marquerImpaye, marquerPremierPaiement, proposerPourSite } from "@/app/admin/contrats/actions";
 
@@ -60,6 +60,30 @@ export function InfosForm({ client }: { client: ClientInfo }) {
         <Field label="Email"><Input name="email" type="email" defaultValue={client.email ?? ""} /></Field>
       </div>
       <Field label="Adresse"><Input name="address" defaultValue={client.address ?? ""} /></Field>
+      <FormError message={state.error} />
+      <div className="flex gap-2"><SubmitButton size="sm">Enregistrer</SubmitButton><button type="button" onClick={() => setOpen(false)} className="px-3 text-sm text-text hover:text-title">Annuler</button></div>
+    </form>
+  );
+}
+
+export type ClientLegal = { id: string; siret: string | null; siren: string | null; formeJuridique: string | null; tvaIntra: string | null; rcsVille: string | null; capitalEuros: number | null; representantNom: string | null; representantFonction: string | null; address: string | null };
+/** Informations légales : SIRET, forme juridique, TVA, RCS, capital, signataire. Servent à générer les contrats. */
+export function LegalForm({ client }: { client: ClientLegal }) {
+  const [open, setOpen] = useState(false);
+  const [state, action] = useActionState<ActionState, FormData>(async (prev, fd) => { const r = await updateClientLegal(client.id, prev, fd); if (!r.error) setOpen(false); return r; }, {});
+  if (!open) return <button type="button" onClick={() => setOpen(true)} className="flex items-center gap-1 text-sm text-text hover:text-title"><PencilIcon size={14} /> Modifier</button>;
+  return (
+    <form action={action} className="w-full space-y-3 rounded-card border border-border bg-surface p-4 text-left sm:w-[32rem]">
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="SIRET" hint="14 chiffres"><Input name="siret" defaultValue={client.siret ?? ""} inputMode="numeric" placeholder="123 456 789 00012" /></Field>
+        <Field label="Forme juridique"><Input name="formeJuridique" defaultValue={client.formeJuridique ?? ""} placeholder="SASU, SARL, EI, micro-entreprise…" /></Field>
+        <Field label="N° TVA intracommunautaire"><Input name="tvaIntra" defaultValue={client.tvaIntra ?? ""} placeholder="FR12 123456789" /></Field>
+        <Field label="RCS (ville)"><Input name="rcsVille" defaultValue={client.rcsVille ?? ""} placeholder="Aix-en-Provence" /></Field>
+        <Field label="Capital social (€)"><Input name="capitalEuros" defaultValue={client.capitalEuros ?? ""} inputMode="numeric" placeholder="1 000" /></Field>
+        <Field label="Signataire : prénom et nom"><Input name="representantNom" defaultValue={client.representantNom ?? ""} placeholder="Marie Dupont" /></Field>
+        <Field label="Fonction du signataire"><Input name="representantFonction" defaultValue={client.representantFonction ?? ""} placeholder="Gérante, Président…" /></Field>
+      </div>
+      <Field label="Adresse du siège"><Input name="address" defaultValue={client.address ?? ""} /></Field>
       <FormError message={state.error} />
       <div className="flex gap-2"><SubmitButton size="sm">Enregistrer</SubmitButton><button type="button" onClick={() => setOpen(false)} className="px-3 text-sm text-text hover:text-title">Annuler</button></div>
     </form>

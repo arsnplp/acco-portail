@@ -276,27 +276,35 @@ enum DocumentRequestStatus {
 // ─────────────────────────────────────────────────────────────
 
 model Client {
-  id              String       @id @default(cuid())
-  name            String // raison sociale / enseigne
-  siren           String?
-  address         String?
-  phone           String?
-  email           String?
-  commercialId    String? // « Suivi par … »
-  developpeurId   String? // développeur attitré
-  formule         Formule?
-  engagementDebut DateTime?
-  engagementFin   DateTime?
-  gmbUrl          String? // fiche Google Business Profile
-  reference       Boolean      @default(false) // client référence : épinglé en tête de liste, appui pour les argumentaires
-  alerteContactAt DateTime? // dernière alerte « aucun contact depuis 60 jours » envoyée au commercial
-  logoPath        String? // logo déposé (bucket documents, dossier logos/<clientId>), recadré carré côté serveur
-  logoMiniPath    String? // miniature 128 px générée une fois
-  secteur         String? // activité / métier
-  statut          ClientStatut @default(ACTIF)
-  archivedAt      DateTime?
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  id                   String       @id @default(cuid())
+  name                 String // raison sociale / enseigne
+  siren                String?
+  address              String?
+  phone                String?
+  email                String?
+  commercialId         String? // « Suivi par … »
+  developpeurId        String? // développeur attitré
+  formule              Formule?
+  engagementDebut      DateTime?
+  engagementFin        DateTime?
+  gmbUrl               String? // fiche Google Business Profile
+  reference            Boolean      @default(false) // client référence : épinglé en tête de liste, appui pour les argumentaires
+  alerteContactAt      DateTime? // dernière alerte « aucun contact depuis 60 jours » envoyée au commercial
+  logoPath             String? // logo déposé (bucket documents, dossier logos/<clientId>), recadré carré côté serveur
+  logoMiniPath         String? // miniature 128 px générée une fois
+  secteur              String? // activité / métier
+  // Informations légales (génération automatique des contrats) : à compléter sur la fiche client.
+  siret                String?
+  formeJuridique       String? // SASU, SARL, EI, auto-entrepreneur…
+  tvaIntra             String?
+  rcsVille             String? // ville du RCS (ou RM)
+  capitalEuros         Int?
+  representantNom      String? // signataire : prénom et nom
+  representantFonction String? // gérant, président…
+  statut               ClientStatut @default(ACTIF)
+  archivedAt           DateTime?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
 
   commercial    User?                  @relation("ClientCommercial", fields: [commercialId], references: [id], onDelete: SetNull)
   developpeur   User?                  @relation("ClientDeveloppeur", fields: [developpeurId], references: [id], onDelete: SetNull)

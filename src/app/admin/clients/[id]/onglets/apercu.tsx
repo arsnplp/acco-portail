@@ -10,7 +10,7 @@ import { CONTRAT_STATUT, MOYEN_PAIEMENT_LABEL } from "@/lib/contrats";
 import { enBref } from "@/lib/en-bref";
 import { timelineClient, CANAUX_CONTACT } from "@/lib/timeline";
 import { JOURS_SANS_CONTACT } from "@/lib/alertes";
-import { InfosForm, NoteInterneForm, SyntheseButton } from "../forms";
+import { InfosForm, LegalForm, NoteInterneForm, SyntheseButton } from "../forms";
 import { SuiviForm } from "../suivi-forms";
 import { MODULES } from "@/lib/roles";
 import { parisDay } from "@/lib/crm";
@@ -83,6 +83,27 @@ export async function Apercu({ clientId, me, finance, externe, ia }: Ctx & { ia:
             {client.sites.filter((s) => s.url).map((s) => <a key={s.id} href={s.url!} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-text-strong hover:underline"><GlobeIcon size={13} aria-hidden /> {s.url!.replace(/^https?:\/\//, "")}</a>)}
           </div>
           {!client.phone && !client.email && !client.address && <p className="text-xs text-muted">Coordonnées non renseignées.</p>}
+        </Card>
+
+        {/* 1 bis. Informations légales : base des contrats générés automatiquement. */}
+        <SectionTitle icon={FileSignatureIcon} action={externe ? undefined : <LegalForm client={{ id: client.id, siret: client.siret, siren: client.siren, formeJuridique: client.formeJuridique, tvaIntra: client.tvaIntra, rcsVille: client.rcsVille, capitalEuros: client.capitalEuros, representantNom: client.representantNom, representantFonction: client.representantFonction, address: client.address }} />}>Informations légales</SectionTitle>
+        <Card>
+          {(() => {
+            const lignes = [
+              client.formeJuridique && `${client.formeJuridique}${client.capitalEuros ? ` au capital de ${client.capitalEuros.toLocaleString("fr-FR")} €` : ""}`,
+              client.siret ? `SIRET ${client.siret.replace(/(\d{3})(\d{3})(\d{3})(\d{5})/, "$1 $2 $3 $4")}` : client.siren ? `SIREN ${client.siren}` : null,
+              client.rcsVille && `RCS ${client.rcsVille}`, client.tvaIntra && `TVA ${client.tvaIntra}`,
+              client.representantNom && `Signataire : ${client.representantNom}${client.representantFonction ? `, ${client.representantFonction.toLowerCase()}` : ""}`,
+              client.address && `Siège : ${client.address}`,
+            ].filter(Boolean) as string[];
+            const manque = [!client.siret && "SIRET", !client.formeJuridique && "forme juridique", !client.representantNom && "signataire", !client.address && "adresse du siège"].filter(Boolean) as string[];
+            return (
+              <>
+                {lignes.length > 0 ? <ul className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-text-strong">{lignes.map((l) => <li key={l}>{l}</li>)}</ul> : <p className="text-sm text-text">Aucune information légale renseignée.</p>}
+                <p className="mt-2 text-xs text-muted">{manque.length ? `À compléter pour générer les contrats : ${manque.join(", ")}.` : "Complet : les contrats peuvent être générés avec ces informations."}</p>
+              </>
+            );
+          })()}
         </Card>
 
         {/* 2. Contacts */}
