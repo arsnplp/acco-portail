@@ -63,13 +63,14 @@ export function AircallDock() {
     <div className="pointer-events-none fixed right-4 bottom-4 z-[65] hidden flex-col items-end gap-2 lg:flex" style={{ bottom: "calc(env(safe-area-inset-bottom) + 16px)" }}>
       {/* Le volet reste monté quand il est replié : l'appel continue, le micro aussi. */}
       <div className={cn("pointer-events-auto overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl shadow-black/50", open ? "block" : "hidden")}>
-        <div className="flex items-center gap-2 border-b border-border px-3 py-2 text-sm">
+        <div className="flex w-[376px] items-center gap-2 border-b border-border px-3 py-2 text-sm">
           <PhoneIcon size={14} className={enAppel ? "animate-pulse text-green" : "text-text"} aria-hidden />
-          <span className="font-semibold text-title">Téléphone Aircall</span>
-          <span className="text-xs text-text">{enAppel ? "· en ligne : raccrochez avec le bouton rouge du téléphone" : logged ? "· connecté" : charge ? "· connectez-vous à Aircall ci-dessous" : "· chargement…"}</span>
+          <span className="font-semibold text-title">Aircall</span>
+          <span className="truncate text-xs text-text">{enAppel ? "· en ligne, raccrochez avec le bouton rouge" : logged ? "· connecté" : charge ? "· connectez-vous ci-dessous" : "· chargement…"}</span>
           <button type="button" onClick={() => setOpen(false)} aria-label="Replier" className="ml-auto flex size-7 items-center justify-center rounded-full text-text hover:text-title"><ChevronDownIcon size={16} /></button>
         </div>
-        <div id="aircall-dock-phone" className="h-[376px] w-[666px] bg-black" />
+        {/* Le téléphone Aircall est en format portrait : 376 px de large sur 666 px de haut (taille « big » du SDK). */}
+        <div id="aircall-dock-phone" className="h-[666px] w-[376px] max-h-[calc(100dvh-140px)] overflow-y-auto bg-black" />
       </div>
       <button type="button" onClick={() => setOpen((o) => !o)} aria-label={open ? "Replier le téléphone" : "Ouvrir le téléphone Aircall"} title="Téléphone Aircall intégré"
         className={cn("pointer-events-auto relative flex h-11 items-center gap-2 rounded-full border px-4 text-sm font-semibold shadow-lg shadow-black/40", enAppel ? "border-green bg-green text-bg" : "border-border bg-surface text-title hover:border-text")}>

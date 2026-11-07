@@ -32,6 +32,8 @@ export function BoutonAppel({ tel, className, children, onClick, stopPropagation
     stop(e);
     onClick?.();
     if (etat.kind === "pending") return;
+    // Sur téléphone ou tablette, pas de Workspace Aircall (ordinateur seulement) : on appelle directement avec l'appareil.
+    if (window.matchMedia("(max-width: 1023px)").matches) { window.location.href = href; return; }
     setEtat({ kind: "pending" });
     try {
       // 1. Téléphone Aircall intégré (volet en bas à droite) s'il est connecté : on compose dedans, on raccroche dedans.
