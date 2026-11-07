@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import type { EchangeType, Prisma, ProspectSource, ProspectStatut } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireProspection } from "@/lib/auth";
+import { clientDepuisProspect } from "@/lib/client-depuis-prospect";
 import { NOTE_OBLIGATOIRE, REGLES, TOUS_STATUTS, formatTel, nettoyerNom, fmtDayTime, statutApres, addDaysParis, hostOf, normName, normPhone, parisDateTime, parisDay, parisMidnight } from "@/lib/crm";
 
 export type CrmState = { error?: string; ok?: boolean; doublon?: { id: string; label: string; client: boolean } };
@@ -41,10 +42,12 @@ function statutData(statut: ProspectStatut, motif: string | null | undefined, no
 
 /** Glisser-déposer d'une carte dans une autre colonne (ou vers Gagné, Perdu, Abandon). */
 export async function moveProspect(id: string, statut: ProspectStatut, motifPerte?: string) {
-  await requireProspection();
+  const me = await requireProspection();
   if (!STATUTS.includes(statut)) return;
   await prisma.prospect.update({ where: { id }, data: statutData(statut, motifPerte) });
+  if (statut === "GAGNE") await clientDepuisProspect(id, me.id); // gagné = client du portail tout de suite
   refresh(id);
+  if (statut === "GAGNE") revalidatePath("/admin", "layout");
 }
 
 export type BulkInput = { statut?: ProspectStatut; motif?: string | null; relance?: string | null; relanceHeure?: string | null; commercialId?: string | null };
@@ -71,6 +74,7 @@ export async function bulkProspects(ids: string[], input: BulkInput): Promise<{ 
   }
   if (!Object.keys(data).length) return { error: "Choisissez une action." };
   const r = await prisma.prospect.updateMany({ where: { id: { in: list }, clientId: input.statut ? null : undefined }, data });
+  if (input.statut === "GAGNE") { for (const id of list) await clientDepuisProspect(id, me.id); revalidatePath("/admin", "layout"); }
   refresh();
   revalidatePath("/crm/prospects");
   return { ok: r.count };
@@ -131,6 +135,7 @@ export async function logEchange(prospectId: string, _prev: CrmState, f: FormDat
       },
     });
   });
+  if (statut === "GAGNE") { await clientDepuisProspect(prospectId, me.id); revalidatePath("/admin", "layout"); }
   refresh(prospectId);
   // RDV pris, reporté ou honoré : l'agenda Google du commercial suit (si son compte est connecté).
   if (rdvAt || reportAt || type === "RDV" || type === "NO_SHOW") after(async () => { const { syncAgendaUsers } = await import("@/lib/agenda"); await syncAgendaUsers([prospect.commercialId ?? me.id]); });
