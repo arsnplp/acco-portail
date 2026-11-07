@@ -26,7 +26,8 @@ export default async function ProductionPage({ searchParams }: { searchParams: P
   const tableauSeul = externe || estCommercial(me);
   const [sites, equipe, activites, validations, modifsOuvertes] = await Promise.all([
     prisma.site.findMany({
-      where: { status: "EN_CREATION", ...whereSitesPour(me) },
+      // Sites en création, plus les sites en ligne remis en chantier (étape Modifier, Valider modification ou Finir depuis leur fiche).
+      where: { OR: [{ status: "EN_CREATION" }, { status: "EN_LIGNE", projectStep: { in: ["MODIFIER", "VALIDER_MODIFICATION", "FINIR"] } }], ...whereSitesPour(me) },
       orderBy: [{ etapeAt: "asc" }, { createdAt: "asc" }],
       select: { id: true, name: true, projectStep: true, etapeAt: true, createdAt: true, previewUrl: true, developpeurId: true, version: true, deadlineV1: true, deadlineV2: true, deadlineLivraison: true, client: { select: { id: true, name: true, logoMiniPath: true } }, developpeur: { select: { firstName: true, email: true } }, _count: { select: { changeRequests: { where: { status: { not: "TERMINEE" } } } } } },
     }),
