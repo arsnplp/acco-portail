@@ -155,6 +155,9 @@ export async function reattribuerClient(clientId: string, _prev: ActionState, fo
     // Tâches à faire et RDV à venir suivent le nouveau référent (transfert cohérent, section 3.3).
     prisma.tacheClient.updateMany({ where: { clientId, statut: "A_FAIRE", responsableId: client.commercialId }, data: { responsableId: nouveauId } }),
     prisma.rendezVous.updateMany({ where: { clientId, resultat: "PREVU", debut: { gte: new Date() }, commercialId: client.commercialId }, data: { commercialId: nouveauId } }),
+    // La fiche prospect gagnée et les contrats signés suivent aussi : les stats « qui a signé quoi » restent justes.
+    prisma.prospect.updateMany({ where: { clientId }, data: { commercialId: nouveauId } }),
+    prisma.contrat.updateMany({ where: { clientId, statut: "SIGNE" }, data: { commercialId: nouveauId } }),
   ]);
   await logActivite({ kind: "reattribution", texte: `Référent : ${client.commercial ? teamName(client.commercial) : "personne"} → ${nouveau ? teamName(nouveau) : "personne"}${motif ? ` · ${motif}` : ""}`, href: `/admin/clients/${clientId}`, userId: me.id, clientId });
   revalidatePath(`/admin/clients/${clientId}`); revalidatePath("/admin/clients");
@@ -418,6 +421,10 @@ export async function updateClientSuivi(clientId: string, _prev: ActionState, fo
       developpeurId: d.developpeurId || null,
     },
   });
+  if (peutAttribuer && avant && (d.commercialId || null) !== avant.commercialId) {
+    await prisma.prospect.updateMany({ where: { clientId }, data: { commercialId: d.commercialId || null } });
+    await prisma.contrat.updateMany({ where: { clientId, statut: "SIGNE" }, data: { commercialId: d.commercialId || null } });
+  }
   revalidatePath(`/admin/clients/${clientId}`);
   revalidatePath("/admin/clients");
   return {};
@@ -498,6 +505,8 @@ export async function actionGroupee(_prev: ActionState & { ok?: string }, formDa
     for (const c of clients) {
       await prisma.client.update({ where: { id: c.id }, data: { commercialId: nouveauId } });
       await prisma.tacheClient.updateMany({ where: { clientId: c.id, statut: "A_FAIRE", responsableId: c.commercialId }, data: { responsableId: nouveauId } });
+      await prisma.prospect.updateMany({ where: { clientId: c.id }, data: { commercialId: nouveauId } });
+      await prisma.contrat.updateMany({ where: { clientId: c.id, statut: "SIGNE" }, data: { commercialId: nouveauId } });
       await logActivite({ kind: "reattribution", texte: `Référent → ${nouveau ? teamName(nouveau) : "personne"} (action groupée)`, href: `/admin/clients/${c.id}`, userId: me.id, clientId: c.id });
     }
     revalidatePath("/admin/clients");

@@ -14,7 +14,7 @@ import { StackedBars, GroupedBars, LineChart } from "@/app/crm/stats/charts";
 import { MoreList } from "@/components/ui/more-list";
 import { TuilesPliables } from "@/components/ui/tuiles-pliables";
 import { activiteParCollaborateur, projectionMrr } from "@/lib/pilotage";
-import { CATEGORIES, mrrHebdo, rentabiliteParClient, visionFinanciere } from "@/lib/finance";
+import { CATEGORIES, caParCommercial, mrrHebdo, rentabiliteParClient, visionFinanciere } from "@/lib/finance";
 import { PROJECT_STEPS } from "@/lib/labels";
 import { cn } from "@/lib/cn";
 import { ArchiverChargeButton, ChargeForm } from "./charges-form";
@@ -49,13 +49,14 @@ export default async function PilotagePage({ searchParams }: { searchParams: Pro
 
 async function VueEnsemble({ finance }: { finance: boolean }) {
   const in60 = addDays(60);
-  const [v, clients, sitesEnLigne, enCreation, engagements, validations, activites, risque, hebdo] = await Promise.all([
+  const [v, clients, sitesEnLigne, enCreation, engagements, validations, activites, risque, hebdo, parCommercial] = await Promise.all([
     visionFinanciere(), prisma.client.count({ where: { archivedAt: null } }), prisma.site.count({ where: { status: "EN_LIGNE" } }), prisma.site.count({ where: { status: "EN_CREATION" } }),
     prisma.contrat.count({ where: { statut: "SIGNE", finEngagement: { gte: new Date(), lte: in60 } } }),
     prisma.validation.count({ where: { statut: "EN_ATTENTE" } }),
     prisma.activite.findMany({ orderBy: { createdAt: "desc" }, take: 25, include: { user: { select: { firstName: true, email: true } } } }),
     prisma.tacheClient.count({ where: { statut: "A_FAIRE", echeance: { lt: new Date() } } }),
     finance ? mrrHebdo() : Promise.resolve([]),
+    finance ? caParCommercial() : Promise.resolve([]),
   ]);
   const court = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" });
   const mrrPoints = hebdo.map((p) => ({ label: fmtDate(p.date), court: court.format(p.date), value: Math.round(p.mrr) / 100 }));
@@ -79,6 +80,13 @@ async function VueEnsemble({ finance }: { finance: boolean }) {
               <p className="mb-3 text-xs text-text">par mois HT, contrats signés en cours · semaine par semaine depuis le premier contrat</p>
               <LineChart points={mrrPoints} unite=" €" />
             </Card>
+            {/* Qui a signé combien : MRR HT et ponctuels par commercial (référent du client). */}
+            {parCommercial.length > 0 && (
+              <div className="mt-3 overflow-x-auto rounded-card border border-border bg-surface"><table className="w-full text-sm">
+                <thead><tr className="text-left text-[11px] tracking-wide text-text uppercase"><th className="px-3 py-2 font-semibold">Commercial</th><th className="px-3 py-2 text-right font-semibold">Clients</th><th className="px-3 py-2 text-right font-semibold">MRR HT</th><th className="px-3 py-2 text-right font-semibold">Part</th><th className="px-3 py-2 text-right font-semibold">Ponctuels</th></tr></thead>
+                <tbody className="divide-y divide-border">{parCommercial.map((r) => <tr key={r.id ?? "-"}><td className="px-3 py-2 font-semibold text-title">{r.nom}</td><td className="px-3 py-2 text-right tabular-nums">{r.clients}</td><td className="px-3 py-2 text-right tabular-nums">{euros(r.mrr)}</td><td className="px-3 py-2 text-right tabular-nums text-text">{r.part} %</td><td className="px-3 py-2 text-right tabular-nums text-text">{r.ponctuel ? euros(r.ponctuel) : "—"}</td></tr>)}</tbody>
+              </table></div>
+            )}
             {/* Impayés signalés (d'après Stripe ou à la main), sous la courbe. */}
             {v.impayes.length > 0 && <ul className="mt-3 space-y-1 text-sm">{v.impayes.map((i) => <li key={i.id}><Link href={`/admin/contrats/${i.id}`} className="text-pink hover:underline">Impayé : {i.client?.name ?? i.reference} · {i.reference} · depuis le {i.impayeAt ? fmtDate(i.impayeAt) : ""}</Link></li>)}</ul>}
           </div>

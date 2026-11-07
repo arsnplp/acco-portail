@@ -97,3 +97,27 @@ export async function mrrHebdo(semaines = 26) {
   }
   return points;
 }
+
+/**
+ * Chiffre d'affaires par commercial, d'après les contrats signés en cours : MRR HT, ponctuels signés, nombre de clients.
+ * Le commercial d'un contrat est celui du client (référent), à défaut celui noté sur le contrat.
+ */
+export async function caParCommercial() {
+  const contrats = await prisma.contrat.findMany({
+    where: { statut: "SIGNE", OR: [{ clientId: null }, { client: { archivedAt: null } }] },
+    select: { clientId: true, commercialId: true, montantMensuelHt: true, montantPonctuelHt: true, client: { select: { commercialId: true } }, commercial: { select: { id: true, firstName: true, email: true } } },
+  });
+  const users = await prisma.user.findMany({ where: { role: { not: "CLIENT" } }, select: { id: true, firstName: true, email: true } });
+  const nom = (id: string | null) => { const u = users.find((x) => x.id === id); return u ? (u.firstName ?? u.email) : "Sans commercial"; };
+  const rows = new Map<string, { id: string | null; nom: string; clients: Set<string>; mrr: number; ponctuel: number }>();
+  for (const c of contrats) {
+    const id = c.client?.commercialId ?? c.commercialId ?? null;
+    const key = id ?? "-";
+    const r = rows.get(key) ?? { id, nom: nom(id), clients: new Set<string>(), mrr: 0, ponctuel: 0 };
+    if (c.clientId) r.clients.add(c.clientId);
+    r.mrr += c.montantMensuelHt; r.ponctuel += c.montantPonctuelHt;
+    rows.set(key, r);
+  }
+  const total = [...rows.values()].reduce((a, r) => a + r.mrr, 0);
+  return [...rows.values()].map((r) => ({ id: r.id, nom: r.nom, clients: r.clients.size, mrr: r.mrr, ponctuel: r.ponctuel, part: total ? Math.round((r.mrr / total) * 100) : 0 })).sort((a, b) => b.mrr - a.mrr);
+}
