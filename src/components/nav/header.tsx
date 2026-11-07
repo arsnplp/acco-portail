@@ -12,7 +12,7 @@ export async function Header({ initials, avatarUrl, accountHref = "/compte", rig
         <Link href="/" aria-label="Accueil" className="flex w-fit items-center">
           <Image src="/brand/logo-acco.webp" alt="" width={28} height={28} priority className="brand-logo size-7" />
         </Link>
-        <Image src="/brand/acco-wordmark-600.png" alt="Acco" width={600} height={134} priority className="brand-logo h-[22px] w-auto select-none" draggable={false} />
+        <Image src="/brand/acco-wordmark-600.png" alt="Acco" width={600} height={134} priority className="brand-logo h-[18px] w-auto select-none sm:h-[22px]" draggable={false} />
         <div className="flex items-center justify-end gap-2">
           {right}
           <ThemeToggle initial={theme} />
