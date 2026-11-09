@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  CalendarDaysIcon, ChartColumnIcon, ChevronDownIcon, CreditCardIcon, EllipsisIcon, GaugeIcon, HistoryIcon, KanbanSquareIcon, ListChecksIcon, MegaphoneIcon, PlusIcon, SunIcon,
+  CalendarDaysIcon, ChartColumnIcon, ChevronDownIcon, ClipboardCheckIcon, CreditCardIcon, EllipsisIcon, GaugeIcon, HistoryIcon, KanbanSquareIcon, ListChecksIcon, MegaphoneIcon, PlusIcon, SunIcon,
   UsersIcon, VaultIcon, XIcon, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -23,6 +23,7 @@ export type NavDroits = { admin: boolean; direction?: boolean };
 function secondaires({ admin, direction }: NavDroits): Item[] {
   return [
     { href: "/crm/liens", label: "Liens de paiement", icon: CreditCardIcon, hint: "Offres et paliers client référence, à copier en un clic" },
+    { href: "/crm/bilan", label: "Mon bilan", icon: ClipboardCheckIcon, hint: "Mes résultats face à mes objectifs, mes comptes rendus" },
     { href: "/crm/prospects", label: "Tous les prospects", icon: ListChecksIcon, exact: true, hint: "Filtres avancés, repêchage, actions en masse" },
     { href: "/crm/stats", label: "Stats", icon: ChartColumnIcon, hint: "Chiffres de l’équipe et graphiques" },
     ...(direction ? [

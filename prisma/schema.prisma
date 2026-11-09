@@ -1521,6 +1521,45 @@ model Prospect {
 }
 
 /// Contact d'un prospect et/ou d'un client (même ligne avant et après signature : une seule source de vérité).
+/// Bilans individuels des commerciaux (Pilotage → Commercial → fiche) : période hebdo, mensuelle, trimestrielle ou annuelle.
+enum PeriodeBilan {
+  HEBDO
+  MENSUEL
+  TRIMESTRIEL
+  ANNUEL
+}
+
+/// Trois objectifs par indicateur et par période : personnel (fixé par le commercial), engagement (sur lequel il s'engage), fixé (par son responsable).
+model ObjectifCommercial {
+  id         String       @id @default(cuid())
+  userId     String
+  periode    PeriodeBilan
+  debut      DateTime // premier jour de la période (UTC midi)
+  indicateur String // appels | rdv | signatures | ca
+  personnel  Int?
+  engagement Int?
+  fixe       Int?
+  fixeParId  String?
+  updatedAt  DateTime     @updatedAt
+  createdAt  DateTime     @default(now())
+
+  @@unique([userId, periode, debut, indicateur])
+}
+
+/// Compte rendu de période rédigé par le commercial ou son responsable.
+model BilanCommercial {
+  id        String       @id @default(cuid())
+  userId    String
+  periode   PeriodeBilan
+  debut     DateTime
+  contenu   String
+  auteurId  String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([userId, periode, debut])
+}
+
 /// Signalement de la Direction au commercial attitré d'une fiche prospect : demande d'informations ou de rectification.
 /// Arrive dans ses Messages (icône de l'en-tête, push) ; cliquable vers la fiche ; lu à l'ouverture de la fiche, traité sur clic.
 model Signalement {
