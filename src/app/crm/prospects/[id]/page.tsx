@@ -19,6 +19,7 @@ import { FileSignatureIcon } from "lucide-react";
 import { EchangeForm, ProspectForm, Contacts, Historique, AssignControl, RdvList } from "./forms";
 import { BoutonAppel } from "@/components/crm/bouton-appel";
 import { SignalerButton, SignalementsBanner } from "@/components/crm/signalement";
+import { LiensPaiementButton } from "@/components/crm/liens-paiement";
 
 export const metadata = { title: "Fiche prospect" };
 
@@ -97,6 +98,7 @@ export default async function ProspectPage({ params, searchParams }: { params: P
           </div>
         </div>
         <div className="flex w-full items-center gap-2 sm:w-auto">
+          <LiensPaiementButton />
           {direction && <SignalerButton prospectId={p.id} commercial={p.commercial ? teamName(p.commercial) : null} />}
           <LeadInfoButton prospectId={p.id} coffre={direction} lead={p.lead ? { listeId: p.lead.listeId, liste: `${p.lead.liste.secteur} · ${p.lead.liste.region}`, generee: fmtDayTime(p.lead.liste.createdAt), donnees: p.lead.donnees as LeadRow } : p.infos ? { listeId: null, liste: null, generee: p.infosAt ? fmtDayTime(p.infosAt) : "", donnees: p.infos as LeadRow } : null} />
           {phone && <BoutonAppel tel={phone} className="flex h-11 flex-1 items-center justify-center gap-2 rounded-card bg-title px-4 text-sm font-semibold text-bg sm:flex-none"><PhoneIcon size={16} aria-hidden /> {phone}</BoutonAppel>}
