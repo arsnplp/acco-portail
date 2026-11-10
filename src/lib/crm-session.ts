@@ -27,6 +27,7 @@ export function sessionWhere(s: SessionParams, meId: string, todayStart: Date): 
     ...(cs.length ? { OR: cs.map((c) => (c === "me" ? { commercialId: meId } : c === "none" ? { commercialId: null } : { commercialId: c })) } : {}),
     ...(cibles.length ? { cible: { nom: { in: cibles } } } : {}),
     id: { notIn: s.skip },
-    echanges: { none: { auteurId: meId, date: { gte: todayStart } } }, // déjà traité aujourd'hui par moi : on passe
+    // Déjà traité aujourd'hui par moi : on passe. La note automatique posée à l'envoi d'une liste du coffre (origine « lead ») ne compte pas.
+    echanges: { none: { auteurId: meId, date: { gte: todayStart }, NOT: { origine: "lead" } } },
   };
 }

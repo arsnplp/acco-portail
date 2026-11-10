@@ -3,7 +3,7 @@ export const COLONNES = [
   "Entreprise", "Secteur", "Ville", "Adresse", "Téléphone", "Email", "Site web", "Dirigeant", "Rôle", "Note Google", "Avis Google",
   "Fiche Google", "Score", "SIREN", "SIRET", "TVA intracom", "Forme juridique", "Code NAF", "Date de création", "État", "Établissements (total)",
   "Établissements ouverts", "Fiabilité identité", "CMS", "Hébergeur", "Âge domaine", "Vitesse mobile", "Vitesse desktop", "HTTPS",
-  "Responsive", "Google Ads", "Score SEO", "Faiblesses SEO", "Facebook", "Instagram",
+  "Responsive", "Google Ads", "Score SEO", "Faiblesses SEO", "Facebook", "Instagram", "Autre téléphone",
 ] as const;
 export type Colonne = (typeof COLONNES)[number];
 export type LeadRow = Partial<Record<Colonne, string | number | null>> & { _source?: string | null; _presence?: string | null };

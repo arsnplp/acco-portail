@@ -14,7 +14,7 @@ type LeadInfo = { listeId: string | null; liste: string | null; generee: string;
 
 /** Groupes de colonnes pour la fenêtre « Infos du lead ». */
 const GROUPES: { titre: string; cols: Colonne[] }[] = [
-  { titre: "Contact", cols: ["Entreprise", "Secteur", "Ville", "Adresse", "Téléphone", "Email", "Dirigeant", "Rôle"] },
+  { titre: "Contact", cols: ["Entreprise", "Secteur", "Ville", "Adresse", "Téléphone", "Autre téléphone", "Email", "Dirigeant", "Rôle"] },
   { titre: "Réputation et potentiel", cols: ["Fiche Google", "Score", "Note Google", "Avis Google", "Google Ads", "Facebook", "Instagram"] },
   { titre: "Site web", cols: ["Site web", "CMS", "Hébergeur", "Âge domaine", "HTTPS", "Responsive", "Vitesse mobile", "Vitesse desktop", "Score SEO", "Faiblesses SEO"] },
   { titre: "Entreprise (registre officiel)", cols: ["SIREN", "SIRET", "TVA intracom", "Forme juridique", "Code NAF", "Date de création", "État", "Établissements (total)", "Établissements ouverts", "Fiabilité identité"] },
