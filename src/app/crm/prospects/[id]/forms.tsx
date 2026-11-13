@@ -10,6 +10,7 @@ import { ECHANGE, ECHANGE_SAISIE, NOTE_OBLIGATOIRE, MOTIFS_ABANDON, MOTIFS_PERTE
 import { StatutPicker } from "@/components/crm/statut-picker";
 import { Field, FormError, Input, Select, Textarea } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { useEnvoiSansReset } from "@/components/ui/use-envoi-sans-reset";
 import { SectionTitle } from "@/components/ui/card";
 import { AircallBloc, AircallTitre, GmailBloc } from "@/components/crm/echange-detail";
 import { isAircallMeta, isGmailMeta } from "@/lib/echange-meta";
@@ -278,14 +279,15 @@ type P = {
   mensuelEuros: number | null; commercialId: string | null; relance: string; relanceHeure: string; isClient: boolean;
 };
 export function ProspectForm({ p, team, cibles, canDelete, isAdmin }: { p: P; team: { id: string; name: string }[]; cibles: string[]; canDelete: boolean; isAdmin: boolean }) {
-  const [state, action] = useActionState<CrmState, FormData>(updateProspect.bind(null, p.id), {});
+  const [state, action, pending] = useActionState<CrmState, FormData>(updateProspect.bind(null, p.id), {});
+  const onSubmit = useEnvoiSansReset(action); // garde la saisie (la source ne revient plus sur « Cold Call »)
   const [statut, setStatut] = useState(p.statut);
   const [, start] = useTransition();
   const saved = !!state.ok;
   return (
     <section>
       <SectionTitle icon={BuildingIcon}>Société</SectionTitle>
-      <form action={action} className={cn(box, "space-y-3")}>
+      <form onSubmit={onSubmit} className={cn(box, "space-y-3")}>
         <Field label="Société"><Input name="societe" defaultValue={p.societe} required /></Field>
         <Field label="Site web"><Input name="siteWeb" defaultValue={p.siteWeb ?? ""} placeholder="exemple.fr" /></Field>
         <div className="grid grid-cols-2 gap-3">
@@ -327,7 +329,7 @@ export function ProspectForm({ p, team, cibles, canDelete, isAdmin }: { p: P; te
         </div>
         <FormError message={state.error} />
         <div className="flex items-center gap-3">
-          <SubmitButton pendingLabel="Enregistrement…">Enregistrer</SubmitButton>
+          <SubmitButton pending={pending} pendingLabel="Enregistrement…">Enregistrer</SubmitButton>
           {saved && <span className="flex items-center gap-1 text-sm text-green"><CheckIcon size={15} /> Enregistré</span>}
           {canDelete ? <button type="button" onClick={() => confirm("Supprimer définitivement cette fiche et son historique ?") && start(() => deleteProspect(p.id))} className="ml-auto text-sm text-text hover:text-pink">Supprimer la fiche</button>
             : !isAdmin && <span className="ml-auto text-xs text-muted" title="La suppression est réservée aux admins">Pour écarter la fiche : statut « Abandon »</span>}

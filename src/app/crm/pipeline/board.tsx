@@ -12,7 +12,7 @@ import { ArchiveIcon, PhoneIcon, PlayIcon, SearchIcon, TrophyIcon, XCircleIcon }
 import { NrpMeter } from "@/components/crm/nrp-meter";
 import { cn } from "@/lib/cn";
 import { EtapeBanner } from "@/components/crm/etape-banner";
-import { CLOS, matchRecherche, MOTIFS_ABANDON, MOTIFS_PERTE, PIPELINE, initialsOf, logoUrl, relanceInfo } from "@/lib/crm";
+import { CLOS, fmtDayTime, matchRecherche, MOTIFS_ABANDON, MOTIFS_PERTE, PIPELINE, initialsOf, logoUrl, relanceInfo } from "@/lib/crm";
 import { Dialog } from "@/components/ui/dialog";
 import { moveProspect } from "../actions";
 import { Logo } from "@/components/crm/logo";
@@ -23,6 +23,7 @@ import { BoutonAppel } from "@/components/crm/bouton-appel";
 export type CardData = {
   id: string; societe: string; statut: ProspectStatut; relanceAt: string | null; contact: string | null;
   telephone: string | null; tels: string[]; siteWeb: string | null; cible: string | null; commercialId: string | null; nrp: number;
+  rdvAt?: string | null; // prochain RDV prévu (colonne « RDV posé »)
 };
 type Member = { id: string; name: string; avatarUrl: string | null };
 
@@ -84,7 +85,7 @@ export function Board({ initial, team, cibles, meId, initialFilter }: { initial:
       <DndContext sensors={sensors} onDragStart={(e: DragStartEvent) => setDragging(cards.find((c) => c.id === e.active.id) ?? null)} onDragEnd={onEnd} onDragCancel={() => setDragging(null)}>
         <div className="relative -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-4 lg:mx-0 lg:grid lg:grid-cols-5 lg:overflow-visible lg:px-0">
           {PIPELINE.map((s) => (
-            <Column key={s} statut={s} cards={visible.filter((c) => c.statut === s)} members={members} onOpen={(id) => router.push(`/crm/prospects/${id}`)}
+            <Column key={s} statut={s} cards={colonne(visible, s)} members={members} onOpen={(id) => router.push(`/crm/prospects/${id}`)}
               sessionHref={`/crm/session?${new URLSearchParams({ statut: s, c: who.length ? who.join(",") : "all", ...(cible.length ? { cible: cible.join(",") } : {}) })}`} />
           ))}
         </div>
@@ -110,6 +111,14 @@ export function Board({ initial, team, cibles, meId, initialFilter }: { initial:
       )}
     </main>
   );
+}
+
+/** Cartes d'une colonne. « RDV posé » : triée par date de RDV (le plus proche en haut, sans RDV à la fin). */
+function colonne(cards: CardData[], statut: ProspectStatut) {
+  const list = cards.filter((c) => c.statut === statut);
+  if (statut !== "RDV_POSE") return list;
+  const t = (c: CardData) => (c.rdvAt ? new Date(c.rdvAt).getTime() : Infinity);
+  return [...list].sort((a, b) => t(a) - t(b));
 }
 
 function Column({ statut, cards, members, onOpen, sessionHref }: { statut: ProspectStatut; cards: CardData[]; members: Map<string, Member>; onOpen: (id: string) => void; sessionHref: string }) {
@@ -164,7 +173,11 @@ function Card({ card, member, overlay }: { card: CardData; member?: Member; over
         )}
       </div>
       <div className="mt-2.5 flex items-center gap-2 text-[11px]">
-        <span className={cn("shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 font-medium", r.state === "late" ? "bg-pink/15 text-pink" : r.state === "today" ? "bg-yellow/15 text-yellow" : "bg-surface-2 text-text")}>{r.label}</span>
+        {card.statut === "RDV_POSE" && card.rdvAt ? (
+          <span className="shrink-0 whitespace-nowrap rounded-full bg-claude/15 px-2 py-0.5 font-medium text-claude">RDV {fmtDayTime(card.rdvAt)}</span>
+        ) : (
+          <span className={cn("shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 font-medium", r.state === "late" ? "bg-pink/15 text-pink" : r.state === "today" ? "bg-yellow/15 text-yellow" : "bg-surface-2 text-text")}>{r.label}</span>
+        )}
         <NrpMeter n={card.nrp} />
         {card.cible && <span className="truncate text-muted">{card.cible}</span>}
         {member && <span title={member.name} className="ml-auto flex size-5 shrink-0 items-center justify-center rounded-full bg-surface-2 text-[9px] font-semibold text-text-strong">{initialsOf(member.name)}</span>}

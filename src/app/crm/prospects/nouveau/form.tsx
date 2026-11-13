@@ -8,12 +8,14 @@ import type { ProspectSource } from "@prisma/client";
 import { SOURCE } from "@/lib/crm";
 import { Field, FormError, Input, Select } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { useEnvoiSansReset } from "@/components/ui/use-envoi-sans-reset";
 import { createProspect, type CrmState } from "../../actions";
 
 export function NewProspectForm({ meId, team, cibles, today, isAdmin }: { meId: string; team: { id: string; name: string }[]; cibles: string[]; today: string; isAdmin: boolean }) {
-  const [state, action] = useActionState<CrmState, FormData>(createProspect, {});
+  const [state, action, pending] = useActionState<CrmState, FormData>(createProspect, {});
+  const onSubmit = useEnvoiSansReset(action); // sinon la source revient sur « Cold Call » après un doublon
   return (
-    <form action={action} className="mt-6 space-y-4">
+    <form onSubmit={onSubmit} className="mt-6 space-y-4">
       <div className="space-y-3 rounded-card border border-border bg-surface p-4">
         <Field label="Société"><Input name="societe" required autoFocus placeholder="Institut Belle Peau" /></Field>
         <Field label="Site web" hint="optionnel"><Input name="siteWeb" placeholder="exemple.fr" /></Field>
@@ -55,7 +57,7 @@ export function NewProspectForm({ meId, team, cibles, today, isAdmin }: { meId: 
         </div>
       )}
       {!state.doublon && <FormError message={state.error} />}
-      <SubmitButton className="w-full" pendingLabel="Création…">Créer le prospect</SubmitButton>
+      <SubmitButton className="w-full" pending={pending} pendingLabel="Création…">Créer le prospect</SubmitButton>
     </form>
   );
 }

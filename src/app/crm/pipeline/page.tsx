@@ -21,6 +21,8 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
         cible: { select: { nom: true } },
         contacts: { orderBy: [{ principal: "desc" }, { createdAt: "asc" }], take: 1, select: { prenom: true, nom: true, telephone: true } },
         _count: { select: { echanges: { where: { type: "NRP" } } } },
+        // Prochain RDV prévu : la colonne « RDV posé » est triée par date de rendez-vous.
+        rendezVous: { where: { resultat: "PREVU" }, orderBy: { debut: "asc" }, take: 1, select: { debut: true } },
       },
     }),
     prisma.user.findMany({ where: { role: { in: MODULES.prospection } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true, avatarUrl: true } }),
@@ -30,6 +32,7 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
     id: p.id, societe: p.societe, statut: p.statut, relanceAt: p.relanceAt?.toISOString() ?? null,
     contact: contactName(p.contacts[0]), telephone: formatTel(p.contacts[0]?.telephone ?? p.telephone), tels: [p.telephone, p.contacts[0]?.telephone].filter((t): t is string => !!t), siteWeb: p.siteWeb,
     cible: p.cible?.nom ?? null, commercialId: p.commercialId, nrp: p._count.echanges,
+    rdvAt: p.rendezVous[0]?.debut.toISOString() ?? null,
   }));
   return (
     <Board
