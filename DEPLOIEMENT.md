@@ -81,9 +81,21 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
+        proxy_set_header Connection $connection_upgrade;
         proxy_read_timeout 300;
+        # Indispensable : les cookies de session Supabase renouvelés font des en-têtes de réponse > 4 Ko,
+        # sans ces tampons nginx renvoie un 502 « upstream sent too big header » à la première ouverture.
+        proxy_buffer_size 64k;
+        proxy_buffers 8 64k;
+        proxy_busy_buffers_size 128k;
     }
+}
+NGINX
+# Variable $connection_upgrade (une seule fois pour tout nginx) : « upgrade » seulement pour les websockets, sinon « close »
+sudo tee /etc/nginx/conf.d/connection-upgrade.conf > /dev/null <<'NGINX'
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
 }
 NGINX
 sudo ln -s /etc/nginx/sites-available/acco /etc/nginx/sites-enabled/acco
