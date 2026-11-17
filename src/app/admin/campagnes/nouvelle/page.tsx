@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { commerciaux as listeCommerciaux } from "@/lib/commerciaux";
 import { requireTeam } from "@/lib/auth";
 import { estExterne } from "@/lib/permissions";
 import { AdminPage } from "@/components/admin/page";
 import { MODELES, VARIABLES } from "@/lib/campagnes";
-import { MODULES } from "@/lib/roles";
 import { teamName } from "@/lib/crm";
 import { CampagneForm } from "../form";
 
@@ -14,7 +14,7 @@ export default async function NouvelleCampagnePage({ searchParams }: { searchPar
   const me = await requireTeam();
   if (estExterne(me)) redirect("/admin");
   const sp = await searchParams;
-  const commerciaux = await prisma.user.findMany({ where: { role: { in: MODULES.prospection } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true } });
+  const commerciaux = await listeCommerciaux();
   const ids = (sp.clients ?? "").split(",").filter(Boolean);
   return (
     <AdminPage title="Nouvelle campagne" back={{ href: "/admin/campagnes", label: "Campagnes" }}>

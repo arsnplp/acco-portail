@@ -3,6 +3,7 @@
 import { useActionState, useState, useTransition } from "react";
 import { ArchiveIcon, ArchiveRestoreIcon, CheckIcon, ImagePlusIcon, PencilIcon, SparklesIcon, XIcon } from "lucide-react";
 import { Field, FormError, Input, Select, Textarea } from "@/components/ui/field";
+import { LieuVisio } from "@/components/crm/lieu-visio";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { LogoClient } from "@/components/ui/logo-client";
 import { cn } from "@/lib/cn";
@@ -235,7 +236,7 @@ export function TacheButtons({ clientId, tacheId }: { clientId: string; tacheId:
   );
 }
 
-export function RdvForm({ clientId, membres, sites, meId, contacts = [] }: { clientId: string; membres: Member[]; sites: SiteRef[]; meId: string; contacts?: { email: string; nom: string }[] }) {
+export function RdvForm({ clientId, membres, sites, meId, contacts = [], adresse = null }: { clientId: string; membres: Member[]; sites: SiteRef[]; meId: string; contacts?: { email: string; nom: string }[]; adresse?: string | null }) {
   const [key, setKey] = useState(0);
   const [state, action] = useActionState<ActionState, FormData>(async (prev, fd) => { const r = await creerRdvClientAction(clientId, prev, fd); if (!r.error) setKey((k) => k + 1); return r; }, {});
   return (
@@ -246,11 +247,10 @@ export function RdvForm({ clientId, membres, sites, meId, contacts = [] }: { cli
         <Field label="Heure"><Input name="heure" type="time" required defaultValue="10:00" /></Field>
         <Field label="Durée (min)"><Input name="duree" inputMode="numeric" defaultValue="60" /></Field>
         <Field label="Avec"><Select name="commercialId" defaultValue={meId}>{membres.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</Select></Field>
-        <Field label="Lieu / visio"><Input name="lieu" placeholder="Sur place, Google Meet…" /></Field>
         <Field label="Site"><Select name="siteId" defaultValue=""><option value="">—</option>{sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</Select></Field>
+        <LieuVisio adresse={adresse} className="col-span-2" />
       </div>
       <div className="flex flex-wrap gap-3 text-xs text-text-strong">
-        <label className="flex items-center gap-1.5"><input type="checkbox" name="meet" className="size-4" /> Créer un lien Google Meet</label>
         {contacts.map((c) => <label key={c.email} className="flex items-center gap-1.5"><input type="checkbox" name="invites" value={c.email} className="size-4" /> Inviter {c.nom}</label>)}
       </div>
       <FormError message={state.error} />

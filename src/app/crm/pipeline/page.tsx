@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import { MODULES } from "@/lib/roles";
+import { commerciaux } from "@/lib/commerciaux";
 import { requireProspection } from "@/lib/auth";
 import { PIPELINE, contactName, formatTel, teamName } from "@/lib/crm";
 import { Board, type CardData } from "./board";
@@ -25,7 +25,7 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
         rendezVous: { where: { resultat: "PREVU" }, orderBy: { debut: "asc" }, take: 1, select: { debut: true } },
       },
     }),
-    prisma.user.findMany({ where: { role: { in: MODULES.prospection } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true, avatarUrl: true } }),
+    commerciaux(),
     prisma.cible.findMany({ orderBy: { nom: "asc" }, select: { nom: true } }),
   ]);
   const cards: CardData[] = prospects.map((p) => ({

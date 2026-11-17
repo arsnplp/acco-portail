@@ -16,6 +16,7 @@ import { AircallBloc, AircallTitre, GmailBloc } from "@/components/crm/echange-d
 import { isAircallMeta, isGmailMeta } from "@/lib/echange-meta";
 import { assignProspect, deleteContact, deleteEchange, deleteProspect, logEchange, saveContact, setRdvResultat, syncProspectNow, updateProspect, type CrmState } from "../../actions";
 import { BoutonAppel } from "@/components/crm/bouton-appel";
+import { LieuVisio } from "@/components/crm/lieu-visio";
 
 const box = "rounded-card border border-border bg-surface p-4";
 
@@ -23,7 +24,7 @@ const plusDays = (today: string, n: number) => { const d = new Date(`${today}T12
 
 // ─── Noter un échange ────────────────────────────────────────
 type Invite = { email: string; nom: string; defaut?: boolean };
-export function EchangeForm({ prospectId, statut, session, today, contacts = [], equipe = [], modele = "" }: { prospectId: string; statut: ProspectStatut; session: string; today: string; contacts?: Invite[]; equipe?: Invite[]; modele?: string }) {
+export function EchangeForm({ prospectId, statut, session, today, contacts = [], equipe = [], modele = "", adresse = null }: { prospectId: string; statut: ProspectStatut; session: string; today: string; contacts?: Invite[]; equipe?: Invite[]; modele?: string; adresse?: string | null }) {
   const [type, setType] = useState<EchangeType | null>(null);
   const [relance, setRelance] = useState("");
   const [next, setNext] = useState<ProspectStatut>(statut);
@@ -80,7 +81,7 @@ export function EchangeForm({ prospectId, statut, session, today, contacts = [],
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                       <Field label="Nouvelle date"><DateInput name="reportDay" required min={today} /></Field>
                       <Field label="Heure"><TimeInput name="reportTime" defaultValue="10:00" step={900} required /></Field>
-                      <div className="col-span-2 sm:col-span-1"><Field label="Lieu" hint="optionnel"><Input name="reportLieu" placeholder="Sur place, visio…" /></Field></div>
+                      <LieuVisio adresse={adresse} nameLieu="reportLieu" nameMeet="reportMeet" className="col-span-2 sm:col-span-1" />
                     </div>
                     <p className="text-xs text-text">Le report est rattaché au RDV manqué : il ne compte pas comme un nouveau RDV pris.</p>
                   </div>
@@ -101,15 +102,15 @@ export function EchangeForm({ prospectId, statut, session, today, contacts = [],
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   <Field label="Date du RDV"><DateInput name="rdvDay" required min={today} /></Field>
                   <Field label="Heure"><TimeInput name="rdvTime" defaultValue="10:00" step={900} required /></Field>
-                  <div className="col-span-2 sm:col-span-1"><Field label="Lieu" hint="optionnel"><Input name="rdvLieu" placeholder="Sur place, visio…" /></Field></div>
+                  <LieuVisio adresse={adresse} nameLieu="rdvLieu" nameMeet="rdvMeet" className="col-span-2 sm:col-span-1" />
                 </div>
                 <div className="rounded-card border border-border bg-bg p-3">
                   <p className="mb-2 text-xs font-semibold tracking-wide text-text uppercase">Invitation Google Agenda</p>
                   <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-text-strong">
-                    <label className="flex items-center gap-1.5"><input type="checkbox" name="rdvMeet" className="size-4" /> Visio Google Meet</label>
                     {contacts.map((c) => <label key={c.email} className="flex items-center gap-1.5"><input type="checkbox" name="rdvInvites" value={c.email} defaultChecked={c.defaut} className="size-4" /> {c.nom} <span className="text-xs text-text">(client)</span></label>)}
                     {equipe.map((m) => <label key={m.email} className="flex items-center gap-1.5"><input type="checkbox" name="rdvInvites" value={m.email} className="size-4" /> {m.nom}</label>)}
                   </div>
+                  {contacts.length === 0 && equipe.length === 0 && <p className="mt-1 text-xs text-text">Personne à inviter pour l’instant.</p>}
                   {contacts.length === 0 && <p className="mt-1 text-xs text-yellow">Aucun contact avec email sur la fiche : ajoutez-en un pour inviter le client.</p>}
                   <Textarea name="rdvDescription" defaultValue={modele} className="mt-2 min-h-28 text-sm" placeholder="Texte de l’invitation" />
                   <p className="mt-1 text-[11px] text-muted">L’événement est créé dans l’agenda Google du commercial, les invités reçoivent l’invitation Google. Modèle : Paramètres → Agence.</p>

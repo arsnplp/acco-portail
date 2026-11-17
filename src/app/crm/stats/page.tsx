@@ -1,41 +1,34 @@
 import Link from "next/link";
 import type { EchangeType, ProspectStatut } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { MODULES, estCommercial } from "@/lib/roles";
+import { commerciaux } from "@/lib/commerciaux";
 import { requireProspection } from "@/lib/auth";
 import { cn } from "@/lib/cn";
-import { ECHANGE, ECHANGE_COULEUR, PIPELINE, STATUT, STATUT_COULEUR, parisDay, teamName, todayBounds, VIZ } from "@/lib/crm";
+import { ECHANGE, ECHANGE_COULEUR, PIPELINE, STATUT, STATUT_COULEUR, parisDay, teamName, VIZ } from "@/lib/crm";
+import { PERIODES_STATS, periodeStats } from "@/lib/periodes";
 import { Avatar } from "@/components/ui/avatar";
 import { initialsOf } from "@/lib/crm";
 import { Donut, Funnel, GroupedBars, HBars, KpiTile, Panel, StackedBars, type Bucket } from "./charts";
 
 export const metadata = { title: "Stats" };
 
-const PERIODES = [
-  { v: "7", label: "7 jours" },
-  { v: "30", label: "30 jours" },
-  { v: "90", label: "3 mois" },
-  { v: "365", label: "12 mois" },
-] as const;
 const TYPES_ACTIVITE: EchangeType[] = ["NRP", "APPEL", "MAIL", "PP", "PRISE_RDV", "RDV", "NO_SHOW"];
 const APPELS: EchangeType[] = ["NRP", "APPEL", "PRISE_RDV"];
-const MOIS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
 const ca = (p: { fraisCreationEuros: number | null; mensuelEuros: number | null }) => (p.fraisCreationEuros ?? 0) + 12 * (p.mensuelEuros ?? 0);
 
 export default async function StatsPage({ searchParams }: { searchParams: Promise<{ p?: string; c?: string }> }) {
   const me = await requireProspection();
   const sp = await searchParams;
-  const jours = Number(PERIODES.find((x) => x.v === sp.p)?.v ?? 30);
+  // Périodes calendaires (semaine, mois, 3 mois, 12 mois), jamais des jours glissants ; comparaison avec la même période juste avant.
+  const periode = periodeStats(PERIODES_STATS.find((x) => x.key === sp.p)?.key ?? "mois");
   const who = sp.c && sp.c !== "all" ? sp.c : null;
-  const { end } = todayBounds();
-  const since = new Date(end.getTime() - jours * 86400_000);
-  const prevSince = new Date(since.getTime() - jours * 86400_000);
+  const since = periode.debut, end = periode.fin, prevSince = periode.prevDebut;
 
   const byAuteur = who ? { auteurId: who } : { auteurId: { not: null } };
   const byCommercial = who ? { commercialId: who } : {};
 
   const [team, wonAll, echanges, prevEchanges, rdvPris, prevRdvPris, rdvTenus, wins, prevWins, pipeline] = await Promise.all([
-    prisma.user.findMany({ where: { role: { in: MODULES.prospection } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true, avatarUrl: true, role: true, modeDefaut: true } }).then((us) => us.filter(estCommercial)),
+    commerciaux(),
     prisma.prospect.findMany({ where: { statut: "GAGNE" }, select: { commercialId: true, fraisCreationEuros: true, mensuelEuros: true } }),
     prisma.echange.findMany({ where: { ...byAuteur, date: { gte: since, lt: end } }, select: { type: true, date: true, auteurId: true, prospectId: true } }),
     prisma.echange.findMany({ where: { ...byAuteur, date: { gte: prevSince, lt: since } }, select: { type: true, prospectId: true } }),
@@ -61,20 +54,8 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
   const contactes = new Set(echanges.map((e) => e.prospectId).filter(Boolean)).size;
   const transfo = contactes ? Math.round((wins.length / contactes) * 1000) / 10 : null;
 
-  // ─── Séries dans le temps : par jour (≤ 30 j), par semaine (3 mois), par mois (12 mois) ───
-  const unit: "jour" | "semaine" | "mois" = jours <= 30 ? "jour" : jours <= 90 ? "semaine" : "mois";
-  const buckets: { key: string; label: string; start: number }[] = [];
-  if (unit === "mois") {
-    const [y, m] = parisDay(new Date(end.getTime() - 1)).split("-").map(Number);
-    for (let i = 11; i >= 0; i--) { const d = new Date(Date.UTC(y, m - 1 - i, 1)); buckets.push({ key: d.toISOString().slice(0, 7), label: MOIS[d.getUTCMonth()], start: 0 }); }
-  } else {
-    const step = unit === "jour" ? 1 : 7;
-    for (let t = since.getTime(); t < end.getTime(); t += step * 86400_000) {
-      const day = parisDay(new Date(t + 12 * 3600_000));
-      const [, mm, dd] = day.split("-").map(Number);
-      buckets.push({ key: day, label: unit === "jour" ? (jours <= 7 ? new Intl.DateTimeFormat("fr-FR", { weekday: "short" }).format(new Date(t + 12 * 3600_000)) : `${dd}`) : `${dd} ${MOIS[mm - 1]}`, start: t });
-    }
-  }
+  // ─── Séries dans le temps : par jour (semaine, mois), par semaine (3 mois), par mois (12 mois) ───
+  const { unit, buckets } = periode;
   const bucketOf = (d: Date) => {
     if (unit === "mois") return parisDay(d).slice(0, 7);
     const t = d.getTime();
@@ -121,7 +102,7 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
   }).filter((r) => !who || r.u.id === who).sort((a, b) => b.ca - a.ca || b.rdv - a.rdv || b.activites - a.activites);
 
   const caTotal = (id: string) => wonAll.filter((p) => p.commercialId === id).reduce((a, p) => a + ca(p), 0);
-  const href = (q: Record<string, string>) => `/crm/stats?${new URLSearchParams({ p: String(jours), c: who ?? "all", ...q })}`;
+  const href = (q: Record<string, string>) => `/crm/stats?${new URLSearchParams({ p: periode.key, c: who ?? "all", ...q })}`;
   const unitLabel = unit === "jour" ? "par jour" : unit === "semaine" ? "par semaine" : "par mois";
 
   return (
@@ -129,11 +110,11 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl">Stats</h1>
-          <p className="mt-1 text-sm text-text">{who ? `Les chiffres de ${teamName(team.find((u) => u.id === who) ?? me)}` : "Toute l’équipe"} sur {PERIODES.find((x) => x.v === String(jours))?.label}. Les no show et leurs reports ne comptent pas dans les RDV pris.</p>
+          <p className="mt-1 text-sm text-text">{who ? `Les chiffres de ${teamName(team.find((u) => u.id === who) ?? me)}` : "Toute l’équipe"} {periode.key === "mois" ? " en" : ""} {periode.label}. Les no show et leurs reports ne comptent pas dans les RDV pris.</p>
         </div>
         <div className="flex rounded-full border border-border p-0.5 text-sm">
-          {PERIODES.map((x) => (
-            <Link key={x.v} href={href({ p: x.v })} className={cn("rounded-full px-3 py-1.5", String(jours) === x.v ? "bg-title font-semibold text-bg" : "text-text hover:text-title")}>{x.label}</Link>
+          {PERIODES_STATS.map((x) => (
+            <Link key={x.key} href={href({ p: x.key })} className={cn("rounded-full px-3 py-1.5", periode.key === x.key ? "bg-title font-semibold text-bg" : "text-text hover:text-title")}>{x.label}</Link>
           ))}
         </div>
       </div>

@@ -1,13 +1,13 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import type { Mode, Role } from "@prisma/client";
+import type { Equipe, Mode, Role } from "@prisma/client";
 import { ChevronDownIcon } from "lucide-react";
 import { Field, FormError, Input, Select, Textarea } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { EQUIPE, MODE_LABEL, ROLE_LABEL } from "@/lib/roles";
+import { EQUIPE, EQUIPE_LABEL, MODE_LABEL, ROLE_LABEL } from "@/lib/roles";
 import { DROITS, PRESETS, type Droit, type Preset } from "@/lib/permissions";
-import { addTeamMember, appliquerPreset, creerDelegation, removeTeamMember, setTeamDroits, setTeamMode, setTeamRole, terminerDelegation, type TeamState } from "./actions";
+import { addTeamMember, appliquerPreset, creerDelegation, removeTeamMember, setTeamDroits, setTeamEquipe, setTeamMode, setTeamRole, terminerDelegation, type TeamState } from "./actions";
 
 const AIDE: Record<string, string> = {
   ADMIN: "Accès total : Pilotage, Prospection, Suivi, Administration.",
@@ -52,6 +52,17 @@ export function ModeSelect({ id, role, mode }: { id: string; role: Role; mode: M
     <select value={mode ?? ""} disabled={pending} onChange={(e) => start(() => setTeamMode(id, e.target.value as Mode | ""))} aria-label="Mode de démarrage" className="rounded-full border border-border bg-surface px-2.5 py-1 text-xs text-text-strong disabled:opacity-60">
       <option value="">Démarrage selon le rôle</option>
       {modes.map((m) => <option key={m} value={m}>Démarre en {MODE_LABEL[m]}</option>)}
+    </select>
+  );
+}
+
+/** Équipe opérationnelle : Commerciale (compté comme commercial partout) ou Production. Le gestionnaire (Arsène) est toujours en Production. */
+export function EquipeSelect({ id, equipe, deduite, verrou }: { id: string; equipe: Equipe | null; deduite: Equipe | null; verrou: boolean }) {
+  const [pending, start] = useTransition();
+  return (
+    <select value={equipe ?? ""} disabled={pending || verrou} title={verrou ? "Le gestionnaire fait toujours partie de l’équipe Production" : "Équipe métier : décide qui apparaît dans les listes et statistiques de commerciaux"} onChange={(e) => start(() => setTeamEquipe(id, e.target.value as Equipe | ""))} aria-label="Équipe" className="rounded-full border border-border bg-surface px-2.5 py-1 text-xs text-text-strong disabled:opacity-60">
+      <option value="">{deduite ? `Équipe ${EQUIPE_LABEL[deduite]} (selon le rôle)` : "Équipe selon le rôle"}</option>
+      {(Object.keys(EQUIPE_LABEL) as Equipe[]).map((e) => <option key={e} value={e}>Équipe {EQUIPE_LABEL[e]}</option>)}
     </select>
   );
 }

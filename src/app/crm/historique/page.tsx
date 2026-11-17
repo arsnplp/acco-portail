@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { EchangeType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { MODULES } from "@/lib/roles";
+import { commerciaux } from "@/lib/commerciaux";
 import { requireAdmin } from "@/lib/auth";
 import { cn } from "@/lib/cn";
 import { bascule, multi } from "@/lib/filtres";
@@ -25,7 +25,7 @@ export default async function HistoriquePage({ searchParams }: { searchParams: P
   const since = jours === 1 ? todayBounds().start : new Date(end.getTime() - jours * 86400_000);
 
   const [team, items] = await Promise.all([
-    prisma.user.findMany({ where: { role: { in: MODULES.prospection } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true, avatarUrl: true } }),
+    commerciaux(),
     prisma.echange.findMany({
       where: { auteurId: whos.length ? { in: whos } : { not: null }, date: { gte: since, lt: end }, type: types.length ? { in: types } : { not: "NOTE" }, prospectId: { not: null } },
       orderBy: { date: "desc" },

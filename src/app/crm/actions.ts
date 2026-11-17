@@ -7,7 +7,7 @@ import type { EchangeType, Prisma, ProspectSource, ProspectStatut } from "@prism
 import { prisma } from "@/lib/prisma";
 import { requireProspection } from "@/lib/auth";
 import { clientDepuisProspect } from "@/lib/client-depuis-prospect";
-import { NOTE_OBLIGATOIRE, REGLES, TOUS_STATUTS, formatTel, nettoyerNom, fmtDayTime, statutApres, addDaysParis, hostOf, normName, normPhone, parisDateTime, parisDay, parisMidnight } from "@/lib/crm";
+import { NOTE_OBLIGATOIRE, REGLES, TOUS_STATUTS, formatTel, nettoyerNom, fmtDayTime, statutApres, addDaysParis, hostOf, normName, normPhone, parisDateTime, parisDay, parisMidnight, LIEU_VISIO } from "@/lib/crm";
 
 export type CrmState = { error?: string; ok?: boolean; doublon?: { id: string; label: string; client: boolean } };
 
@@ -15,6 +15,8 @@ const STATUTS: ProspectStatut[] = TOUS_STATUTS;
 const TYPES: EchangeType[] = ["NRP", "APPEL", "MAIL", "PP", "RDV", "PRISE_RDV", "NO_SHOW", "NOTE"];
 const SOURCES: ProspectSource[] = ["COLD_CALL", "PROSPECTION_PHYSIQUE", "RECOMMANDATION", "SITE_WEB", "AUTRE"];
 const txt = (f: FormData, k: string) => String(f.get(k) ?? "").trim() || null;
+/** Lieu d'un RDV : « Google Meet » si la visio est cochée, sinon l'adresse saisie (vide = aucune). */
+const lieuRdv = (f: FormData, lieu: string, meet: string) => (f.get(meet) === "on" ? LIEU_VISIO : txt(f, lieu));
 
 function refresh(id?: string) {
   revalidatePath("/crm", "layout");
@@ -116,7 +118,8 @@ export async function logEchange(prospectId: string, _prev: CrmState, f: FormDat
 
   await prisma.$transaction(async (tx) => {
     await tx.echange.create({ data: { prospectId, type, notes: reportAt ? `${notes ? notes + "\n" : ""}RDV reporté au ${fmtDayTime(reportAt)}` : notes, auteurId: me.id } });
-    if (rdvAt) await tx.rendezVous.create({ data: { prospectId, commercialId: prospect.commercialId ?? me.id, debut: rdvAt, lieu: txt(f, "rdvLieu"), meet: f.get("rdvMeet") === "on", invites: f.getAll("rdvInvites").map((e) => String(e).trim().toLowerCase()).filter((e) => e.includes("@")), description: txt(f, "rdvDescription") } });
+    // Visio cochée : le lieu est « Google Meet » (le lien est créé dans Google Agenda) ; sinon l'adresse saisie (celle de la fiche par défaut).
+    if (rdvAt) await tx.rendezVous.create({ data: { prospectId, commercialId: prospect.commercialId ?? me.id, debut: rdvAt, lieu: lieuRdv(f, "rdvLieu", "rdvMeet"), meet: f.get("rdvMeet") === "on", invites: f.getAll("rdvInvites").map((e) => String(e).trim().toLowerCase()).filter((e) => e.includes("@")), description: txt(f, "rdvDescription") } });
     if (type === "RDV" || type === "NO_SHOW") {
       // Le RDV concerné : le dernier prévu déjà commencé, sinon le dernier passé (ex. importé « fait »), sinon le prochain prévu.
       const soon = new Date(Date.now() + 3 * 3600_000);
@@ -124,7 +127,7 @@ export async function logEchange(prospectId: string, _prev: CrmState, f: FormDat
         ?? (await tx.rendezVous.findFirst({ where: { prospectId, resultat: { in: ["FAIT", "NO_SHOW"] }, debut: { lte: soon } }, orderBy: { debut: "desc" } }))
         ?? (await tx.rendezVous.findFirst({ where: { prospectId, resultat: "PREVU" }, orderBy: { debut: "asc" } }));
       if (rdv) await tx.rendezVous.update({ where: { id: rdv.id }, data: { resultat: type === "RDV" ? "FAIT" : "NO_SHOW" } });
-      if (reportAt) await tx.rendezVous.create({ data: { prospectId, commercialId: rdv?.commercialId ?? prospect.commercialId ?? me.id, debut: reportAt, lieu: txt(f, "reportLieu") ?? rdv?.lieu ?? null, reportDeId: rdv?.id ?? null } });
+      if (reportAt) await tx.rendezVous.create({ data: { prospectId, commercialId: rdv?.commercialId ?? prospect.commercialId ?? me.id, debut: reportAt, lieu: lieuRdv(f, "reportLieu", "reportMeet") ?? rdv?.lieu ?? null, meet: f.get("reportMeet") === "on", reportDeId: rdv?.id ?? null } });
     }
     await tx.prospect.update({
       where: { id: prospectId },

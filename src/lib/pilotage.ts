@@ -26,20 +26,24 @@ export async function projectionMrr(now = new Date(), mois = 6) {
   return { mrr: Math.round(mrr), pondere: Math.round(pondere), aRisque3Mois: points[3]?.values.risque ?? 0, points };
 }
 
-/** Activité des 30 derniers jours par collaborateur : appels, RDV, signatures, modifications terminées, actions. */
-export async function activiteParCollaborateur(jours = 30, now = new Date()) {
-  const since = new Date(now.getTime() - jours * 86400_000);
+/**
+ * Activité par collaborateur sur une période calendaire [debut, fin[ (par défaut le mois en cours) : appels, RDV, signatures,
+ * modifications terminées, actions. Mêmes définitions que les bilans individuels (src/lib/bilans.ts), pour que les compteurs
+ * cliquables du Pilotage ouvrent exactement la liste comptée.
+ */
+export async function activiteParCollaborateur({ debut, fin }: { debut: Date; fin: Date }) {
+  const dans = { gte: debut, lt: fin };
   const [equipe, echanges, rdv, gagnes, modifs, actions] = await Promise.all([
-    prisma.user.findMany({ where: { role: { in: MODULES.suivi } }, orderBy: [{ role: "asc" }, { firstName: "asc" }], select: { id: true, firstName: true, lastName: true, email: true, role: true, _count: { select: { clientsSuivis: true, sitesDeveloppes: true } } } }),
-    prisma.echange.groupBy({ by: ["auteurId"], where: { date: { gte: since }, auteurId: { not: null }, type: { in: ["NRP", "APPEL", "PRISE_RDV", "MAIL", "PP", "RDV"] } }, _count: true }),
-    prisma.rendezVous.groupBy({ by: ["commercialId"], where: { createdAt: { gte: since }, commercialId: { not: null }, reportDeId: null, resultat: { notIn: ["ANNULE", "NO_SHOW"] } }, _count: true }),
-    prisma.prospect.findMany({ where: { statut: "GAGNE", gagneAt: { gte: since }, commercialId: { not: null } }, select: { commercialId: true, fraisCreationEuros: true, mensuelEuros: true } }),
-    prisma.changeRequest.groupBy({ by: ["assigneeId"], where: { completedAt: { gte: since }, assigneeId: { not: null } }, _count: true }),
-    prisma.activite.groupBy({ by: ["userId"], where: { createdAt: { gte: since }, userId: { not: null } }, _count: true }),
+    prisma.user.findMany({ where: { role: { in: MODULES.suivi } }, orderBy: [{ role: "asc" }, { firstName: "asc" }], select: { id: true, firstName: true, lastName: true, email: true, role: true, modeDefaut: true, equipe: true, _count: { select: { clientsSuivis: true, sitesDeveloppes: true } } } }),
+    prisma.echange.groupBy({ by: ["auteurId"], where: { date: dans, auteurId: { not: null }, type: { in: ["NRP", "APPEL", "PRISE_RDV", "MAIL", "PP", "RDV"] } }, _count: true }),
+    prisma.rendezVous.groupBy({ by: ["commercialId"], where: { createdAt: dans, commercialId: { not: null }, reportDeId: null, resultat: { notIn: ["ANNULE", "NO_SHOW"] } }, _count: true }),
+    prisma.prospect.findMany({ where: { statut: "GAGNE", gagneAt: dans, commercialId: { not: null } }, select: { commercialId: true, fraisCreationEuros: true, mensuelEuros: true } }),
+    prisma.changeRequest.groupBy({ by: ["assigneeId"], where: { completedAt: dans, assigneeId: { not: null } }, _count: true }),
+    prisma.activite.groupBy({ by: ["userId"], where: { createdAt: dans, userId: { not: null } }, _count: true }),
   ]);
   const n = (rows: { _count: number }[], find: (r: never) => boolean) => (rows as never[]).filter(find).reduce((a, r) => a + (r as { _count: number })._count, 0);
   return equipe.map((u) => ({
-    id: u.id, nom: [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email, role: u.role,
+    id: u.id, nom: [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email, role: u.role, email: u.email, modeDefaut: u.modeDefaut, equipe: u.equipe,
     echanges: n(echanges, (r) => (r as { auteurId: string | null }).auteurId === u.id),
     rdv: n(rdv, (r) => (r as { commercialId: string | null }).commercialId === u.id),
     signatures: gagnes.filter((g) => g.commercialId === u.id).length,

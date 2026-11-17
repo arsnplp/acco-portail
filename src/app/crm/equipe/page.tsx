@@ -3,9 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { requireDroit } from "@/lib/auth";
 import { SectionTitle } from "@/components/ui/card";
 import { PIPELINE, fmtDay, fmtDayTime, teamName } from "@/lib/crm";
-import { EQUIPE, ROLE_LABEL, MODE_LABEL } from "@/lib/roles";
+import { EQUIPE, EQUIPE_LABEL, ROLE_LABEL, MODE_LABEL, equipeDe, isGestionnaire } from "@/lib/roles";
 import { droitsDe } from "@/lib/permissions";
-import { AddMemberForm, DelegationForm, DroitsEditor, ModeSelect, PresetMenu, RemoveButton, RoleSelect, TerminerDelegationButton } from "./form";
+import { AddMemberForm, DelegationForm, DroitsEditor, EquipeSelect, ModeSelect, PresetMenu, RemoveButton, RoleSelect, TerminerDelegationButton } from "./form";
 
 export const metadata = { title: "Équipe" };
 
@@ -17,7 +17,7 @@ export default async function EquipePage() {
     prisma.user.findMany({
       where: { role: { in: EQUIPE } },
       orderBy: [{ role: "asc" }, { firstName: "asc" }],
-      select: { id: true, firstName: true, lastName: true, email: true, role: true, droits: true, modeDefaut: true, _count: { select: { crmProspects: { where: { statut: { in: PIPELINE } } }, clientsSuivis: true, clientsDeveloppes: true } } },
+      select: { id: true, firstName: true, lastName: true, email: true, role: true, droits: true, modeDefaut: true, equipe: true, _count: { select: { crmProspects: { where: { statut: { in: PIPELINE } } }, clientsSuivis: true, clientsDeveloppes: true } } },
     }),
     prisma.delegation.findMany({ where: { fin: { gte: now } }, orderBy: { debut: "asc" }, include: { de: { select: { firstName: true, email: true } }, vers: { select: { firstName: true, email: true } }, client: { select: { name: true } } } }),
     prisma.client.findMany({ where: { archivedAt: null }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
@@ -27,7 +27,7 @@ export default async function EquipePage() {
   return (
     <main className="mx-auto max-w-4xl px-4 py-6 lg:px-8 lg:py-8">
       <h1 className="text-2xl">Équipe</h1>
-      <p className="mt-1 text-sm text-text">Le rôle ouvre les modules ; le mode est la vue de démarrage ; les droits unitaires s’ajoutent un à un (Lucas : Direction sans administration). Tout changement est journalisé.</p>
+      <p className="mt-1 text-sm text-text">Le rôle ouvre les modules ; l’équipe (Commerciale ou Production) dit le métier : seuls les membres de l’équipe Commerciale apparaissent comme commerciaux dans Prospection, les stats et le Pilotage. Direction et Administration sont des casquettes en plus. Le mode est la vue de démarrage ; les droits unitaires s’ajoutent un à un. Tout changement est journalisé.</p>
       <SectionTitle icon={UsersIcon}>Membres</SectionTitle>
       <ul className="divide-y divide-border rounded-card border border-border bg-surface">
         {members.map((m) => {
@@ -37,9 +37,10 @@ export default async function EquipePage() {
               <div className="flex flex-wrap items-center gap-2">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-title">{[m.firstName, m.lastName].filter(Boolean).join(" ") || teamName(m)}</p>
-                  <p className="truncate text-xs text-text">{m.email} · {m._count.crmProspects} prospect{m._count.crmProspects > 1 ? "s" : ""} en cours · {m._count.clientsSuivis + m._count.clientsDeveloppes} client{m._count.clientsSuivis + m._count.clientsDeveloppes > 1 ? "s" : ""}{m.modeDefaut ? ` · démarre en ${MODE_LABEL[m.modeDefaut]}` : ""}</p>
+                  <p className="truncate text-xs text-text">{m.email} · {m._count.crmProspects} prospect{m._count.crmProspects > 1 ? "s" : ""} en cours · {m._count.clientsSuivis + m._count.clientsDeveloppes} client{m._count.clientsSuivis + m._count.clientsDeveloppes > 1 ? "s" : ""}{m.modeDefaut ? ` · démarre en ${MODE_LABEL[m.modeDefaut]}` : ""} · équipe {EQUIPE_LABEL[equipeDe(m) ?? "PRODUCTION"]}</p>
                 </div>
                 <RoleSelect id={m.id} role={m.role} self={m.id === me.id} />
+                <EquipeSelect id={m.id} equipe={m.equipe} deduite={equipeDe({ ...m, equipe: null })} verrou={isGestionnaire(m)} />
                 <ModeSelect id={m.id} role={m.role} mode={m.modeDefaut} />
                 <PresetMenu id={m.id} self={m.id === me.id} />
                 {m.id !== me.id && <RemoveButton id={m.id} name={m.firstName ?? m.email} />}

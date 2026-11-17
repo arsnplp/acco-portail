@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { CheckIcon, MegaphoneIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { commerciaux } from "@/lib/commerciaux";
 import { requireProspection } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { fmtDayTime, teamName } from "@/lib/crm";
 import { SectionTitle } from "@/components/ui/card";
-import { MODULES } from "@/lib/roles";
 import { bascule, multi } from "@/lib/filtres";
 import { Avatar } from "@/components/ui/avatar";
 import { initialsOf } from "@/lib/crm";
@@ -29,7 +29,7 @@ export default async function SignalementsPage({ searchParams }: { searchParams:
     prisma.signalement.findMany({ where: { traiteAt: null, ...parCommercial }, orderBy: { createdAt: "desc" }, include }),
     vue === "faits" ? prisma.signalement.findMany({ where: { traiteAt: { not: null }, ...parCommercial }, orderBy: { traiteAt: "desc" }, take: 200, include }) : [],
     prisma.signalement.count({ where: { traiteAt: { not: null }, ...parCommercial } }),
-    prisma.user.findMany({ where: { role: { in: MODULES.prospection } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true, avatarUrl: true } }),
+    commerciaux(),
     prisma.signalement.groupBy({ by: ["versId"], where: vue === "faits" ? { traiteAt: { not: null } } : { traiteAt: null }, _count: true }),
   ]);
   const items = vue === "faits" ? faits : enCours;

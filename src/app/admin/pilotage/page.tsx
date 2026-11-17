@@ -7,7 +7,8 @@ import { Card, SectionTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LogoClient } from "@/components/ui/logo-client";
 import { addDays, fmtDate, fmtPrice } from "@/lib/format";
-import { ROLE_LABEL, EQUIPE, estCommercial } from "@/lib/roles";
+import { ROLE_LABEL, estCommercial } from "@/lib/roles";
+import { bornes, cle } from "@/lib/bilans";
 import { fmtDayTime, teamName, PIPELINE, STATUT, VIZ } from "@/lib/crm";
 import { ActivityIcon, ChartColumnIcon, TrendingUpIcon, UsersIcon, WalletIcon } from "lucide-react";
 import { StackedBars, GroupedBars, LineChart } from "@/app/crm/stats/charts";
@@ -123,26 +124,30 @@ async function Finance() {
 }
 
 async function Commercial() {
-  const [parStade, collaborateurs, rdv, equipe, parrainages] = await Promise.all([
+  // Mois calendaire en cours (du 1er à aujourd'hui), comme les bilans individuels : chaque compteur ouvre la liste exacte qu'il compte.
+  const mois = bornes("MENSUEL", new Date());
+  const [parStade, collaborateurs, rdv, parrainages] = await Promise.all([
     prisma.prospect.groupBy({ by: ["statut"], _count: true }),
-    activiteParCollaborateur(30),
-    prisma.rendezVous.groupBy({ by: ["resultat"], where: { debut: { gte: addDays(-30) } }, _count: true }),
-    prisma.user.findMany({ where: { role: { in: EQUIPE } }, select: { id: true, role: true, email: true, modeDefaut: true } }),
+    activiteParCollaborateur({ debut: mois.debut, fin: mois.fin }),
+    prisma.rendezVous.groupBy({ by: ["resultat"], where: { debut: { gte: mois.debut, lt: mois.fin } }, _count: true }),
     prisma.referral.groupBy({ by: ["status"], _count: true }),
   ]);
-  const commerciaux = new Set(equipe.filter(estCommercial).map((u) => u.id));
+  const commerciaux = collaborateurs.filter(estCommercial);
   const n = (s: string) => parStade.find((p) => p.statut === s)?._count ?? 0;
+  const detail = (id: string, ind: "rdv" | "signatures" | "ca") => `/crm/bilan/${id}/detail?ind=${ind}&periode=MENSUEL&debut=${cle(mois.debut)}`;
+  const num = "block px-3 py-2 text-right tabular-nums hover:underline";
   return (
     <>
       <SectionTitle icon={ChartColumnIcon}>Pipeline (agrégats de Prospection)</SectionTitle>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{[...PIPELINE, "GAGNE" as const, "PERDU" as const].map((s) => <Card key={s}><p className="font-title text-2xl font-extrabold text-title">{n(s)}</p><p className="mt-1 text-xs text-text">{STATUT[s].label}</p></Card>)}</div>
-      <p className="mt-2 text-xs text-text">RDV sur 30 jours : {rdv.map((r) => `${r._count} ${r.resultat.toLowerCase()}`).join(" · ") || "aucun"} · parrainages : {parrainages.map((p) => `${p._count} ${p.status.toLowerCase().replace("_", " ")}`).join(" · ") || "aucun"}</p>
-      <SectionTitle icon={UsersIcon}>Activité des commerciaux <span className="text-sm font-normal text-text">30 derniers jours</span></SectionTitle>
+      {/* Chaque tuile ouvre « Tous les prospects » filtré sur ce statut (chaque fiche s'ouvre depuis la liste). */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{[...PIPELINE, "GAGNE" as const, "PERDU" as const].map((s) => <Link key={s} href={`/crm/prospects?s=${s}`} title={`Voir les prospects « ${STATUT[s].label} »`} className="block rounded-card border border-border bg-surface p-4 transition-colors hover:border-text"><p className="font-title text-2xl font-extrabold text-title">{n(s)}</p><p className="mt-1 text-xs text-text">{STATUT[s].label}</p></Link>)}</div>
+      <p className="mt-2 text-xs text-text">RDV sur {mois.label.toLowerCase()} : {rdv.map((r) => `${r._count} ${r.resultat.toLowerCase()}`).join(" · ") || "aucun"} · parrainages : {parrainages.map((p) => `${p._count} ${p.status.toLowerCase().replace("_", " ")}`).join(" · ") || "aucun"}</p>
+      <SectionTitle icon={UsersIcon}>Activité des commerciaux <span className="text-sm font-normal text-text">{mois.label}</span></SectionTitle>
       <div className="overflow-x-auto rounded-card border border-border bg-surface"><table className="w-full text-sm">
-        <thead><tr className="text-left text-[11px] tracking-wide text-text uppercase"><th className="px-3 py-2 font-semibold">Collaborateur</th><th className="px-3 py-2 font-semibold">Rôle</th><th className="px-3 py-2 text-right font-semibold">Échanges</th><th className="px-3 py-2 text-right font-semibold">RDV pris</th><th className="px-3 py-2 text-right font-semibold">Signatures</th><th className="px-3 py-2 text-right font-semibold">CA signé</th><th className="px-3 py-2 text-right font-semibold">Modifs</th><th className="px-3 py-2 text-right font-semibold">Actions</th><th className="px-3 py-2 text-right font-semibold">Clients · sites</th></tr></thead>
-        <tbody className="divide-y divide-border">{collaborateurs.filter((c) => commerciaux.has(c.id)).map((c) => <tr key={c.id}><td className="px-3 py-2 font-semibold text-title"><Link href={`/crm/bilan/${c.id}`} className="hover:underline" title="Fiche individuelle : objectifs, bilans, historique">{c.nom}</Link></td><td className="px-3 py-2 text-xs text-text">{ROLE_LABEL[c.role]}</td><td className="px-3 py-2 text-right tabular-nums">{c.echanges}</td><td className="px-3 py-2 text-right tabular-nums">{c.rdv}</td><td className="px-3 py-2 text-right tabular-nums">{c.signatures}</td><td className="px-3 py-2 text-right tabular-nums">{c.ca ? euros(c.ca * 100) : "—"}</td><td className="px-3 py-2 text-right tabular-nums">{c.modifs}</td><td className="px-3 py-2 text-right tabular-nums">{c.actions}</td><td className="px-3 py-2 text-right text-xs text-text tabular-nums">{c.clients} · {c.sites}</td></tr>)}</tbody>
+        <thead><tr className="text-left text-[11px] tracking-wide text-text uppercase"><th className="px-3 py-2 font-semibold">Commercial</th><th className="px-3 py-2 font-semibold">Rôle</th><th className="px-3 py-2 text-right font-semibold">Échanges</th><th className="px-3 py-2 text-right font-semibold">RDV pris</th><th className="px-3 py-2 text-right font-semibold">Signatures</th><th className="px-3 py-2 text-right font-semibold">CA signé</th><th className="px-3 py-2 text-right font-semibold">Modifs</th><th className="px-3 py-2 text-right font-semibold">Actions</th><th className="px-3 py-2 text-right font-semibold">Clients · sites</th></tr></thead>
+        <tbody className="divide-y divide-border">{commerciaux.map((c) => <tr key={c.id}><td className="px-3 py-2 font-semibold text-title"><Link href={`/crm/bilan/${c.id}?periode=MENSUEL&debut=${cle(mois.debut)}`} className="hover:underline" title="Fiche individuelle : objectifs, bilans, historique">{c.nom}</Link></td><td className="px-3 py-2 text-xs text-text">{ROLE_LABEL[c.role]}</td><td className="px-3 py-2 text-right tabular-nums">{c.echanges}</td><td className="p-0"><Link href={detail(c.id, "rdv")} className={num} title="Liste des RDV pris, avec lien vers chaque fiche">{c.rdv}</Link></td><td className="p-0"><Link href={detail(c.id, "signatures")} className={num} title="Liste des fiches gagnées">{c.signatures}</Link></td><td className="p-0"><Link href={detail(c.id, "ca")} className={num} title="Détail du CA signé">{c.ca ? euros(c.ca * 100) : "—"}</Link></td><td className="px-3 py-2 text-right tabular-nums">{c.modifs}</td><td className="px-3 py-2 text-right tabular-nums">{c.actions}</td><td className="px-3 py-2 text-right text-xs text-text tabular-nums">{c.clients} · {c.sites}</td></tr>)}</tbody>
       </table></div>
-      <p className="mt-2 text-xs text-muted">{commerciaux.size} commercial{commerciaux.size > 1 ? "aux" : ""} (les autres membres n’apparaissent pas dans les statistiques commerciales). Cliquez un nom pour sa fiche individuelle : objectifs (personnel, engagement, fixé), comptes rendus, historique. Les données sources restent dans Prospection ; ici des agrégats.</p>
+      <p className="mt-2 text-xs text-muted">{commerciaux.length} commercial{commerciaux.length > 1 ? "aux" : ""} : les membres de l’équipe Commerciale (réglée dans Prospection → Équipe), Direction comprise ; les autres membres n’apparaissent pas dans les statistiques commerciales. Cliquez un nom pour sa fiche individuelle, un chiffre pour la liste de ce qu’il compte. Les données sources restent dans Prospection ; ici des agrégats.</p>
     </>
   );
 }

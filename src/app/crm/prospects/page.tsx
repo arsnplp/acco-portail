@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Prisma, ProspectStatut } from "@prisma/client";
 import { FilterIcon, SearchIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { MODULES } from "@/lib/roles";
+import { commerciaux } from "@/lib/commerciaux";
 import { requireProspection } from "@/lib/auth";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { multi } from "@/lib/filtres";
@@ -51,7 +51,7 @@ export default async function ProspectsPage({ searchParams }: { searchParams: Pr
   };
 
   const [team, cibles, all] = await Promise.all([
-    prisma.user.findMany({ where: { role: { in: MODULES.prospection } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true } }),
+    commerciaux(),
     prisma.cible.findMany({ orderBy: { nom: "asc" }, select: { nom: true } }),
     prisma.prospect.findMany({
       where, orderBy: { updatedAt: "desc" },

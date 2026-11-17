@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeftIcon, ExternalLinkIcon, MapPinIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { MODULES } from "@/lib/roles";
+import { commerciaux } from "@/lib/commerciaux";
 import { requireCoffre } from "@/lib/auth";
 import { cn } from "@/lib/cn";
 import { AutoRefresh } from "@/components/messages/auto-refresh";
@@ -23,7 +23,7 @@ export default async function LeadListePage({ params, searchParams }: { params: 
   const tout = (await searchParams).tout === "1";
   const [liste, team] = await Promise.all([
     prisma.leadListe.findUnique({ where: { id }, include: { leads: { orderBy: [{ score: "desc" }, { createdAt: "asc" }] }, auteur: { select: { firstName: true, email: true } } } }),
-    prisma.user.findMany({ where: { role: { in: MODULES.prospection } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true } }),
+    commerciaux(),
   ]);
   if (!liste) notFound();
   const stats = (await listeStats([liste.id])).get(liste.id)!;

@@ -33,6 +33,13 @@ enum Mode {
   ADMIN
 }
 
+/// Équipe opérationnelle d'un membre (section 3 des demandes du 16/11) : la Direction et l'Administration sont des casquettes en plus,
+/// elles ne remplacent pas le métier. Commerciale : Bilel, Lucas et les commerciaux ; Production : Arsène, développeurs, prestataires.
+enum Equipe {
+  COMMERCIALE
+  PRODUCTION
+}
+
 enum ClientStatut {
   ACTIF
   SUSPENDU
@@ -345,6 +352,7 @@ model User {
   role               Role     @default(CLIENT)
   droits             String[] @default([]) // droits unitaires en plus du rôle : pilotage, equipe, reglages, validation_commerciale, go_live, dates_production, finance, ia_admin (src/lib/permissions.ts)
   modeDefaut         Mode? // vue de travail au démarrage (Bilel : Commercial, Arsène : Production)
+  equipe             Equipe? // équipe métier : Commerciale (compté comme commercial partout) ou Production ; déduite du rôle si vide
   roleActif          Role? // administrateur aussi commercial (Bilel) : COMMERCIAL = il travaille comme simple commercial, une seule casquette à la fois
   googleRefreshToken String? // compte Google personnel (équipe) : lecture de sa boîte Gmail pour l'historique des fiches CRM
   googleEmail        String?

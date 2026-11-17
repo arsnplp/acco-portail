@@ -1,4 +1,4 @@
-import type { Mode, Role } from "@prisma/client";
+import type { Equipe, Mode, Role } from "@prisma/client";
 
 /**
  * Rôles et modules.
@@ -47,11 +47,26 @@ export function homeFor(role: Role, mode?: Mode | null) {
 export function gestionnaireEmails() {
   return (process.env.GESTIONNAIRE_EMAILS ?? "arsene@acco-lab.fr").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
 }
-/** Membre compté dans les statistiques commerciales : commercial, ou admin qui travaille en mode Commercial (Bilel, Lucas) ; jamais le gestionnaire (Arsène). */
-export function estCommercial(u: { role: Role; email: string; modeDefaut?: Mode | null }) {
-  if (isGestionnaire(u)) return false;
-  return u.role === "COMMERCIAL" || (u.role === "ADMIN" && u.modeDefaut === "COMMERCIAL");
+/**
+ * Équipes opérationnelles : Commerciale (Bilel, Lucas et les commerciaux) et Production (Arsène, développeurs, prestataires).
+ * Direction et Administration sont des casquettes en plus : elles ne changent pas l'équipe. Réglée dans Prospection → Équipe,
+ * déduite du rôle à défaut (commercial → Commerciale ; développeur, prestataire → Production ; administrateur → Production,
+ * sauf s'il démarre en mode Commercial).
+ */
+export const EQUIPE_LABEL: Record<Equipe, string> = { COMMERCIALE: "Commerciale", PRODUCTION: "Production" };
+export type MembreEquipe = { role: Role; email: string; modeDefaut?: Mode | null; equipe?: Equipe | null };
+export function equipeDe(u: MembreEquipe): Equipe | null {
+  if (u.role === "CLIENT") return null;
+  if (isGestionnaire(u)) return "PRODUCTION";
+  if (u.equipe) return u.equipe;
+  if (u.role === "COMMERCIAL") return "COMMERCIALE";
+  if (u.role === "ADMIN") return u.modeDefaut === "COMMERCIAL" ? "COMMERCIALE" : "PRODUCTION";
+  return "PRODUCTION";
 }
+/** Membre compté comme commercial partout (listes de Prospection, statistiques, Pilotage) : équipe Commerciale ; jamais le gestionnaire (Arsène). */
+export const estCommercial = (u: MembreEquipe) => equipeDe(u) === "COMMERCIALE";
+/** Champs à sélectionner pour décider de l'équipe d'un membre. */
+export const SELECT_EQUIPE = { role: true, email: true, modeDefaut: true, equipe: true } as const;
 export function isGestionnaire(user: { email: string; role: string } | null | undefined) {
   if (!user || user.role !== "ADMIN") return false;
   return gestionnaireEmails().includes(user.email.toLowerCase());

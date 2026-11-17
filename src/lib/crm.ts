@@ -143,6 +143,17 @@ export function relanceInfo(d: Date | string | null) {
   return { label: fmtDay(t), state: "later" as const };
 }
 
+/** Lieu enregistré pour un RDV en visio (le lien Meet est créé dans Google Agenda). */
+export const LIEU_VISIO = "Google Meet";
+
+/** Date d'un RDV posé : dépassé (rouge), aujourd'hui (vert) ou à venir (neutre). */
+export function rdvInfo(d: Date | string, now = new Date()) {
+  const { start, end } = todayBounds(now);
+  const t = new Date(d);
+  const state: "late" | "today" | "later" = t < start ? "late" : t < end ? "today" : "later";
+  return { label: `RDV ${fmtDayTime(t)}`, state };
+}
+
 // ─── Affichage ───────────────────────────────────────────────
 /** Capitalise un nom propre : « jean-pierre DE LA fontaine » → « Jean-Pierre de La Fontaine ». */
 export function nomPropre(s: string | null | undefined) {

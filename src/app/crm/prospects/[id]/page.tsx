@@ -7,7 +7,7 @@ import { NrpMeter } from "@/components/crm/nrp-meter";
 import { LeadInfoButton } from "@/components/crm/lead-info";
 import type { LeadRow } from "@/lib/leads/colonnes";
 import { prisma } from "@/lib/prisma";
-import { MODULES } from "@/lib/roles";
+import { commerciaux } from "@/lib/commerciaux";
 import { requireProspection } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { Badge } from "@/components/ui/badge";
@@ -41,7 +41,7 @@ export default async function ProspectPage({ params, searchParams }: { params: P
         lead: { select: { listeId: true, donnees: true, liste: { select: { secteur: true, region: true, createdAt: true } } } },
       },
     }),
-    prisma.user.findMany({ where: { role: { in: MODULES.prospection } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true } }),
+    commerciaux(),
     prisma.cible.findMany({ orderBy: { nom: "asc" }, select: { nom: true } }),
   ]);
   if (!p) notFound();
@@ -120,7 +120,7 @@ export default async function ProspectPage({ params, searchParams }: { params: P
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         <div className="space-y-6">
-          <EchangeForm prospectId={p.id} statut={p.statut} session={sess ? sessionQuery(sess) : ""} today={parisDay()}
+          <EchangeForm prospectId={p.id} statut={p.statut} session={sess ? sessionQuery(sess) : ""} today={parisDay()} adresse={p.adresse}
             contacts={p.contacts.filter((c) => c.email).map((c, i) => ({ email: c.email!.toLowerCase(), nom: contactName(c) ?? c.email!, defaut: i === 0 }))}
             equipe={team.filter((u) => u.id !== (p.commercialId ?? me.id)).map((u) => ({ email: u.email.toLowerCase(), nom: teamName(u) }))}
             modele={await descriptionRdv({ prenom: principal?.prenom ?? "", societe: p.societe, commercial: teamName(p.commercial ?? me), lieu: "" })} />

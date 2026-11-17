@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { StarIcon, UserCheckIcon, ArrowLeftRightIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { commerciaux } from "@/lib/commerciaux";
 import { SectionTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MODULES } from "@/lib/roles";
 import { contactName, fmtDayTime, teamName } from "@/lib/crm";
 import { timelineClient } from "@/lib/timeline";
 import { ContactForm, ContactDeleteButton, ReattribuerForm } from "../forms";
@@ -15,7 +15,7 @@ import { BoutonAppel } from "@/components/crm/bouton-appel";
 export async function ContactsOnglet({ clientId, externe, me }: Ctx) {
   const [client, equipe, timeline] = await Promise.all([
     prisma.client.findUniqueOrThrow({ where: { id: clientId }, include: { contacts: { orderBy: [{ principal: "desc" }, { createdAt: "asc" }] }, crmProspect: { select: { id: true, contacts: { orderBy: [{ principal: "desc" }, { createdAt: "asc" }] } } }, commercial: { select: { id: true, firstName: true, email: true } } } }),
-    prisma.user.findMany({ where: { role: { in: MODULES.prospection } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true } }),
+    commerciaux(),
     timelineClient(clientId, { canaux: ["email", "appel"], limite: 300 }),
   ]);
   const contacts = dedupe([...client.contacts, ...(client.crmProspect?.contacts ?? [])]);

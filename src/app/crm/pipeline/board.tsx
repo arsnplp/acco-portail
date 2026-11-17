@@ -12,7 +12,7 @@ import { ArchiveIcon, PhoneIcon, PlayIcon, SearchIcon, TrophyIcon, XCircleIcon }
 import { NrpMeter } from "@/components/crm/nrp-meter";
 import { cn } from "@/lib/cn";
 import { EtapeBanner } from "@/components/crm/etape-banner";
-import { CLOS, fmtDayTime, matchRecherche, MOTIFS_ABANDON, MOTIFS_PERTE, PIPELINE, initialsOf, logoUrl, relanceInfo } from "@/lib/crm";
+import { CLOS, matchRecherche, MOTIFS_ABANDON, MOTIFS_PERTE, PIPELINE, initialsOf, logoUrl, rdvInfo, relanceInfo } from "@/lib/crm";
 import { Dialog } from "@/components/ui/dialog";
 import { moveProspect } from "../actions";
 import { Logo } from "@/components/crm/logo";
@@ -174,7 +174,8 @@ function Card({ card, member, overlay }: { card: CardData; member?: Member; over
       </div>
       <div className="mt-2.5 flex items-center gap-2 text-[11px]">
         {card.statut === "RDV_POSE" && card.rdvAt ? (
-          <span className="shrink-0 whitespace-nowrap rounded-full bg-claude/15 px-2 py-0.5 font-medium text-claude">RDV {fmtDayTime(card.rdvAt)}</span>
+          // Rouge seulement si la date du RDV est dépassée, vert si c'est aujourd'hui, neutre si c'est à venir.
+          <RdvDate at={card.rdvAt} />
         ) : (
           <span className={cn("shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 font-medium", r.state === "late" ? "bg-pink/15 text-pink" : r.state === "today" ? "bg-yellow/15 text-yellow" : "bg-surface-2 text-text")}>{r.label}</span>
         )}
@@ -184,6 +185,11 @@ function Card({ card, member, overlay }: { card: CardData; member?: Member; over
       </div>
     </article>
   );
+}
+
+function RdvDate({ at }: { at: string }) {
+  const r = rdvInfo(at);
+  return <span className={cn("shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 font-medium", r.state === "late" ? "bg-pink/15 text-pink" : r.state === "today" ? "bg-green/15 text-green" : "bg-surface-2 text-text")}>{r.label}</span>;
 }
 
 function EndZone({ statut }: { statut: "GAGNE" | "PERDU" | "ABANDON" }) {

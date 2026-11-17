@@ -14,12 +14,13 @@ const RESULTAT = { PREVU: ["Prévu", "blue"], FAIT: ["Tenu", "green"], NO_SHOW: 
 /** Onglet Tâches & RDV (4.3, section 7) : tâches post-signature avec responsable et échéance, RDV passés et futurs. */
 export async function TachesOnglet({ clientId, me }: Ctx) {
   const now = new Date();
-  const [taches, rdvs, equipe, sites, contacts] = await Promise.all([
+  const [taches, rdvs, equipe, sites, contacts, client] = await Promise.all([
     prisma.tacheClient.findMany({ where: { clientId }, orderBy: [{ statut: "asc" }, { echeance: { sort: "asc", nulls: "last" } }, { createdAt: "desc" }], take: 100, include: { responsable: { select: { firstName: true, email: true } }, site: { select: { name: true } } } }),
     prisma.rendezVous.findMany({ where: { clientId }, orderBy: { debut: "desc" }, take: 50, include: { commercial: { select: { firstName: true, email: true } }, site: { select: { name: true } } } }),
     prisma.user.findMany({ where: { role: { in: MODULES.suivi } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true } }),
     prisma.site.findMany({ where: { clientId }, select: { id: true, name: true } }),
     prisma.prospectContact.findMany({ where: { OR: [{ clientId }, { prospect: { clientId } }], email: { not: null } }, select: { email: true, prenom: true, nom: true } }),
+    prisma.client.findUnique({ where: { id: clientId }, select: { address: true } }),
   ]);
   const invitables = contacts.map((c) => ({ email: c.email!, nom: [c.prenom, c.nom].filter(Boolean).join(" ") || c.email! }));
   const aFaire = taches.filter((t) => t.statut === "A_FAIRE"), faites = taches.filter((t) => t.statut !== "A_FAIRE");
@@ -61,7 +62,7 @@ export async function TachesOnglet({ clientId, me }: Ctx) {
             </li>
           ))}
         </ul>
-        <div className="mt-3"><RdvForm clientId={clientId} membres={membres} sites={sites} meId={me.id} contacts={invitables} /></div>
+        <div className="mt-3"><RdvForm clientId={clientId} membres={membres} sites={sites} meId={me.id} contacts={invitables} adresse={client?.address ?? null} /></div>
       </section>
     </div>
   );

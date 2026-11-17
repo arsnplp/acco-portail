@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { MODULES } from "@/lib/roles";
+import { commerciaux } from "@/lib/commerciaux";
 import { requireProspection } from "@/lib/auth";
 import { parisDay, teamName } from "@/lib/crm";
 import { NewProspectForm } from "./form";
@@ -9,7 +9,7 @@ export const metadata = { title: "Nouveau prospect" };
 export default async function NewProspectPage() {
   const me = await requireProspection();
   const [team, cibles] = await Promise.all([
-    prisma.user.findMany({ where: { role: { in: MODULES.prospection } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true } }),
+    commerciaux(),
     prisma.cible.findMany({ orderBy: { nom: "asc" }, select: { nom: true } }),
   ]);
   return (

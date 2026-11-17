@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { commerciaux as listeCommerciaux } from "@/lib/commerciaux";
 import { requireTeam } from "@/lib/auth";
 import { can, estExterne } from "@/lib/permissions";
 import { AdminPage } from "@/components/admin/page";
@@ -9,7 +10,6 @@ import { SectionTitle } from "@/components/ui/card";
 import { CAMPAGNE_STATUT, MODELES, VARIABLES, apercu } from "@/lib/campagnes";
 import { VALIDATION_LABEL } from "@/lib/validations";
 import { fmtDayTime, teamName } from "@/lib/crm";
-import { MODULES } from "@/lib/roles";
 import { CampagneForm } from "../form";
 import { AnnulerButton, LancerButton, ReprendreButton, TestForm, ValiderButton } from "./boutons";
 
@@ -22,7 +22,7 @@ export default async function CampagnePage({ params }: { params: Promise<{ id: s
   const { id } = await params;
   const c = await prisma.campagne.findUnique({ where: { id }, include: { auteur: { select: { firstName: true, email: true } }, destinataires: { orderBy: { id: "asc" }, include: { client: { select: { id: true, name: true } } } } } });
   if (!c) notFound();
-  const [a, validations, commerciaux] = await Promise.all([apercu(id), prisma.validation.findMany({ where: { objetId: id, type: "CAMPAGNE" }, orderBy: { createdAt: "desc" }, include: { assigne: { select: { firstName: true, email: true } }, decidePar: { select: { firstName: true, email: true } } } }), prisma.user.findMany({ where: { role: { in: MODULES.prospection } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true } })]);
+  const [a, validations, commerciaux] = await Promise.all([apercu(id), prisma.validation.findMany({ where: { objetId: id, type: "CAMPAGNE" }, orderBy: { createdAt: "desc" }, include: { assigne: { select: { firstName: true, email: true } }, decidePar: { select: { firstName: true, email: true } } } }), listeCommerciaux()]);
   const n = (s: string) => c.destinataires.filter((d) => d.statut === s).length;
   return (
     <AdminPage title={<span className="flex items-center gap-2">{c.titre}<Badge tone={CAMPAGNE_STATUT[c.statut].tone}>{CAMPAGNE_STATUT[c.statut].label}</Badge></span>} back={{ href: "/admin/campagnes", label: "Campagnes" }} action={c.statut === "BROUILLON" || c.statut === "VALIDEE" || c.statut === "EN_COURS" ? <AnnulerButton id={id} /> : undefined}>

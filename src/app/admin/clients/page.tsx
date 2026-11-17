@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { FORMULE, SITE_STATUS } from "@/lib/labels";
 import { cn } from "@/lib/cn";
 import { clientsAvecRdvAVenir, derniersContacts, JOURS_SANS_CONTACT } from "@/lib/alertes";
-import { MODULES } from "@/lib/roles";
+import { MODULES, SELECT_EQUIPE, estCommercial } from "@/lib/roles";
 import { matchRecherche, teamName, todayBounds } from "@/lib/crm";
 import { fmtDate, fmtPrice } from "@/lib/format";
 import { whereClientsPour } from "@/lib/perimetre";
@@ -39,7 +39,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
       select: { id: true, name: true, email: true, phone: true, reference: true, formule: true, createdAt: true, logoMiniPath: true, secteur: true, sites: { select: { name: true, status: true } }, memberships: { select: { user: { select: { firstName: true, lastName: true, email: true } } } }, commercial: { select: { firstName: true, email: true } }, developpeur: { select: { firstName: true, email: true } }, crmProspect: { select: { telephone: true } },
         contrats: { where: { statut: "SIGNE" }, select: { montantMensuelHt: true, finEngagement: true, impayeAt: true, regulariseAt: true } }, _count: { select: { documentRequests: { where: { status: "EN_ATTENTE", direction: "VERS_CLIENT" } }, taches: { where: { statut: "A_FAIRE" } }, orders: { where: { status: "A_TRAITER" } } } } },
     }),
-    prisma.user.findMany({ where: { role: { in: MODULES.suivi } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true, role: true } }),
+    prisma.user.findMany({ where: { role: { in: MODULES.suivi } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, ...SELECT_EQUIPE } }),
     prisma.savedView.findMany({ where: { userId: me.id, espace: "clients" }, orderBy: { createdAt: "asc" } }),
   ]);
   const [contacts, rdv, modifs] = await Promise.all([derniersContacts(clients.map((c) => c.id)), clientsAvecRdvAVenir(clients.map((c) => c.id)), prisma.changeRequest.groupBy({ by: ["siteId"], where: { status: { not: "TERMINEE" }, site: { clientId: { in: clients.map((c) => c.id) } } }, _count: true })]);
@@ -88,8 +88,8 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
         <form method="get" action="/admin/clients" className="flex flex-1 flex-wrap items-center gap-2">
           <input type="hidden" name="vue" value={vue} />
           <label className="relative min-w-40 flex-1"><SearchIcon size={15} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted" aria-hidden /><input name="q" defaultValue={q} placeholder="Nom, secteur, gérant, email, téléphone" className="h-9 w-full rounded-full border border-border bg-surface pr-3 pl-9 text-sm text-title placeholder:text-muted outline-none focus:border-blue" /></label>
-          <MultiSelect name="c" label="Tous les référents" defaultValue={fc} options={equipe.filter((u) => MODULES.prospection.includes(u.role)).map((u) => ({ value: u.id, label: teamName(u) }))} />
-          <MultiSelect name="dev" label="Tous les développeurs" defaultValue={fdev} options={equipe.filter((u) => u.role !== "COMMERCIAL").map((u) => ({ value: u.id, label: teamName(u) }))} />
+          <MultiSelect name="c" label="Tous les référents" defaultValue={fc} options={equipe.filter(estCommercial).map((u) => ({ value: u.id, label: teamName(u) }))} />
+          <MultiSelect name="dev" label="Tous les développeurs" defaultValue={fdev} options={equipe.filter((u) => !estCommercial(u)).map((u) => ({ value: u.id, label: teamName(u) }))} />
           <MultiSelect name="f" label="Toutes formules" defaultValue={ff} options={Object.entries(FORMULE).map(([k, v]) => ({ value: k, label: v.label }))} />
           <MultiSelect name="site" label="Tout statut de site" defaultValue={fsite} options={[{ value: "EN_CREATION", label: "Site en création" }, { value: "EN_LIGNE", label: "Site en ligne" }, { value: "aucun", label: "Sans site" }]} />
           <MultiSelect name="alerte" label="Toutes situations" defaultValue={falerte} options={[{ value: "60j", label: "Aucun échange depuis 60 j, sans RDV" }, { value: "demandes", label: "Demandes ou commandes ouvertes" }, { value: "docs", label: "Documents attendus" }, { value: "echeance", label: "Échéance de contrat sous 90 j" }, ...(finance ? [{ value: "impaye", label: "Impayé signalé" }] : [])]} />

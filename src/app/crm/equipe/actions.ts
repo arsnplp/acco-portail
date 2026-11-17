@@ -1,13 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { Mode, Role } from "@prisma/client";
+import type { Equipe, Mode, Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireDroit } from "@/lib/auth";
 import { ensureAuthUser } from "@/lib/invitations";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { sendEmail, layout, appUrl } from "@/lib/email";
-import { EQUIPE, MODE_LABEL, MODULES, ROLE_LABEL, homeFor } from "@/lib/roles";
+import { EQUIPE, EQUIPE_LABEL, MODE_LABEL, MODULES, ROLE_LABEL, homeFor } from "@/lib/roles";
 import { DROITS, PRESETS, can, type Droit, type Preset } from "@/lib/permissions";
 import { logActivite } from "@/lib/activite";
 import { teamName } from "@/lib/crm";
@@ -87,6 +87,17 @@ export async function setTeamMode(id: string, mode: Mode | "") {
   revalidatePath("/crm/equipe");
 }
 
+/** Équipe opérationnelle (Commerciale / Production) : décide qui est compté comme commercial partout ; Direction et Administration restent des casquettes à part. */
+export async function setTeamEquipe(id: string, equipe: Equipe | "") {
+  const me = await requireDroit("equipe");
+  const u = await prisma.user.findUnique({ where: { id } });
+  if (!u || u.role === "CLIENT") return;
+  if (equipe && !(equipe in EQUIPE_LABEL)) return;
+  await prisma.user.update({ where: { id }, data: { equipe: equipe || null } });
+  await journalEquipe(me.id, u, equipe ? `équipe ${EQUIPE_LABEL[equipe]}` : "équipe déduite du rôle");
+  revalidatePath("/crm/equipe"); revalidatePath("/admin/pilotage"); revalidatePath("/crm/stats");
+}
+
 /** Droits unitaires (section 20.1). Journalise le détail de chaque ajout et retrait. */
 export async function setTeamDroits(id: string, droits: string[]) {
   const me = await requireDroit("equipe");
@@ -110,7 +121,7 @@ export async function appliquerPreset(id: string, preset: Preset) {
   const u = await prisma.user.findUnique({ where: { id } });
   if (!p || !u || u.role === "CLIENT") return;
   if (id === me.id && p.role !== me.role) return; // on ne change pas son propre rôle
-  await prisma.user.update({ where: { id }, data: { role: p.role, modeDefaut: p.modeDefaut, droits: [...p.droits] } });
+  await prisma.user.update({ where: { id }, data: { role: p.role, modeDefaut: p.modeDefaut, equipe: p.equipe, droits: [...p.droits] } });
   await journalEquipe(me.id, u, `réglages par défaut appliqués (${p.label})`);
   revalidatePath("/crm/equipe");
 }

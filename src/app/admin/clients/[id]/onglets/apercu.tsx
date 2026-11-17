@@ -12,7 +12,7 @@ import { timelineClient, CANAUX_CONTACT } from "@/lib/timeline";
 import { JOURS_SANS_CONTACT } from "@/lib/alertes";
 import { InfosForm, LegalForm, NoteInterneForm, SyntheseButton } from "../forms";
 import { SuiviForm } from "../suivi-forms";
-import { MODULES } from "@/lib/roles";
+import { MODULES, SELECT_EQUIPE, estCommercial } from "@/lib/roles";
 import { parisDay } from "@/lib/crm";
 import { can } from "@/lib/permissions";
 import { agitCommeReferent } from "@/lib/delegations";
@@ -41,7 +41,7 @@ export async function Apercu({ clientId, me, finance, externe, ia }: Ctx & { ia:
     prisma.setting.findUnique({ where: { key: `synthese_client:${clientId}` } }),
     client_delegations(clientId),
   ]);
-  const equipe = externe ? [] : await prisma.user.findMany({ where: { role: { in: MODULES.suivi } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true, role: true } });
+  const equipe = externe ? [] : await prisma.user.findMany({ where: { role: { in: MODULES.suivi } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, ...SELECT_EQUIPE } });
   const peutAttribuer = !externe && (can(me, "attribuer") || (await agitCommeReferent(me.id, client)));
   const contacts = dedupe([...client.contacts, ...(client.crmProspect?.contacts ?? [])]);
   const synth = synthese ? (JSON.parse(synthese.value) as { texte: string; at: string; par: string }) : null;
@@ -198,7 +198,7 @@ export async function Apercu({ clientId, me, finance, externe, ia }: Ctx & { ia:
           {client.commercial && <p className="text-xs text-text">{client.commercial.email}</p>}
           {delegations.map((d) => <p key={d.id} className="mt-1 text-xs text-violet">Délégué à {teamName(d.vers)} jusqu’au {fmtDate(d.fin)}{d.motif ? ` (${d.motif})` : ""}</p>)}
           <p className="mt-2 text-xs"><Link href={lien(clientId, "taches")} className="text-text hover:text-title">Tâches et RDV</Link>{!externe && <> · <Link href={lien(clientId, "contacts")} className="text-text hover:text-title">Réattribuer</Link></>}</p>
-          {!externe && <div className="mt-3 border-t border-border pt-3"><SuiviForm client={{ id: client.id, formule: client.formule, engagementDebut: client.engagementDebut ? parisDay(client.engagementDebut) : "", engagementFin: client.engagementFin ? parisDay(client.engagementFin) : "", gmbUrl: client.gmbUrl, commercialId: client.commercialId, developpeurId: client.developpeurId, reference: client.reference }} commerciaux={equipe.filter((u) => MODULES.prospection.includes(u.role)).map((u) => ({ id: u.id, name: teamName(u) }))} devs={equipe.filter((u) => u.role !== "COMMERCIAL").map((u) => ({ id: u.id, name: teamName(u) }))} peutAttribuer={peutAttribuer} /></div>}
+          {!externe && <div className="mt-3 border-t border-border pt-3"><SuiviForm client={{ id: client.id, formule: client.formule, engagementDebut: client.engagementDebut ? parisDay(client.engagementDebut) : "", engagementFin: client.engagementFin ? parisDay(client.engagementFin) : "", gmbUrl: client.gmbUrl, commercialId: client.commercialId, developpeurId: client.developpeurId, reference: client.reference }} commerciaux={equipe.filter(estCommercial).map((u) => ({ id: u.id, name: teamName(u) }))} devs={equipe.filter((u) => !estCommercial(u)).map((u) => ({ id: u.id, name: teamName(u) }))} peutAttribuer={peutAttribuer} /></div>}
         </section>
 
         {/* À venir */}

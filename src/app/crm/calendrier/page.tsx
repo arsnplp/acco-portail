@@ -2,7 +2,7 @@ import { UrlSelect } from "@/components/crm/url-select";
 import Link from "next/link";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { MODULES } from "@/lib/roles";
+import { commerciaux } from "@/lib/commerciaux";
 import { requireProspection } from "@/lib/auth";
 import { cn } from "@/lib/cn";
 import { contactName, initialsOf, parisDay, parisMidnight, teamName, CLOS } from "@/lib/crm";
@@ -43,7 +43,7 @@ export default async function CalendrierPage({ searchParams }: { searchParams: P
       where: { ...byCommercial, rappelAt: { gte: from, lt: to }, statut: { notIn: CLOS } },
       select: { id: true, societe: true, rappelAt: true, commercial: { select: { firstName: true, email: true } }, contacts: { orderBy: [{ principal: "desc" }, { createdAt: "asc" }], take: 1, select: { prenom: true, nom: true } } },
     }) : Promise.resolve([]),
-    prisma.user.findMany({ where: { role: { in: MODULES.prospection } }, orderBy: { firstName: "asc" }, select: { id: true, firstName: true, email: true } }),
+    commerciaux(),
     prisma.agendaExterne.findMany({ where: { ...(who === "all" ? {} : { userId: who === "me" ? me.id : who }), debut: { gte: from, lt: to } }, orderBy: { debut: "asc" }, include: { user: { select: { firstName: true, email: true } } } }),
   ]);
 
