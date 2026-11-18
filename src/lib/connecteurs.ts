@@ -5,7 +5,7 @@ import { featureEnabled, type FeatureKey } from "@/lib/settings";
 export type Connecteur = "gmail" | "calendar" | "aircall" | "search_console" | "business_profile" | "financier";
 export const CONNECTEUR_LABEL: Record<Connecteur, string> = {
   gmail: "Gmail (lecture des échanges, envoi aux clients)", calendar: "Google Agenda", aircall: "Aircall (appels, enregistrements, analyses IA, click-to-call)",
-  search_console: "Google Search Console (SEO du portail, une fois par jour)", business_profile: "Fiche Google (avis)", financier: "Connecteur financier (bientôt disponible)",
+  search_console: "Google Search Console (SEO du portail, une fois par jour)", business_profile: "Fiche Google (avis)", financier: "Stripe (abonnements, encaissements, impayés : lecture seule)",
 };
 const FEATURE: Record<Connecteur, FeatureKey> = { gmail: "feature_gmail", calendar: "feature_calendar", aircall: "feature_aircall", search_console: "feature_search_console", business_profile: "feature_business_api", financier: "feature_financier" };
 

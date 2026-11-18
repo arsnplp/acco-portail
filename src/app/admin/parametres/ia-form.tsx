@@ -44,10 +44,8 @@ export async function IaIntegrationsForm({ gestionnaire = false }: { gestionnair
         <div className="divide-y divide-border">
           {connecteurs.map((c) => (
             <div key={c.connecteur}>
-              {c.connecteur === "financier"
-                ? <div className="flex items-center justify-between gap-3 px-4 py-3 opacity-60"><span className="text-sm text-text-strong">{c.label}</span><span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted">Bientôt disponible</span></div>
-                : <Toggle name={`feature_${c.connecteur === "business_profile" ? "business_api" : c.connecteur}`} label={c.label} defaultChecked={c.actif} />}
-              {c.connecteur !== "financier" && (
+              <Toggle name={`feature_${c.connecteur === "business_profile" ? "business_api" : c.connecteur}`} label={c.label} defaultChecked={c.actif} />
+              {(
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 pb-3 text-xs text-text">
                   {c.bloque
                     ? <span className="rounded-full border border-pink/50 bg-pink/10 px-2 py-0.5 font-semibold text-pink">En erreur</span>

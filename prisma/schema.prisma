@@ -325,22 +325,24 @@ model Client {
   rendezVous    RendezVous[]
   destinataires CampagneDestinataire[]
 
-  memberships      ClientMembership[]
-  invitations      Invitation[]
-  sites            Site[]
-  orders           Order[]
-  subscriptions    Subscription[]
-  conversation     Conversation?
-  documents        Document[]
-  documentRequests DocumentRequest[]
-  referralsMade    Referral[]         @relation("ReferralsMade")
-  referredBy       Referral?          @relation("ReferredClient")
-  reviewPrompts    ReviewPrompt[]
-  notifications    Notification[]
-  referralCode     String             @unique @default(cuid())
-  crmProspect      Prospect?
-  crmEchanges      Echange[]
-  crmProjets       Projet[]
+  memberships       ClientMembership[]
+  invitations       Invitation[]
+  sites             Site[]
+  orders            Order[]
+  subscriptions     Subscription[]
+  conversation      Conversation?
+  documents         Document[]
+  documentRequests  DocumentRequest[]
+  referralsMade     Referral[]         @relation("ReferralsMade")
+  referredBy        Referral?          @relation("ReferredClient")
+  reviewPrompts     ReviewPrompt[]
+  notifications     Notification[]
+  referralCode      String             @unique @default(cuid())
+  crmProspect       Prospect?
+  crmEchanges       Echange[]
+  crmProjets        Projet[]
+  stripeAbonnements StripeAbonnement[]
+  stripeFactures    StripeFacture[]
 }
 
 model User {
@@ -721,6 +723,56 @@ model ConnecteurLog {
   createdAt  DateTime @default(now())
 
   @@index([connecteur, createdAt])
+}
+
+/// Abonnement Stripe (lecture seule, copié à chaque synchronisation : bouton « Actualiser Stripe » de Pilotage → Finance ou tâche de fond).
+model StripeAbonnement {
+  id                  String    @id // sub_…
+  customerId          String
+  customerNom         String?
+  customerEmail       String?
+  clientId            String? // fiche client rapprochée par email (client, signataire, contacts)
+  statut              String // active | past_due | trialing | canceled | unpaid | incomplete | paused…
+  libelle             String // produit / prix Stripe
+  montantMensuelCents Int // ramené au mois (hors remises)
+  intervalle          String // month | year | week | day
+  quantite            Int       @default(1)
+  debutAt             DateTime
+  periodeFinAt        DateTime? // fin de la période en cours (prochain prélèvement)
+  annulationAt        DateTime? // annulation programmée ou effective
+  finAt               DateTime?
+  updatedAt           DateTime  @updatedAt
+
+  client Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  @@index([statut])
+  @@index([clientId])
+}
+
+/// Facture Stripe (lecture seule) : impayés, encaissements du mois.
+model StripeFacture {
+  id            String    @id // in_…
+  numero        String?
+  statut        String // draft | open | paid | uncollectible | void
+  customerId    String
+  customerNom   String?
+  customerEmail String?
+  clientId      String?
+  abonnementId  String?
+  montantCents  Int // montant dû
+  payeCents     Int
+  restantCents  Int
+  creeAt        DateTime
+  echeanceAt    DateTime?
+  payeAt        DateTime?
+  url           String? // page de paiement / facture hébergée par Stripe
+  updatedAt     DateTime  @updatedAt
+
+  client Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  @@index([statut])
+  @@index([clientId])
+  @@index([creeAt])
 }
 
 /// Événements poussés dans le Google Agenda personnel d'un membre (RDV, échéances de sites) : clé interne → id Google.

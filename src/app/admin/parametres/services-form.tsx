@@ -6,7 +6,7 @@ import { saveServices, type ServicesState } from "./actions";
 import { Input } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import type { SecretKey, FeatureKey } from "@/lib/settings";
-import { BotIcon, WrenchIcon, ShieldCheckIcon, MailIcon, PhoneCallIcon, StarIcon, type LucideIcon } from "lucide-react";
+import { BotIcon, WrenchIcon, ShieldCheckIcon, MailIcon, PhoneCallIcon, StarIcon, CreditCardIcon, type LucideIcon } from "lucide-react";
 
 type Status = Record<SecretKey, { masked: string | null; source: "base" | "env" | null }>;
 
@@ -20,6 +20,8 @@ const SERVICES: Array<{ title: string; icon: LucideIcon; feature?: FeatureKey; f
   { title: "Resend (emails)", icon: MailIcon, keys: [{ key: "resend_api_key", label: "Clé API Resend", help: "resend.com → API Keys. Domaine acco-lab.fr déjà vérifié." }] },
   { title: "Aircall (téléphonie)", icon: PhoneCallIcon,
     keys: [{ key: "aircall_api_id", label: "API ID", help: "dashboard.aircall.io → Intégrations → API Keys." }, { key: "aircall_api_token", label: "API token", help: "Les résumés, sujets, sentiment et transcription demandent une licence AI Assist sur l’utilisateur Aircall. L’activation se fait dans « IA et intégrations »." }] },
+  { title: "Stripe (abonnements et paiements)", icon: CreditCardIcon,
+    keys: [{ key: "stripe_secret_key", label: "Clé secrète (sk_live_…)", help: "dashboard.stripe.com → Développeurs → Clés API. Une clé restreinte en lecture seule (Abonnements, Factures, Clients) suffit. L’activation se fait dans « IA et intégrations » ; les données se mettent à jour avec le bouton « Actualiser Stripe » de Pilotage → Finance." }] },
   { title: "Avis Google", icon: StarIcon, keys: [],
     note: "L’API Business Profile s’active dans « IA et intégrations », une fois l’accès validé par Google et le compte Google connecté. Sans elle, aucun avis n’est affiché (pas de données fictives)." },
 ];

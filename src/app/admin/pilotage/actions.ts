@@ -33,3 +33,15 @@ export async function archiverCharge(id: string) {
   await logActivite({ kind: "charge", texte: `Charge archivée : ${c.nom}`, href: "/admin/pilotage?onglet=charges", userId: me.id });
   revalidatePath("/admin/pilotage");
 }
+
+/** Bouton « Actualiser Stripe » (Pilotage → Finance) : recopie abonnements et factures depuis Stripe. Droit finance. */
+export async function actualiserStripe(): Promise<{ ok: boolean; message: string }> {
+  const me = await requireAdmin();
+  if (!can(me, "finance")) return { ok: false, message: "Réservé au droit finance." };
+  const { syncStripe } = await import("@/lib/stripe");
+  const r = await syncStripe();
+  if (!r.ok) return { ok: false, message: r.error ?? "Échec de la synchronisation Stripe." };
+  await logActivite({ kind: "finance", texte: `Données Stripe actualisées : ${r.abonnements} abonnements, ${r.factures} factures`, href: "/admin/pilotage?onglet=finance", userId: me.id });
+  revalidatePath("/admin/pilotage");
+  return { ok: true, message: `À jour : ${r.abonnements} abonnement${r.abonnements > 1 ? "s" : ""}, ${r.factures} facture${r.factures > 1 ? "s" : ""}.` };
+}

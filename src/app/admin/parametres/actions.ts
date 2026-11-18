@@ -30,8 +30,7 @@ export async function saveIaIntegrations(formData: FormData) {
     const plafond = Math.round(Number(String(formData.get("plafond_euros") ?? "20").replace(",", ".")) * 100);
     await set("ia_plafond_cents", String(Number.isFinite(plafond) && plafond >= 0 ? plafond : 2000));
   }
-  for (const c of ["feature_gmail", "feature_calendar", "feature_aircall", "feature_search_console", "feature_business_api"]) await set(c, formData.get(c) === "on" ? "true" : "false");
-  await set("feature_financier", "false"); // bientôt disponible : jamais activé en V1
+  for (const c of ["feature_gmail", "feature_calendar", "feature_aircall", "feature_search_console", "feature_business_api", "feature_financier"]) await set(c, formData.get(c) === "on" ? "true" : "false");
   const { logActivite } = await import("@/lib/activite");
   await logActivite({ kind: "reglages", texte: "Réglages IA et intégrations modifiés", href: "/admin/parametres", userId: me.id });
   revalidatePath("/admin", "layout");

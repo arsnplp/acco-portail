@@ -10,12 +10,14 @@ import { addDays, fmtDate, fmtPrice } from "@/lib/format";
 import { ROLE_LABEL, estCommercial } from "@/lib/roles";
 import { bornes, cle } from "@/lib/bilans";
 import { fmtDayTime, teamName, PIPELINE, STATUT, VIZ } from "@/lib/crm";
-import { ActivityIcon, ChartColumnIcon, TrendingUpIcon, UsersIcon, WalletIcon } from "lucide-react";
+import { ActivityIcon, ChartColumnIcon, CreditCardIcon, TrendingUpIcon, UsersIcon, WalletIcon } from "lucide-react";
 import { StackedBars, GroupedBars, LineChart } from "@/app/crm/stats/charts";
 import { MoreList } from "@/components/ui/more-list";
 import { TuilesPliables } from "@/components/ui/tuiles-pliables";
 import { activiteParCollaborateur, projectionMrr } from "@/lib/pilotage";
 import { CATEGORIES, caParCommercial, mrrHebdo, rentabiliteParClient, visionFinanciere } from "@/lib/finance";
+import { STATUT_ABONNEMENT, encaissementsParMois, statsStripe } from "@/lib/stripe";
+import { StripeButton } from "./stripe-button";
 import { PROJECT_STEPS } from "@/lib/labels";
 import { cn } from "@/lib/cn";
 import { ArchiverChargeButton, ChargeForm } from "./charges-form";
@@ -106,15 +108,48 @@ async function VueEnsemble({ finance }: { finance: boolean }) {
 }
 
 async function Finance() {
-  const [v, projection] = await Promise.all([visionFinanciere(), projectionMrr()]);
+  const [v, projection, st, encaisse] = await Promise.all([visionFinanciere(), projectionMrr(), statsStripe(), encaissementsParMois()]);
+  // Courbe : on ajoute l'encaissé réel Stripe quand il existe (mois passés et en cours uniquement).
+  const points = st.derniereSync ? v.points.map((p) => (encaisse.has(p.key) ? { ...p, values: { ...p.values, encaisse: Math.round((encaisse.get(p.key) ?? 0) / 100) } } : p)) : v.points;
+  const series = [{ key: "revenus", label: "Revenus (MRR + ponctuels)", color: VIZ.green }, ...(st.derniereSync ? [{ key: "encaisse", label: "Encaissé Stripe", color: VIZ.violet }] : []), { key: "charges", label: "Charges saisies", color: VIZ.orange }, { key: "resultat", label: "Résultat estimé", color: VIZ.blue }];
+  const ecart = st.mrr - v.mrr;
   return (
     <>
+      <SectionTitle icon={CreditCardIcon} action={<StripeButton derniereSync={st.derniereSync ? fmtDayTime(st.derniereSync) : null} />}>Stripe (données réelles)</SectionTitle>
+      {!st.configure && <Card><p className="text-sm text-text">Connecteur Stripe non configuré : renseignez la clé dans <Link href="/admin/parametres" className="underline">Paramètres</Link> (Stripe) puis activez-le dans « IA et intégrations ».</p></Card>}
+      {st.configure && st.erreur && <Card className="border-pink/50"><p className="text-sm text-pink">Dernière actualisation en erreur ({fmtDayTime(st.erreur.createdAt)}) : {st.erreur.message}</p></Card>}
+      {st.configure && !st.derniereSync && !st.erreur && <Card><p className="text-sm text-text">Aucune donnée pour l’instant : cliquez sur « Actualiser Stripe ».</p></Card>}
+      {st.derniereSync && (
+        <>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[
+              { n: euros(st.mrr), l: "MRR Stripe (abonnements actifs)", sub: `${ecart === 0 ? "égal aux contrats" : `${ecart > 0 ? "+" : "−"}${euros(Math.abs(ecart))} vs contrats signés`}` },
+              { n: String(st.actifs), l: "abonnements actifs", sub: `${st.enEssai ? `${st.enEssai} en essai · ` : ""}${st.annulationsPrevues.length} annulation${st.annulationsPrevues.length > 1 ? "s" : ""} prévue${st.annulationsPrevues.length > 1 ? "s" : ""}` },
+              { n: euros(st.encaisseMois), l: "encaissé ce mois", sub: `${st.facturesPayeesMois} facture${st.facturesPayeesMois > 1 ? "s" : ""} · mois dernier ${euros(st.encaisseMoisPrecedent)}` },
+              { n: euros(st.impayesTotal), l: "factures impayées", sub: `${st.impayes.length} facture${st.impayes.length > 1 ? "s" : ""} · ${st.enRetard.length} abonnement${st.enRetard.length > 1 ? "s" : ""} en retard`, tone: st.impayesTotal > 0 ? "pink" : undefined },
+            ].map((t) => <Card key={t.l}><p className={cn("font-title text-2xl font-extrabold", t.tone === "pink" ? "text-pink" : "text-title")}>{t.n}</p><p className="mt-1 text-xs text-text">{t.l}</p><p className="mt-0.5 text-[11px] text-muted">{t.sub}</p></Card>)}
+          </div>
+          {st.impayes.length > 0 && (
+            <>
+              <SectionTitle>Factures impayées (Stripe)</SectionTitle>
+              <div className="overflow-x-auto rounded-card border border-border bg-surface"><table className="w-full text-sm">
+                <thead className="text-left text-xs text-text"><tr><th className="px-3 py-2 font-medium">Client</th><th className="px-3 py-2 font-medium">Facture</th><th className="px-3 py-2 text-right font-medium">Reste dû</th><th className="px-3 py-2 font-medium">Échéance</th><th className="px-3 py-2 font-medium">Statut</th></tr></thead>
+                <tbody className="divide-y divide-border">{st.impayes.map((f) => <tr key={f.id}><td className="px-3 py-2 font-semibold text-title">{f.client ? <Link href={`/admin/clients/${f.client.id}`} className="hover:underline">{f.client.name}</Link> : <span title={f.customerEmail ?? ""}>{f.customerNom ?? f.customerEmail ?? f.customerId}</span>}</td><td className="px-3 py-2 text-xs">{f.url ? <a href={f.url} target="_blank" rel="noreferrer" className="underline">{f.numero ?? f.id}</a> : (f.numero ?? f.id)}</td><td className="px-3 py-2 text-right tabular-nums text-pink">{euros(f.restantCents)}</td><td className="px-3 py-2 text-xs text-text">{f.echeanceAt ? fmtDate(f.echeanceAt) : fmtDate(f.creeAt)}</td><td className="px-3 py-2"><Badge tone={f.statut === "uncollectible" ? "pink" : "yellow"}>{f.statut === "uncollectible" ? "irrécouvrable" : "en attente"}</Badge></td></tr>)}</tbody>
+              </table></div>
+            </>
+          )}
+          <SectionTitle>Abonnements Stripe en cours</SectionTitle>
+          <MoreList limit={8} title="Abonnements Stripe en cours" labels={st.abonnements.map((a) => `${a.client?.name ?? a.customerNom ?? a.customerEmail ?? ""} ${a.libelle}`)} items={st.abonnements.map((a) => <li key={a.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 px-4 py-2 text-sm"><span className="font-semibold text-title">{a.client ? <Link href={`/admin/clients/${a.client.id}`} className="hover:underline">{a.client.name}</Link> : <span title={a.customerEmail ?? ""}>{a.customerNom ?? a.customerEmail ?? a.customerId}</span>}{!a.client && <span className="ml-2 text-[11px] font-normal text-muted">sans fiche client</span>}</span><span className="text-xs text-text">{a.libelle}</span><span className="ml-auto tabular-nums text-text-strong">{euros(a.montantMensuelCents)}<span className="text-xs text-muted"> / mois</span></span><span className="w-full text-[11px] text-muted sm:w-auto">{a.statut === "active" ? (a.annulationAt ? `annulation le ${fmtDate(a.annulationAt)}` : a.periodeFinAt ? `prochain prélèvement ${fmtDate(a.periodeFinAt)}` : "actif") : <span className={a.statut === "past_due" || a.statut === "unpaid" ? "text-pink" : ""}>{STATUT_ABONNEMENT[a.statut] ?? a.statut}</span>}</span></li>)} className="divide-y divide-border rounded-card border border-border bg-surface" />
+          <p className="mt-2 text-xs text-muted">Lecture seule, mise à jour au clic et toutes les 6 h. Montants Stripe hors remises. {st.nonRapproches > 0 && `${st.nonRapproches} abonnement${st.nonRapproches > 1 ? "s" : ""} sans fiche client : l’email du client Stripe ne correspond à aucune fiche (email de la fiche, du signataire ou d’un contact).`}</p>
+        </>
+      )}
+
       <SectionTitle icon={WalletIcon}>Finance (V1 : saisies manuelles)</SectionTitle>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[{ n: euros(v.mrr), l: "MRR actif" }, { n: euros(v.nouveauMrr), l: "nouveau MRR du mois" }, { n: euros(v.mrrPerdu), l: "MRR perdu (contrats terminés)" }, { n: euros(v.ponctuelMois), l: "ponctuels signés ce mois" }, { n: euros(v.chargesMois.total), l: "charges du mois" }, { n: euros(v.chargesMois.principales), l: "dont charges fixes principales" }, { n: euros(v.resultat), l: "résultat mensuel estimé" }, { n: String(v.impayes.length), l: "impayés signalés" }].map((t) => <Card key={t.l}><p className="font-title text-2xl font-extrabold text-title">{t.n}</p><p className="mt-1 text-xs text-text">{t.l}</p></Card>)}
       </div>
       <SectionTitle icon={TrendingUpIcon}>Résultat mensuel estimé : 12 mois et projection</SectionTitle>
-      <Card><GroupedBars buckets={v.points} series={[{ key: "revenus", label: "Revenus (MRR + ponctuels)", color: VIZ.green }, { key: "charges", label: "Charges saisies", color: VIZ.orange }, { key: "resultat", label: "Résultat estimé", color: VIZ.blue }]} /><p className="mt-2 text-xs text-muted">En euros. Historique reconstitué d’après les dates de signature et de fin ; projection = contrats en cours et charges connues. Pas une comptabilité.</p></Card>
+      <Card><GroupedBars buckets={points} series={series} /><p className="mt-2 text-xs text-muted">En euros. Historique reconstitué d’après les dates de signature et de fin ; projection = contrats en cours et charges connues.{st.derniereSync && " « Encaissé Stripe » = factures réellement payées (TTC)."} Pas une comptabilité.</p></Card>
       <SectionTitle>Répartition des charges du mois</SectionTitle>
       <ul className="divide-y divide-border rounded-card border border-border bg-surface text-sm">{Object.entries(v.chargesMois.parCategorie).sort((a, b) => b[1] - a[1]).map(([k, c]) => <li key={k} className="flex justify-between px-4 py-2"><span className="text-title">{CATEGORIES[k] ?? k}</span><span className="tabular-nums text-text-strong">{euros(c)}</span></li>)}{Object.keys(v.chargesMois.parCategorie).length === 0 && <li className="px-4 py-2 text-text">Aucune charge saisie : onglet Charges.</li>}</ul>
       <SectionTitle>Projection du MRR (pipeline pondéré)</SectionTitle>

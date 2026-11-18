@@ -30,6 +30,14 @@ export async function verifySecret(key: SecretKey, value: string, extra?: Partia
         }
         return { ok: true, detail: "Clé Anthropic valide." };
       }
+      case "stripe_secret_key": {
+        if (!/^(sk|rk)_(live|test)_/.test(value)) return { ok: false, error: "Une clé secrète Stripe commence par sk_live_, sk_test_, rk_live_ ou rk_test_." };
+        const res = await fetch("https://api.stripe.com/v1/subscriptions?limit=1", { headers: { Authorization: `Bearer ${value}` }, signal: AbortSignal.timeout(10_000) });
+        if (res.status === 401) return { ok: false, error: "Stripe refuse cette clé." };
+        if (res.status === 403) return { ok: false, error: "Clé Stripe acceptée mais sans accès aux abonnements : donnez-lui les droits Abonnements, Factures et Clients en lecture." };
+        if (!res.ok) return { ok: false, error: `Stripe répond ${res.status}.` };
+        return { ok: true, detail: value.includes("_test_") ? "Clé Stripe valide (mode test : les données ne sont pas celles des vrais clients)." : "Accès Stripe vérifié." };
+      }
       case "resend_api_key": {
         const res = await fetch("https://api.resend.com/domains", { headers: { Authorization: `Bearer ${value}` }, signal: AbortSignal.timeout(10_000) });
         if (res.status === 400 || res.status === 401 || res.status === 403) return { ok: false, error: "Clé Resend refusée." };

@@ -21,4 +21,6 @@ export async function register() {
   startCampagnesTicker();
   const { startBlogTicker } = await import("./lib/blog");
   startBlogTicker();
+  const { startStripeTicker } = await import("./lib/stripe");
+  startStripeTicker();
 }

@@ -13,6 +13,7 @@ export const SECRETS = {
   resend_api_key: "RESEND_API_KEY",
   aircall_api_id: "AIRCALL_API_ID",
   aircall_api_token: "AIRCALL_API_TOKEN",
+  stripe_secret_key: "STRIPE_SECRET_KEY",
 } as const;
 export type SecretKey = keyof typeof SECRETS;
 
@@ -29,7 +30,7 @@ export const FEATURES = {
   feature_gmail: { label: "Gmail : lecture des échanges avec les clients et envoi des emails depuis l’app", needs: [] as SecretKey[], defaut: true },
   feature_calendar: { label: "Google Agenda : RDV et échéances dans les agendas des membres", needs: [] as SecretKey[], defaut: true },
   feature_search_console: { label: "Google Search Console : chiffres SEO du portail (tâche quotidienne)", needs: [] as SecretKey[], defaut: true },
-  feature_financier: { label: "Connecteur financier (bientôt disponible)", needs: [] as SecretKey[], defaut: false },
+  feature_financier: { label: "Stripe : abonnements, encaissements et impayés réels dans Pilotage → Finance (lecture seule)", needs: ["stripe_secret_key"] as SecretKey[], defaut: true },
 } as const;
 export type FeatureKey = keyof typeof FEATURES;
 
@@ -49,7 +50,6 @@ export async function featureEnabled(key: FeatureKey): Promise<boolean> {
   const envDefault = key === "feature_business_api" ? process.env.GOOGLE_BUSINESS_API_ENABLED === "true" : undefined;
   const on = all.has(key) ? all.get(key) === "true" : (envDefault ?? FEATURES[key].defaut);
   if (!on) return false;
-  if (key === "feature_financier") return false; // pas de connecteur financier en V1 (00.10)
   for (const k of FEATURES[key].needs) if (!(await getSecret(k))) return false;
   return true;
 }
