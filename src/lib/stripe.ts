@@ -12,7 +12,7 @@ import { connecteurActif, journal, marquerSync } from "@/lib/connecteurs";
 const API = "https://api.stripe.com/v1";
 
 type Customer = { id: string; name: string | null; email: string | null; deleted?: boolean };
-type Price = { unit_amount: number | null; currency: string; nickname: string | null; recurring: { interval: "day" | "week" | "month" | "year"; interval_count: number } | null; product: { name: string } | string | null };
+type Price = { unit_amount: number | null; currency: string; nickname: string | null; recurring: { interval: "day" | "week" | "month" | "year"; interval_count: number } | null; product: string | null };
 type Sub = {
   id: string; status: string; customer: Customer | string; created: number; start_date: number;
   current_period_end?: number | null; cancel_at: number | null; canceled_at: number | null; ended_at: number | null;
@@ -43,8 +43,8 @@ async function list<T extends { id: string }>(path: string, params: Record<strin
     const res = await fetch(`${API}${path}?${q}`, { headers: await headers(), signal: AbortSignal.timeout(20_000), cache: "no-store" });
     if (res.status === 401) throw new Error("Stripe refuse la clé (Admin → Paramètres).");
     if (res.status === 403) throw new Error(`Clé Stripe sans accès à ${path} : donnez-lui les droits Abonnements, Factures et Clients en lecture.`);
-    if (!res.ok) throw new Error(`Stripe répond ${res.status} sur ${path}.`);
-    const json = (await res.json()) as { data: T[]; has_more: boolean };
+    const json = (await res.json().catch(() => ({}))) as { data: T[]; has_more: boolean; error?: { message?: string } };
+    if (!res.ok) throw new Error(`Stripe répond ${res.status} sur ${path}${json.error?.message ? ` : ${json.error.message}` : "."}`);
     out.push(...json.data);
     if (!json.has_more || json.data.length === 0) break;
     after = json.data[json.data.length - 1].id;
@@ -64,8 +64,8 @@ function mensuel(sub: Sub) {
     return a + (p.unit_amount * (it.quantity ?? 1) * MOIS[p.recurring.interval]) / (p.recurring.interval_count || 1);
   }, 0));
 }
-function libelle(sub: Sub) {
-  const noms = sub.items.data.map((it) => it.price.nickname || (typeof it.price.product === "object" && it.price.product ? it.price.product.name : null)).filter(Boolean) as string[];
+function libelle(sub: Sub, produits: Map<string, string>) {
+  const noms = sub.items.data.map((it) => it.price.nickname || (it.price.product ? produits.get(it.price.product) : null)).filter(Boolean) as string[];
   return [...new Set(noms)].join(" + ") || "Abonnement";
 }
 
@@ -90,12 +90,14 @@ export async function syncStripe(): Promise<SyncStripeResult> {
   if (!(await stripeConfigured())) return { ok: false, abonnements: 0, factures: 0, error: "Connecteur Stripe désactivé ou clé manquante (Admin → Paramètres)." };
   try {
     const depuis = Math.floor(new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() - 12, 1)).getTime() / 1000);
-    const [subs, ouvertes, irrecouvrables, payees, clientDe] = await Promise.all([
-      list<Sub>("/subscriptions", { status: "all" }, ["data.customer", "data.items.data.price.product"]),
+    const [subs, ouvertes, irrecouvrables, payees, clientDe, produits] = await Promise.all([
+      list<Sub>("/subscriptions", { status: "all" }, ["data.customer"]),
       list<Invoice>("/invoices", { status: "open" }, ["data.customer"]),
       list<Invoice>("/invoices", { status: "uncollectible" }, ["data.customer"]),
       list<Invoice>("/invoices", { status: "paid", "created[gte]": String(depuis) }, ["data.customer"]),
       indexClients(),
+      // Noms des produits (l'expansion depuis l'abonnement dépasse la profondeur autorisée) ; sans ce droit, libellé « Abonnement ».
+      list<{ id: string; name: string }>("/products", {}).then((ps) => new Map(ps.map((p) => [p.id, p.name]))).catch(() => new Map<string, string>()),
     ]);
     const factures = [...ouvertes, ...irrecouvrables, ...payees];
 
@@ -106,7 +108,7 @@ export async function syncStripe(): Promise<SyncStripeResult> {
         const c = cust(s.customer);
         const data = {
           customerId: c.id, customerNom: c.name, customerEmail: c.email, clientId: clientDe(c.email, c.name),
-          statut: s.status, libelle: libelle(s), montantMensuelCents: mensuel(s), intervalle: s.items.data[0]?.price.recurring?.interval ?? "month",
+          statut: s.status, libelle: libelle(s, produits), montantMensuelCents: mensuel(s), intervalle: s.items.data[0]?.price.recurring?.interval ?? "month",
           quantite: s.items.data.reduce((a, it) => a + (it.quantity ?? 1), 0) || 1,
           debutAt: date(s.start_date ?? s.created)!, periodeFinAt: date(s.current_period_end ?? s.items.data[0]?.current_period_end),
           annulationAt: date(s.cancel_at ?? s.canceled_at), finAt: date(s.ended_at),
