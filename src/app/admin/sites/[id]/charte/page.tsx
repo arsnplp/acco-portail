@@ -44,7 +44,7 @@ export default async function CharteSitePage({ params }: { params: Promise<{ id:
         </div>
         <div>
           <SectionTitle>Ce que verra le client</SectionTitle>
-          {charteRenseignee(c) || pieces.length > 0 ? <RecapCharte c={c} pieces={pieces.map((p) => ({ ...p, action: undefined }))} /> : <p className="text-sm text-text">Rien de renseigné pour l’instant.</p>}
+          {charteRenseignee(c) || pieces.length > 0 ? <div className="grid gap-6"><div><p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text">Mon identité visuelle</p><RecapCharte c={c} pieces={pieces.map((p) => ({ ...p, action: undefined }))} volet="identite" /></div><div><p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text">Mon esprit de marque & conseils</p><RecapCharte c={c} pieces={[]} volet="esprit" /></div></div> : <p className="text-sm text-text">Rien de renseigné pour l’instant.</p>}
         </div>
       </div>
     </AdminPage>
