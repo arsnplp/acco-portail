@@ -17,7 +17,7 @@ export default async function SiteLayout({ children, params }: { children: React
   const blog = libelles.some((l) => /blog|article|contenu|rédac|redac/.test(l));
   // Onglets selon l'état du site et les services réellement souscrits (14.1) : rien de verrouillé.
   const tabs: Tab[] = online
-    ? [{ slug: "activite", label: "Activité" }, { slug: "resultats", label: "Résultats" }, ...(avis ? [{ slug: "avis", label: "Avis" }] : []), { slug: "modifications", label: "Modifications" }, ...(blog ? [{ slug: "blog", label: "Blog" }] : []), { slug: "documents", label: "Documents" }]
+    ? [{ slug: "activite", label: "Activité" }, { slug: "resultats", label: "Résultats" }, ...(avis ? [{ slug: "avis", label: "Avis" }] : []), { slug: "modifications", label: "Modifications" }, { slug: "blog", label: "Blog", locked: !blog }, { slug: "documents", label: "Documents" }]
     : [{ slug: "", label: "Avancement" }, { slug: "brief", label: "Brief" }, { slug: "documents", label: "Documents" }];
 
   return (

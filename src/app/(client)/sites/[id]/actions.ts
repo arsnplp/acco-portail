@@ -62,3 +62,20 @@ export async function commanderArticle(siteId: string, formData: FormData) {
   revalidatePath(`/sites/${site.id}/blog`);
 }
 
+
+/** Blog non souscrit : le client demande l'option. Un message part dans sa conversation (trace visible des deux côtés) et le gestionnaire est prévenu. */
+export async function demanderBlog(siteId: string) {
+  const { site, user } = await requireClientSite(siteId);
+  const deja = await prisma.activite.findFirst({ where: { siteId: site.id, kind: "demande_blog" }, select: { id: true } });
+  if (deja) return;
+  const conv = await prisma.conversation.upsert({ where: { clientId: site.clientId }, create: { clientId: site.clientId }, update: {} });
+  const now = new Date();
+  await prisma.$transaction([
+    prisma.message.create({ data: { conversationId: conv.id, authorId: user.id, siteId: site.id, body: `Je souhaite ajouter le blog à mon site ${site.name}. Pouvez-vous me dire comment ça se passe ?` } }),
+    prisma.conversation.update({ where: { id: conv.id }, data: { lastMessageAt: now, clientReadAt: now } }),
+  ]);
+  const { logActivite } = await import("@/lib/activite");
+  await logActivite({ kind: "demande_blog", texte: `Demande d’ajout du blog pour ${site.name}`, href: `/admin/messages/${site.clientId}`, userId: user.id, clientId: site.clientId, siteId: site.id });
+  after(() => notifyAdmins({ pref: "offers", tag: `blog-${site.id}`, href: `/admin/messages/${site.clientId}`, title: `Blog demandé · ${site.name}`, body: `${user.firstName ?? user.email} veut ajouter le blog à son site.` }));
+  revalidatePath(`/sites/${site.id}/blog`); revalidatePath("/messages"); revalidatePath("/admin/messages");
+}

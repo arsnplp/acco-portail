@@ -1,4 +1,6 @@
-import { NewspaperIcon } from "lucide-react";
+import { LockIcon, NewspaperIcon, SearchIcon, TrendingUpIcon, UsersIcon } from "lucide-react";
+import { blogInclus } from "@/lib/blog-inclus";
+import { fmtDate } from "@/lib/format";
 import { requireClientSite } from "@/lib/sites";
 import { prisma } from "@/lib/prisma";
 import { Card, SectionTitle } from "@/components/ui/card";
@@ -7,7 +9,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { Field, Input, Textarea } from "@/components/ui/field";
 import { ARTICLE_STATUT } from "@/lib/labels";
 import { fmtDateShort } from "@/lib/format";
-import { commanderArticle } from "../actions";
+import { commanderArticle, demanderBlog } from "../actions";
 
 export const metadata = { title: "Blog" };
 
@@ -15,7 +17,30 @@ export const metadata = { title: "Blog" };
 export default async function BlogClientPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { site } = await requireClientSite(id);
-  const articles = await prisma.article.findMany({ where: { siteId: site.id }, orderBy: [{ statut: "asc" }, { updatedAt: "desc" }] });
+  const [inclus, articles] = await Promise.all([blogInclus(site.id, site.clientId), prisma.article.findMany({ where: { siteId: site.id }, orderBy: [{ statut: "asc" }, { updatedAt: "desc" }] })]);
+  if (!inclus) {
+    const demande = await prisma.activite.findFirst({ where: { siteId: site.id, kind: "demande_blog" }, select: { createdAt: true } });
+    return (
+      <div>
+        <div className="rounded-card border border-border bg-surface p-5">
+          <span className="flex size-11 items-center justify-center rounded-full border border-border text-text"><LockIcon size={18} /></span>
+          <h2 className="mt-3 text-lg font-semibold text-title">Le blog n’est pas encore dans votre formule</h2>
+          <p className="mt-1 text-sm text-text">Un blog, c’est des articles réguliers sur votre métier, écrits et publiés par nous sur votre site.</p>
+          <ul className="mt-3 grid gap-2 text-sm text-text-strong">
+            <li className="flex items-start gap-2"><SearchIcon size={16} className="mt-0.5 shrink-0 text-blue" /> Google vous trouve sur plus de recherches : chaque article est une nouvelle porte d’entrée vers votre site.</li>
+            <li className="flex items-start gap-2"><TrendingUpIcon size={16} className="mt-0.5 shrink-0 text-green" /> Vous gagnez des places dans les résultats : un site qui vit régulièrement est mieux classé.</li>
+            <li className="flex items-start gap-2"><UsersIcon size={16} className="mt-0.5 shrink-0 text-yellow" /> Vous rassurez vos clients : ils voient votre savoir-faire avant de vous appeler.</li>
+          </ul>
+          {demande ? (
+            <p className="mt-4 rounded-lg border border-green/40 bg-green/10 p-3 text-sm text-green">Demande envoyée le {fmtDate(demande.createdAt)}. On revient vers vous très vite dans Messages.</p>
+          ) : (
+            <form action={demanderBlog.bind(null, site.id)} className="mt-4"><SubmitButton className="w-full" pendingLabel="Envoi…">Je veux le blog sur mon site</SubmitButton><p className="mt-2 text-center text-xs text-text">Sans engagement : on vous explique le fonctionnement et le tarif, vous décidez ensuite.</p></form>
+          )}
+        </div>
+        {articles.length > 0 && <p className="mt-4 text-xs text-text">{articles.length} article{articles.length > 1 ? "s" : ""} déjà publié{articles.length > 1 ? "s" : ""} sur votre site.</p>}
+      </div>
+    );
+  }
   return (
     <div>
       <SectionTitle icon={NewspaperIcon}>Commander un article</SectionTitle>
