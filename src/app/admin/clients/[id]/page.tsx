@@ -23,7 +23,6 @@ import { DemandesOnglet } from "./onglets/demandes";
 import { DocumentsOnglet } from "./onglets/documents";
 import { IntelligenceOnglet } from "./onglets/intelligence";
 import { SatisfactionOnglet } from "./onglets/satisfaction";
-import { CharteOnglet } from "./onglets/charte";
 import { ONGLETS, type Onglet } from "./onglets/ctx";
 
 type SP = { onglet?: string; canal?: string; site?: string; qui?: string; periode?: string; contact?: string };
@@ -84,7 +83,6 @@ export default async function ClientDetailPage({ params, searchParams }: { param
       <div className="mt-5">
         {onglet === "apercu" && <Apercu {...ctx} ia={ia} />}
         {onglet === "sites" && <SitesOnglet {...ctx} />}
-        {onglet === "charte" && <CharteOnglet {...ctx} />}
         {onglet === "contrats" && !externe && <ContratsOnglet {...ctx} />}
         {onglet === "contacts" && <ContactsOnglet {...ctx} />}
         {(onglet === "activite" || onglet === "emails" || onglet === "appels") && <ActiviteOnglet {...ctx} mode={onglet} />}

@@ -1,50 +1,32 @@
 /**
- * Charte graphique du client (« Votre DA » dans le portail, onglet « Charte » de la fiche client côté équipe).
- * Tout est facultatif : le client décrit l'ambiance, choisit ses couleurs, nomme ses polices, la densité, les formes,
- * dépose son logo et ses inspirations.
+ * Charte graphique (DA) d'un site : récapitulatif rédigé par l'équipe à la livraison de ce qui a été utilisé
+ * (ambiance, couleurs, polices, espacements, formes, mode, images), plus les fichiers (logo dans ses versions, polices).
+ * Le client la consulte en lecture seule dans l'onglet « Votre DA » de son site une fois publiée.
  */
 import { prisma } from "@/lib/prisma";
 
 export type Charte = {
-  ambiance: string[]; // 3 maximum
-  mots: string; // ambiance et style voulus, en texte libre
-  couleurs: { principale: string; secondaire: string; accent: string }; // hex ou vide
-  couleursNote: string; // couleurs existantes / à éviter
-  policeTitres: string; // clé de POLICES ou vide
-  policeTextes: string;
-  policesNote: string; // nom de la ou des polices utilisées (texte libre)
+  ambiance: string; // en quelques mots : chaleureux et artisanal, épuré et moderne…
+  couleurs: { principale: string; secondaire: string; accent: string; fond: string; texte: string }; // hex ou vide
+  couleursNote: string; // usage de chaque couleur, codes complémentaires
+  policeTitres: string; // nom de la police des titres
+  policeTextes: string; // nom de la police des textes
+  policesNote: string; // graisses, tailles, où la trouver (Google Fonts…)
   densite: string; // aere | equilibre | dense
   formes: string; // arrondi | droit
   mode: string; // clair | sombre | les-deux
   images: string; // photos | illustrations | minimal
-  logoEtat: string; // ai | a-refaire | a-creer
-  inspirations: string; // liens, un par ligne
-  eviter: string; // ce qu'il ne faut surtout pas faire
+  note: string; // tout ce qui est utile au client : règles d'usage du logo, marges, icônes…
 };
 
-export const CHARTE_VIDE: Charte = { ambiance: [], mots: "", couleurs: { principale: "", secondaire: "", accent: "" }, couleursNote: "", policeTitres: "", policeTextes: "", policesNote: "", densite: "", formes: "", mode: "", images: "", logoEtat: "", inspirations: "", eviter: "" };
+export const CHARTE_VIDE: Charte = { ambiance: "", couleurs: { principale: "", secondaire: "", accent: "", fond: "", texte: "" }, couleursNote: "", policeTitres: "", policeTextes: "", policesNote: "", densite: "", formes: "", mode: "", images: "", note: "" };
 
-export const AMBIANCES: { key: string; label: string; aide: string }[] = [
-  { key: "chaleureux", label: "Chaleureux", aide: "accueillant, proche des gens" },
-  { key: "epure", label: "Épuré", aide: "peu d’éléments, beaucoup d’air" },
-  { key: "design", label: "Design", aide: "soigné, tendance" },
-  { key: "sobre", label: "Sobre", aide: "discret, sérieux" },
-  { key: "colore", label: "Coloré", aide: "vif, joyeux" },
-  { key: "elegant", label: "Élégant", aide: "raffiné, haut de gamme" },
-  { key: "naturel", label: "Naturel", aide: "matières, tons terre" },
-  { key: "moderne", label: "Moderne", aide: "net, actuel" },
-  { key: "fun", label: "Fun", aide: "décalé, ludique" },
-  { key: "traditionnel", label: "Traditionnel", aide: "savoir-faire, classique" },
-];
-export const MAX_AMBIANCES = 3;
-
-/** Styles de police, avec la famille utilisée dans l'aperçu (polices système : rien à charger). */
-export const POLICES: { key: string; label: string; aide: string; famille: string }[] = [
-  { key: "sans", label: "Moderne", aide: "lettres simples, sans empattement", famille: "Inter, system-ui, Helvetica, Arial, sans-serif" },
-  { key: "serif", label: "Classique", aide: "avec empattement, comme un journal", famille: "Georgia, 'Times New Roman', serif" },
-  { key: "arrondie", label: "Arrondie", aide: "douce, sympathique", famille: "'Arial Rounded MT Bold', 'Nunito', 'Varela Round', system-ui, sans-serif" },
-  { key: "manuscrite", label: "Manuscrite", aide: "comme écrit à la main", famille: "'Brush Script MT', 'Segoe Script', 'Snell Roundhand', cursive" },
-  { key: "libre", label: "À vous de voir", aide: "je vous fais confiance", famille: "Inter, system-ui, sans-serif" },
+export const COULEURS: { key: keyof Charte["couleurs"]; label: string; aide: string }[] = [
+  { key: "principale", label: "Principale", aide: "boutons, titres, ce qu’on voit en premier" },
+  { key: "secondaire", label: "Secondaire", aide: "fonds de sections, encadrés" },
+  { key: "accent", label: "Accent", aide: "petites touches, icônes, liens" },
+  { key: "fond", label: "Fond", aide: "fond général des pages" },
+  { key: "texte", label: "Texte", aide: "couleur du texte courant" },
 ];
 export const DENSITES: { key: string; label: string; aide: string }[] = [
   { key: "aere", label: "Aéré", aide: "beaucoup d’espace, on respire" },
@@ -56,24 +38,18 @@ export const FORMES: { key: string; label: string; aide: string }[] = [
   { key: "droit", label: "Droites", aide: "angles nets" },
 ];
 export const MODES: { key: string; label: string; aide: string }[] = [
-  { key: "clair", label: "Clair", aide: "fond blanc, texte foncé" },
+  { key: "clair", label: "Clair", aide: "fond clair, texte foncé" },
   { key: "sombre", label: "Sombre", aide: "fond foncé, texte clair" },
   { key: "les-deux", label: "Les deux", aide: "selon le réglage du visiteur" },
 ];
 export const IMAGES: { key: string; label: string; aide: string }[] = [
-  { key: "photos", label: "Vraies photos", aide: "votre équipe, votre local, vos réalisations" },
+  { key: "photos", label: "Vraies photos", aide: "équipe, local, réalisations" },
   { key: "illustrations", label: "Illustrations", aide: "dessins, pictos" },
   { key: "minimal", label: "Peu d’images", aide: "le texte avant tout" },
 ];
-export const LOGO_ETATS: { key: string; label: string; aide: string }[] = [
-  { key: "ai", label: "J’ai un logo", aide: "déposez-le ci-dessous" },
-  { key: "a-refaire", label: "J’en ai un, à moderniser", aide: "déposez l’actuel" },
-  { key: "a-creer", label: "Pas de logo", aide: "à créer avec vous" },
-];
-export const PIECE_KINDS: Record<string, string> = { logo: "Logo", police: "Police", inspiration: "Inspiration", autre: "Autre" };
+export const PIECE_KINDS: Record<string, string> = { logo: "Logo", police: "Police", autre: "Autre" };
 
 export const lab = (liste: { key: string; label: string }[], key: string) => liste.find((x) => x.key === key)?.label ?? "";
-export const familleDe = (key: string) => POLICES.find((p) => p.key === key)?.famille ?? POLICES[0].famille;
 const HEX = /^#[0-9a-fA-F]{6}$/;
 export const hexOk = (v: string) => HEX.test(v);
 
@@ -82,59 +58,29 @@ export function lireCharte(raw: unknown): Charte {
   const o = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const str = (k: string) => (typeof o[k] === "string" ? (o[k] as string) : "");
   const c = (o.couleurs && typeof o.couleurs === "object" ? o.couleurs : {}) as Record<string, unknown>;
-  const hex = (k: string) => (typeof c[k] === "string" && HEX.test(c[k] as string) ? (c[k] as string) : "");
+  const hex = (k: string) => (typeof c[k] === "string" && HEX.test(c[k] as string) ? (c[k] as string).toLowerCase() : "");
   return {
-    ambiance: Array.isArray(o.ambiance) ? (o.ambiance as unknown[]).filter((x): x is string => typeof x === "string" && AMBIANCES.some((a) => a.key === x)).slice(0, MAX_AMBIANCES) : [],
-    mots: str("mots"), couleurs: { principale: hex("principale"), secondaire: hex("secondaire"), accent: hex("accent") }, couleursNote: str("couleursNote"),
+    ambiance: str("ambiance"), couleurs: { principale: hex("principale"), secondaire: hex("secondaire"), accent: hex("accent"), fond: hex("fond"), texte: hex("texte") }, couleursNote: str("couleursNote"),
     policeTitres: str("policeTitres"), policeTextes: str("policeTextes"), policesNote: str("policesNote"),
-    densite: str("densite"), formes: str("formes"), mode: str("mode"), images: str("images"), logoEtat: str("logoEtat"), inspirations: str("inspirations"), eviter: str("eviter"),
+    densite: str("densite"), formes: str("formes"), mode: str("mode"), images: str("images"), note: str("note"),
   };
 }
 
-/** Nettoyage avant enregistrement : uniquement des valeurs connues, textes bornés. */
+/** Nettoyage avant enregistrement : valeurs connues, textes bornés. */
 export function nettoyerCharte(raw: unknown): Charte {
   const c = lireCharte(raw);
   const dans = (liste: { key: string }[], v: string) => (liste.some((x) => x.key === v) ? v : "");
   const txt = (v: string, max: number) => v.trim().slice(0, max);
   return {
-    ambiance: c.ambiance, mots: txt(c.mots, 600), couleurs: c.couleurs, couleursNote: txt(c.couleursNote, 500),
-    policeTitres: dans(POLICES, c.policeTitres), policeTextes: dans(POLICES, c.policeTextes), policesNote: txt(c.policesNote, 300),
-    densite: dans(DENSITES, c.densite), formes: dans(FORMES, c.formes), mode: dans(MODES, c.mode), images: dans(IMAGES, c.images), logoEtat: dans(LOGO_ETATS, c.logoEtat),
-    inspirations: txt(c.inspirations, 1500), eviter: txt(c.eviter, 1000),
+    ambiance: txt(c.ambiance, 600), couleurs: c.couleurs, couleursNote: txt(c.couleursNote, 1000),
+    policeTitres: txt(c.policeTitres, 120), policeTextes: txt(c.policeTextes, 120), policesNote: txt(c.policesNote, 600),
+    densite: dans(DENSITES, c.densite), formes: dans(FORMES, c.formes), mode: dans(MODES, c.mode), images: dans(IMAGES, c.images), note: txt(c.note, 3000),
   };
 }
 
-/** Avancement : parties renseignées sur les 8 (ambiance, couleurs, polices, espacements, formes, mode, images, logo). */
-export function avancementCharte(c: Charte, aLogo: boolean) {
-  const parties: { label: string; ok: boolean }[] = [
-    { label: "Ambiance", ok: !!c.mots.trim() },
-    { label: "Couleurs", ok: !!c.couleurs.principale },
-    { label: "Polices", ok: !!c.policesNote.trim() },
-    { label: "Espacements", ok: !!c.densite },
-    { label: "Formes", ok: !!c.formes },
-    { label: "Clair / sombre", ok: !!c.mode },
-    { label: "Images", ok: !!c.images },
-    { label: "Logo", ok: aLogo || c.logoEtat === "a-creer" },
-  ];
-  const faites = parties.filter((p) => p.ok).length;
-  return { parties, faites, total: parties.length, pourcent: Math.round((faites / parties.length) * 100) };
-}
+/** Une charte est « renseignée » dès qu'elle a une couleur principale ou une police ou une ambiance. */
+export const charteRenseignee = (c: Charte) => !!(c.couleurs.principale || c.policeTitres || c.policeTextes || c.ambiance);
 
-export async function chargerCharte(clientId: string) {
-  return prisma.charte.upsert({ where: { clientId }, create: { clientId }, update: {}, include: { pieces: { orderBy: { createdAt: "asc" } } } });
-}
-
-/** Résumé texte pour l'équipe (fiche client, brief, IA). */
-export function resumeCharte(c: Charte) {
-  const l: string[] = [];
-  if (c.mots) l.push(`Ambiance : ${c.mots}`);
-  const cols = [c.couleurs.principale && `principale ${c.couleurs.principale}`, c.couleurs.secondaire && `secondaire ${c.couleurs.secondaire}`, c.couleurs.accent && `accent ${c.couleurs.accent}`].filter(Boolean);
-  if (cols.length) l.push(`Couleurs : ${cols.join(", ")}`);
-  if (c.policesNote) l.push(`Polices : ${c.policesNote}`);
-  if (c.densite) l.push(`Espacements : ${lab(DENSITES, c.densite)}`);
-  if (c.formes) l.push(`Formes : ${lab(FORMES, c.formes)}`);
-  if (c.mode) l.push(`Mode : ${lab(MODES, c.mode)}`);
-  if (c.images) l.push(`Images : ${lab(IMAGES, c.images)}`);
-  if (c.logoEtat) l.push(`Logo : ${lab(LOGO_ETATS, c.logoEtat)}`);
-  return l;
+export async function chargerCharte(siteId: string) {
+  return prisma.charte.upsert({ where: { siteId }, create: { siteId }, update: {}, include: { pieces: { orderBy: { createdAt: "asc" } } } });
 }

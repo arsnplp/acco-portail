@@ -13,11 +13,10 @@ import { EnablePush } from "@/components/push/enable-push";
 import { pendingReviewPrompt } from "@/lib/review-prompt";
 import { activePromo } from "@/lib/offers";
 import { PROJECT_STEPS } from "@/lib/labels";
-import { avancementCharte, lireCharte } from "@/lib/charte";
 import { conseilsPourClient } from "@/lib/conseils";
 import { answerReviewPrompt } from "./actions";
 import type { NotificationKind } from "@prisma/client";
-import { BellIcon, ChevronRightIcon, GlobeIcon, HistoryIcon, LifeBuoyIcon, LightbulbIcon, PaletteIcon } from "lucide-react";
+import { BellIcon, GlobeIcon, HistoryIcon, LifeBuoyIcon, LightbulbIcon } from "lucide-react";
 import { InboxIcon, CircleCheckIcon, TrendingUpIcon, MessageSquareIcon, PartyPopperIcon, PuzzleIcon, GiftIcon, TriangleAlertIcon, FileTextIcon, UploadIcon, StarIcon, type LucideIcon } from "lucide-react";
 
 const KIND_ICON: Record<NotificationKind, LucideIcon> = {
@@ -44,11 +43,8 @@ export default async function AccueilPage() {
     prisma.brief.findMany({ where: { site: { clientId: client.id, status: "EN_CREATION" }, etat: { in: ["EN_COURS", "ATTENDU_CLIENT"] } }, select: { siteId: true, site: { select: { name: true } } } }),
   ]);
   const [difficultesOuvertes, nbConseils] = await Promise.all([prisma.difficulte.count({ where: { clientId: client.id, statut: { not: "RESOLUE" } } }), conseilsPourClient(client.id).then((c) => c.length)]);
-  const charte = await prisma.charte.findUnique({ where: { clientId: client.id }, select: { contenu: true, _count: { select: { pieces: true } } } });
-  const avCharte = avancementCharte(lireCharte(charte?.contenu), !!client.logoPath || (charte?._count.pieces ?? 0) > 0);
   const aFaire = [
     ...briefs.map((b) => ({ href: `/sites/${b.siteId}/brief`, texte: `Compléter le brief de ${b.site.name}` })),
-    ...(avCharte.faites < avCharte.total ? [{ href: "/charte", texte: avCharte.faites === 0 ? "Remplir votre DA (couleurs, polices, logo…)" : `Compléter votre DA (${avCharte.faites}/${avCharte.total})` }] : []),
     ...(docsAttendus ? [{ href: "/compte/documents", texte: `${docsAttendus} document${docsAttendus > 1 ? "s" : ""} à nous envoyer` }] : []),
     ...sites.filter((s) => s.status === "EN_CREATION" && s.maquetteEnvoyeeAt && (s.projectStep === "VALIDER_MAQUETTE" || s.projectStep === "VALIDER_MODIFICATION")).map((s) => ({ href: `/sites/${s.id}`, texte: `Donner votre avis sur la maquette de ${s.name}` })),
   ];
@@ -109,12 +105,6 @@ export default async function AccueilPage() {
         <Link href="/historique" className="flex flex-col items-center gap-1.5 rounded-card border border-border bg-surface px-2 py-3 text-center transition-colors hover:border-text"><HistoryIcon size={20} strokeWidth={1.5} className="text-blue" aria-hidden /><span className="text-xs font-semibold text-title">Historique</span><span className="text-[11px] text-text">tout ce qu’on a fait</span></Link>
         <Link href="/difficultes" className="flex flex-col items-center gap-1.5 rounded-card border border-border bg-surface px-2 py-3 text-center transition-colors hover:border-text"><LifeBuoyIcon size={20} strokeWidth={1.5} className="text-pink" aria-hidden /><span className="text-xs font-semibold text-title">Un souci ?</span><span className="text-[11px] text-text">{difficultesOuvertes ? `${difficultesOuvertes} en cours` : "signaler"}</span></Link>
       </div>
-
-      <SectionTitle icon={PaletteIcon}>Votre identité</SectionTitle>
-      <Card href="/charte" className="mb-6 flex items-center justify-between gap-3 py-3">
-        <div className="flex items-center gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border text-text"><PaletteIcon size={18} /></span><div><p className="font-semibold text-title">Votre DA</p><p className="text-xs text-text">{avCharte.faites === avCharte.total ? "Charte graphique complète" : `Couleurs, polices, logo, ambiance · ${avCharte.pourcent} % rempli`}</p></div></div>
-        <ChevronRightIcon size={18} className="shrink-0 text-text" />
-      </Card>
 
       <SectionTitle icon={GlobeIcon}>Vos sites</SectionTitle>
       <div className="grid gap-3">

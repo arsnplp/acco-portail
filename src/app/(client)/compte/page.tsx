@@ -12,7 +12,7 @@ import { fmtPrice, fmtDate } from "@/lib/format";
 import { CompanyForm, ProfileForm, NotificationPrefsForm } from "./forms";
 import { switchClient } from "./actions";
 import { EnablePush } from "@/components/push/enable-push";
-import { ArrowLeftRightIcon, BellIcon, CreditCardIcon, FileTextIcon, HandshakeIcon, HistoryIcon, LifeBuoyIcon, LightbulbIcon, PaletteIcon, StarIcon, StoreIcon, UserIcon } from "lucide-react";
+import { ArrowLeftRightIcon, BellIcon, CreditCardIcon, FileTextIcon, HandshakeIcon, HistoryIcon, LifeBuoyIcon, LightbulbIcon, StarIcon, StoreIcon, UserIcon } from "lucide-react";
 
 export const metadata = { title: "Mon compte" };
 
@@ -51,12 +51,6 @@ export default async function ComptePage() {
         <LogoClientForm editable={isOwner} hasLogo={!!client.logoMiniPath} />
       </div>
       <CompanyForm client={{ name: client.name, address: client.address, phone: client.phone, email: client.email }} editable={isOwner} />
-
-      <SectionTitle icon={PaletteIcon}>Votre DA</SectionTitle>
-      <Card href="/charte" className="flex items-center justify-between py-3">
-        <div className="flex items-center gap-3"><PaletteIcon size={20} strokeWidth={1.5} className="text-text" /><div><p className="font-medium text-title">Charte graphique</p><p className="text-xs text-text">Ambiance, couleurs, polices, espacements, logo, inspirations</p></div></div>
-        <ChevronRight size={18} className="text-text" />
-      </Card>
 
       <SectionTitle icon={HistoryIcon}>Suivi</SectionTitle>
       <div className="grid gap-2">

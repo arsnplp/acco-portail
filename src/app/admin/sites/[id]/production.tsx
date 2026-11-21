@@ -26,7 +26,7 @@ export async function ProductionBloc({ siteId, externe }: { siteId: string; exte
   const enCreation = s.status === "EN_CREATION";
   return (
     <>
-      <SectionTitle icon={FactoryIcon} action={<Link href={`/admin/sites/${siteId}/brief`} className="text-sm text-text hover:text-title">Brief</Link>}>Production · {enCreation ? `${stepLabel(s.projectStep)} · V${s.version}` : `livré${s.launchedAt ? ` le ${fmtDate(s.launchedAt)}` : ""}`}</SectionTitle>
+      <SectionTitle icon={FactoryIcon} action={<span className="flex gap-3"><Link href={`/admin/sites/${siteId}/brief`} className="text-sm text-text hover:text-title">Brief</Link><Link href={`/admin/sites/${siteId}/charte`} className="text-sm text-text hover:text-title">Charte (DA)</Link></span>}>Production · {enCreation ? `${stepLabel(s.projectStep)} · V${s.version}` : `livré${s.launchedAt ? ` le ${fmtDate(s.launchedAt)}` : ""}`}</SectionTitle>
       <Card className="space-y-3">
         <div className="grid gap-2 text-sm sm:grid-cols-2">
           <Ligne ok={e.prod.ok} label="Premier paiement ou dérogation" detail={e.prod.ok ? "production autorisée" : e.prod.raison ?? ""} />

@@ -344,7 +344,6 @@ model Client {
   crmProjets        Projet[]
   stripeAbonnements StripeAbonnement[]
   stripeFactures    StripeFacture[]
-  charte            Charte?
   difficultes       Difficulte[]
 }
 
@@ -765,20 +764,21 @@ model Difficulte {
   @@index([statut])
 }
 
-/// Charte graphique du client (« Votre DA » dans le portail) : ambiance, couleurs, polices, espacements, logo, inspirations.
-/// Une par client, indépendante des sites (un client sans site peut la remplir). L'équipe la lit sur la fiche client.
+/// Charte graphique (DA) d'un site, rédigée par l'équipe à la livraison : récapitulatif de ce qui a été utilisé (couleurs, polices,
+/// espacements, formes, ambiance) et fichiers (logo dans ses versions, polices). Le client la consulte en lecture seule (« Votre DA »).
 model Charte {
-  id        String   @id @default(cuid())
-  clientId  String   @unique
-  contenu   Json? // voir src/lib/charte.ts (ambiance, couleurs, polices, densité, formes, mode, images, logo, inspirations…)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id        String    @id @default(cuid())
+  siteId    String    @unique
+  contenu   Json? // voir src/lib/charte.ts
+  publieeAt DateTime? // visible du client à partir de cette date
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-  client Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  site   Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
   pieces ChartePiece[]
 }
 
-/// Fichier joint à la charte : logo (versions), police, inspiration (capture), autre. Bucket site-assets, dossier charte/<clientId>.
+/// Fichier joint à la charte : logo (versions), police, autre. Bucket site-assets, dossier charte/<siteId>.
 model ChartePiece {
   id          String   @id @default(cuid())
   charteId    String
@@ -997,6 +997,7 @@ model Site {
   articles         Article[]
   activites        Activite[]
   brief            Brief?
+  charte           Charte?
   contrats         Contrat[]
   lignesContrat    LigneContrat[]
   validations      Validation[]
