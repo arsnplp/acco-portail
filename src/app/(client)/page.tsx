@@ -104,7 +104,7 @@ export default async function AccueilPage() {
         </>
       )}
 
-      <div className="mb-6 grid grid-cols-3 gap-2">
+      <div className="mb-6 mt-5 grid grid-cols-3 gap-2">
         <Link href="/conseils" className="flex flex-col items-center gap-1.5 rounded-card border border-border bg-surface px-2 py-3 text-center transition-colors hover:border-text"><LightbulbIcon size={20} strokeWidth={1.5} className="text-yellow" aria-hidden /><span className="text-xs font-semibold text-title">Conseils</span><span className="text-[11px] text-text">{nbConseils ? `${nbConseils} action${nbConseils > 1 ? "s" : ""}` : "à venir"}</span></Link>
         <Link href="/historique" className="flex flex-col items-center gap-1.5 rounded-card border border-border bg-surface px-2 py-3 text-center transition-colors hover:border-text"><HistoryIcon size={20} strokeWidth={1.5} className="text-blue" aria-hidden /><span className="text-xs font-semibold text-title">Historique</span><span className="text-[11px] text-text">tout ce qu’on a fait</span></Link>
         <Link href="/difficultes" className="flex flex-col items-center gap-1.5 rounded-card border border-border bg-surface px-2 py-3 text-center transition-colors hover:border-text"><LifeBuoyIcon size={20} strokeWidth={1.5} className="text-pink" aria-hidden /><span className="text-xs font-semibold text-title">Un souci ?</span><span className="text-[11px] text-text">{difficultesOuvertes ? `${difficultesOuvertes} en cours` : "signaler"}</span></Link>
