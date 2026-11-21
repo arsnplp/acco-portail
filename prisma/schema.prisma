@@ -343,6 +343,7 @@ model Client {
   crmProjets        Projet[]
   stripeAbonnements StripeAbonnement[]
   stripeFactures    StripeFacture[]
+  charte            Charte?
 }
 
 model User {
@@ -723,6 +724,35 @@ model ConnecteurLog {
   createdAt  DateTime @default(now())
 
   @@index([connecteur, createdAt])
+}
+
+/// Charte graphique du client (« Votre DA » dans le portail) : ambiance, couleurs, polices, espacements, logo, inspirations.
+/// Une par client, indépendante des sites (un client sans site peut la remplir). L'équipe la lit sur la fiche client.
+model Charte {
+  id        String   @id @default(cuid())
+  clientId  String   @unique
+  contenu   Json? // voir src/lib/charte.ts (ambiance, couleurs, polices, densité, formes, mode, images, logo, inspirations…)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  client Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  pieces ChartePiece[]
+}
+
+/// Fichier joint à la charte : logo (versions), police, inspiration (capture), autre. Bucket site-assets, dossier charte/<clientId>.
+model ChartePiece {
+  id          String   @id @default(cuid())
+  charteId    String
+  kind        String // logo | police | inspiration | autre
+  storagePath String
+  fileName    String
+  contentType String?
+  sizeBytes   Int
+  createdAt   DateTime @default(now())
+
+  charte Charte @relation(fields: [charteId], references: [id], onDelete: Cascade)
+
+  @@index([charteId])
 }
 
 /// Abonnement Stripe (lecture seule, copié à chaque synchronisation : bouton « Actualiser Stripe » de Pilotage → Finance ou tâche de fond).
