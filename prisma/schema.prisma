@@ -265,6 +265,7 @@ enum NotificationKind {
   DOCUMENT_DISPONIBLE
   DOCUMENT_DEMANDE
   MAQUETTE_DISPONIBLE
+  DIFFICULTE // réponse ou changement d'état sur une difficulté signalée
 }
 
 /// VERS_EQUIPE : le client demande un document à Acco. VERS_CLIENT : Acco demande un document au client.
@@ -344,6 +345,7 @@ model Client {
   stripeAbonnements StripeAbonnement[]
   stripeFactures    StripeFacture[]
   charte            Charte?
+  difficultes       Difficulte[]
 }
 
 model User {
@@ -400,6 +402,7 @@ model User {
   usagesIA             UsageIA[]
   signalementsEnvoyes  Signalement[]           @relation("SignalementDe")
   signalementsRecus    Signalement[]           @relation("SignalementVers")
+  difficultesTraitees  Difficulte[]            @relation("DifficulteTraitePar")
 }
 
 /// Contrat (plusieurs par client) : généré par l'app (PDF), signé par acceptation en ligne ou scan, archivé immuable.
@@ -726,6 +729,42 @@ model ConnecteurLog {
   @@index([connecteur, createdAt])
 }
 
+enum DifficulteType {
+  SITE_EN_PANNE
+  ERREUR_SITE
+  FACTURE
+  AUTRE
+}
+
+enum DifficulteStatut {
+  RECUE
+  EN_COURS
+  RESOLUE
+}
+
+/// Difficulté signalée par le client depuis son portail (bouton « Signaler une difficulté ») ; traitée dans Production et sur la fiche client.
+model Difficulte {
+  id             String           @id @default(cuid())
+  clientId       String
+  siteId         String?
+  type           DifficulteType   @default(AUTRE)
+  message        String
+  statut         DifficulteStatut @default(RECUE)
+  reponse        String? // réponse de l'équipe, visible du client
+  traiteParId    String?
+  prisEnChargeAt DateTime?
+  resoluAt       DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  client    Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  site      Site?  @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  traitePar User?  @relation("DifficulteTraitePar", fields: [traiteParId], references: [id], onDelete: SetNull)
+
+  @@index([clientId, createdAt])
+  @@index([statut])
+}
+
 /// Charte graphique du client (« Votre DA » dans le portail) : ambiance, couleurs, polices, espacements, logo, inspirations.
 /// Une par client, indépendante des sites (un client sans site peut la remplir). L'équipe la lit sur la fiche client.
 model Charte {
@@ -980,6 +1019,7 @@ model Site {
   documentRequests DocumentRequest[]
   notifications    Notification[]
   crmProjets       Projet[]
+  difficultes      Difficulte[]
 
   @@index([clientId])
 }

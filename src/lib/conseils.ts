@@ -11,6 +11,16 @@ import { MODELE_LEGER, enregistrerUsageIA, iaAutorisee } from "@/lib/ia";
 import type { LeadRow } from "@/lib/leads/colonnes";
 
 export type Conseil = { id: string; titre: string; texte: string; priorite: 1 | 2 | 3; href?: string | null; externe?: boolean };
+export const PRIO_CONSEIL = { 1: { label: "À faire en premier", cls: "bg-pink/15 text-pink" }, 2: { label: "Cette semaine", cls: "bg-yellow/15 text-yellow" }, 3: { label: "Quand vous pouvez", cls: "bg-surface-2 text-text" } } as const;
+
+/** Conseils au global pour un client : réunion des conseils de ses sites, sans doublon (même conseil → priorité la plus haute), 6 maximum. */
+export async function conseilsPourClient(clientId: string): Promise<Conseil[]> {
+  const sites = await prisma.site.findMany({ where: { clientId }, orderBy: { createdAt: "asc" }, select: { id: true } });
+  const listes = await Promise.all(sites.map((s) => conseilsPourSite(s.id)));
+  const par = new Map<string, Conseil>();
+  for (const c of listes.flat()) { const d = par.get(c.id); if (!d || c.priorite < d.priorite) par.set(c.id, c); }
+  return [...par.values()].sort((a, b) => a.priorite - b.priorite).slice(0, 6);
+}
 
 export async function conseilsPourSite(siteId: string, force = false): Promise<Conseil[]> {
   const site = await prisma.site.findUnique({

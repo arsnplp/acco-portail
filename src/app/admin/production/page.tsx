@@ -5,7 +5,9 @@ import { SectionTitle } from "@/components/ui/card";
 import { PROJECT_STEPS } from "@/lib/labels";
 import { fmtDayTime, teamName } from "@/lib/crm";
 import { daysUntil } from "@/lib/format";
-import { ActivityIcon } from "lucide-react";
+import { ActivityIcon, LifeBuoyIcon } from "lucide-react";
+import { difficultesOuvertes } from "@/lib/difficultes";
+import { DifficultesListe } from "@/components/admin/difficultes-liste";
 import { ProductionBoard, type SiteCard } from "./board";
 import { whereSitesPour } from "@/lib/perimetre";
 import { estExterne } from "@/lib/permissions";
@@ -36,7 +38,7 @@ export default async function ProductionPage({ searchParams }: { searchParams: P
     externe || estCommercial(me) ? [] : prisma.validation.findMany({ where: { statut: "EN_ATTENTE", type: { in: ["MAQUETTE", "BRIEF_TECHNIQUE", "BRIEF_COMMERCIAL", "GO_LIVE"] } }, include: { site: { select: { id: true, name: true } }, assigne: { select: { firstName: true, email: true } } } }),
     prisma.changeRequest.count({ where: { status: { in: ["RECUE", "EN_COURS", "A_VALIDER"] }, site: { status: "EN_LIGNE", ...whereSitesPour(me) } } }),
   ]);
-  const etats = await Promise.all(sites.map((s) => etatProduction(s.id)));
+  const [etats, difficultes] = await Promise.all([Promise.all(sites.map((s) => etatProduction(s.id))), difficultesOuvertes()]);
   const cards: SiteCard[] = sites.map((s, i) => {
     const step = PROJECT_STEPS.find((p) => p.key === s.projectStep)!;
     const deadline = s[step.deadline];
@@ -72,6 +74,13 @@ export default async function ProductionPage({ searchParams }: { searchParams: P
         </div>
       )}
       <ProductionBoard initial={cards} devs={devs} meId={me.id} initialDev={dev ?? "all"} />
+
+      {/* Difficultés signalées par les clients depuis leur portail : à traiter vite, le client est prévenu à chaque réponse. */}
+      <section id="difficultes" className="max-w-3xl">
+        <SectionTitle icon={LifeBuoyIcon}>Difficultés signalées par les clients ({difficultes.length})</SectionTitle>
+        <DifficultesListe items={difficultes} vide="Aucune difficulté en cours : les clients n’ont rien signalé." />
+      </section>
+
 
       {!tableauSeul && <div className="max-w-3xl">
         <section>

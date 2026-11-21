@@ -12,7 +12,7 @@ import { fmtPrice, fmtDate } from "@/lib/format";
 import { CompanyForm, ProfileForm, NotificationPrefsForm } from "./forms";
 import { switchClient } from "./actions";
 import { EnablePush } from "@/components/push/enable-push";
-import { ArrowLeftRightIcon, BellIcon, CreditCardIcon, FileTextIcon, HandshakeIcon, PaletteIcon, StarIcon, StoreIcon, UserIcon } from "lucide-react";
+import { ArrowLeftRightIcon, BellIcon, CreditCardIcon, FileTextIcon, HandshakeIcon, HistoryIcon, LifeBuoyIcon, LightbulbIcon, PaletteIcon, StarIcon, StoreIcon, UserIcon } from "lucide-react";
 
 export const metadata = { title: "Mon compte" };
 
@@ -57,6 +57,13 @@ export default async function ComptePage() {
         <div className="flex items-center gap-3"><PaletteIcon size={20} strokeWidth={1.5} className="text-text" /><div><p className="font-medium text-title">Charte graphique</p><p className="text-xs text-text">Ambiance, couleurs, polices, espacements, logo, inspirations</p></div></div>
         <ChevronRight size={18} className="text-text" />
       </Card>
+
+      <SectionTitle icon={HistoryIcon}>Suivi</SectionTitle>
+      <div className="grid gap-2">
+        <Card href="/historique" className="flex items-center justify-between py-3"><div className="flex items-center gap-3"><HistoryIcon size={20} strokeWidth={1.5} className="text-text" /><div><p className="font-medium text-title">Historique</p><p className="text-xs text-text">Tout ce que nous avons fait pour vous, mois par mois</p></div></div><ChevronRight size={18} className="text-text" /></Card>
+        <Card href="/conseils" className="flex items-center justify-between py-3"><div className="flex items-center gap-3"><LightbulbIcon size={20} strokeWidth={1.5} className="text-text" /><div><p className="font-medium text-title">Conseils</p><p className="text-xs text-text">Vos prochaines actions pour faire venir des clients</p></div></div><ChevronRight size={18} className="text-text" /></Card>
+        <Card href="/difficultes" className="flex items-center justify-between py-3"><div className="flex items-center gap-3"><LifeBuoyIcon size={20} strokeWidth={1.5} className="text-text" /><div><p className="font-medium text-title">Signaler une difficulté</p><p className="text-xs text-text">Un problème ? On le suit jusqu’à la résolution</p></div></div><ChevronRight size={18} className="text-text" /></Card>
+      </div>
 
       <SectionTitle icon={FileTextIcon}>Documents</SectionTitle>
       <Card href="/compte/documents" className="flex items-center justify-between py-3">

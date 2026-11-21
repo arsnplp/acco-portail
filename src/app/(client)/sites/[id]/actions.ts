@@ -62,11 +62,3 @@ export async function commanderArticle(siteId: string, formData: FormData) {
   revalidatePath(`/sites/${site.id}/blog`);
 }
 
-/** Conseils rédigés par Claude, sur clic seulement (00.6) ; sans IA, les règles restent. */
-export async function personnaliserConseilsAction(siteId: string): Promise<{ error?: string }> {
-  const { site, user } = await requireClientSite(siteId);
-  const { personnaliserConseils } = await import("@/lib/conseils");
-  const r = await personnaliserConseils(site.id, user.id);
-  revalidatePath(`/sites/${site.id}/conseils`);
-  return typeof r === "object" && r && "error" in r ? { error: String((r as { error?: string }).error ?? "") } : {};
-}

@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { InboxIcon, PencilRulerIcon, ShoppingCartIcon, WrenchIcon } from "lucide-react";
+import { InboxIcon, LifeBuoyIcon, PencilRulerIcon, ShoppingCartIcon, WrenchIcon } from "lucide-react";
+import { DifficultesListe } from "@/components/admin/difficultes-liste";
 import { prisma } from "@/lib/prisma";
 import { SectionTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,9 +17,12 @@ export async function DemandesOnglet({ clientId }: Ctx) {
     prisma.contactRequest.findMany({ where: { site: { clientId } }, orderBy: { createdAt: "desc" }, take: 30, include: { site: { select: { name: true } } } }),
     prisma.siteHistoryEntry.findMany({ where: { site: { clientId } }, orderBy: { happenedAt: "desc" }, take: 40, include: { site: { select: { name: true } } } }),
   ]);
+  const difficultes = await prisma.difficulte.findMany({ where: { clientId }, orderBy: [{ statut: "asc" }, { createdAt: "desc" }], take: 30, include: { client: { select: { id: true, name: true, logoMiniPath: true } }, site: { select: { id: true, name: true } }, traitePar: { select: { firstName: true, email: true } } } });
   const ORDER = { A_TRAITER: ["À traiter", "yellow"], VALIDEE: ["Validée", "green"], REFUSEE: ["Refusée", "neutral"] } as const;
   return (
     <div className="space-y-6">
+      <SectionTitle icon={LifeBuoyIcon}>Difficultés signalées ({difficultes.filter((d) => d.statut !== "RESOLUE").length} en cours)</SectionTitle>
+      <DifficultesListe items={difficultes} avecClient={false} vide="Aucune difficulté signalée par ce client." />
       <SectionTitle icon={PencilRulerIcon} action={<Link href="/admin/modifications" className="text-sm text-text hover:text-title">Tableau des modifications</Link>}>Demandes de modification ({modifs.length})</SectionTitle>
       {modifs.length === 0 ? <p className="text-sm text-text">Aucune demande.</p> : (
         <ul className="divide-y divide-border rounded-card border border-border bg-surface">

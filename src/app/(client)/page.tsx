@@ -14,14 +14,15 @@ import { pendingReviewPrompt } from "@/lib/review-prompt";
 import { activePromo } from "@/lib/offers";
 import { PROJECT_STEPS } from "@/lib/labels";
 import { avancementCharte, lireCharte } from "@/lib/charte";
+import { conseilsPourClient } from "@/lib/conseils";
 import { answerReviewPrompt } from "./actions";
 import type { NotificationKind } from "@prisma/client";
-import { BellIcon, ChevronRightIcon, GlobeIcon, PaletteIcon } from "lucide-react";
+import { BellIcon, ChevronRightIcon, GlobeIcon, HistoryIcon, LifeBuoyIcon, LightbulbIcon, PaletteIcon } from "lucide-react";
 import { InboxIcon, CircleCheckIcon, TrendingUpIcon, MessageSquareIcon, PartyPopperIcon, PuzzleIcon, GiftIcon, TriangleAlertIcon, FileTextIcon, UploadIcon, StarIcon, type LucideIcon } from "lucide-react";
 
 const KIND_ICON: Record<NotificationKind, LucideIcon> = {
   DEMANDE_CONTACT: InboxIcon, NOUVEL_AVIS: StarIcon, MODIFICATION_TERMINEE: CircleCheckIcon, RECAP_MENSUEL: TrendingUpIcon, MESSAGE_EQUIPE: MessageSquareIcon,
-  SITE_EN_LIGNE: PartyPopperIcon, COMMANDE_VALIDEE: PuzzleIcon, RECOMPENSE_PARRAINAGE: GiftIcon, ALERTE_SITE: TriangleAlertIcon, DOCUMENT_DISPONIBLE: FileTextIcon, DOCUMENT_DEMANDE: UploadIcon, MAQUETTE_DISPONIBLE: GlobeIcon,
+  SITE_EN_LIGNE: PartyPopperIcon, COMMANDE_VALIDEE: PuzzleIcon, RECOMPENSE_PARRAINAGE: GiftIcon, ALERTE_SITE: TriangleAlertIcon, DOCUMENT_DISPONIBLE: FileTextIcon, DOCUMENT_DEMANDE: UploadIcon, MAQUETTE_DISPONIBLE: GlobeIcon, DIFFICULTE: LifeBuoyIcon,
 };
 
 export default async function AccueilPage() {
@@ -42,6 +43,7 @@ export default async function AccueilPage() {
     prisma.contrat.findMany({ where: { clientId: client.id, statut: "SIGNE" }, orderBy: { signeAt: "desc" }, select: { id: true, reference: true, titre: true, signeAt: true } }),
     prisma.brief.findMany({ where: { site: { clientId: client.id, status: "EN_CREATION" }, etat: { in: ["EN_COURS", "ATTENDU_CLIENT"] } }, select: { siteId: true, site: { select: { name: true } } } }),
   ]);
+  const [difficultesOuvertes, nbConseils] = await Promise.all([prisma.difficulte.count({ where: { clientId: client.id, statut: { not: "RESOLUE" } } }), conseilsPourClient(client.id).then((c) => c.length)]);
   const charte = await prisma.charte.findUnique({ where: { clientId: client.id }, select: { contenu: true, _count: { select: { pieces: true } } } });
   const avCharte = avancementCharte(lireCharte(charte?.contenu), !!client.logoPath || (charte?._count.pieces ?? 0) > 0);
   const aFaire = [
@@ -101,6 +103,12 @@ export default async function AccueilPage() {
           </div>
         </>
       )}
+
+      <div className="mb-6 grid grid-cols-3 gap-2">
+        <Link href="/conseils" className="flex flex-col items-center gap-1.5 rounded-card border border-border bg-surface px-2 py-3 text-center transition-colors hover:border-text"><LightbulbIcon size={20} strokeWidth={1.5} className="text-yellow" aria-hidden /><span className="text-xs font-semibold text-title">Conseils</span><span className="text-[11px] text-text">{nbConseils ? `${nbConseils} action${nbConseils > 1 ? "s" : ""}` : "à venir"}</span></Link>
+        <Link href="/historique" className="flex flex-col items-center gap-1.5 rounded-card border border-border bg-surface px-2 py-3 text-center transition-colors hover:border-text"><HistoryIcon size={20} strokeWidth={1.5} className="text-blue" aria-hidden /><span className="text-xs font-semibold text-title">Historique</span><span className="text-[11px] text-text">tout ce qu’on a fait</span></Link>
+        <Link href="/difficultes" className="flex flex-col items-center gap-1.5 rounded-card border border-border bg-surface px-2 py-3 text-center transition-colors hover:border-text"><LifeBuoyIcon size={20} strokeWidth={1.5} className="text-pink" aria-hidden /><span className="text-xs font-semibold text-title">Un souci ?</span><span className="text-[11px] text-text">{difficultesOuvertes ? `${difficultesOuvertes} en cours` : "signaler"}</span></Link>
+      </div>
 
       <SectionTitle icon={PaletteIcon}>Votre identité</SectionTitle>
       <Card href="/charte" className="mb-6 flex items-center justify-between gap-3 py-3">
