@@ -3,10 +3,8 @@ import Link from "next/link";
 import { PaletteIcon, PaperclipIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { Card, SectionTitle } from "@/components/ui/card";
-import { ApercuCharte } from "@/components/charte/apercu";
-import { AMBIANCES, DENSITES, FORMES, IMAGES, LOGO_ETATS, MODES, PIECE_KINDS, POLICES, avancementCharte, lab, lireCharte } from "@/lib/charte";
+import { DENSITES, FORMES, IMAGES, LOGO_ETATS, MODES, PIECE_KINDS, avancementCharte, lab, lireCharte } from "@/lib/charte";
 import { signedUrl } from "@/lib/storage";
-import { logoSrc } from "@/lib/logo-utils";
 import { fmtDate } from "@/lib/format";
 import { fmtDayTime } from "@/lib/crm";
 import type { Ctx } from "./ctx";
@@ -17,14 +15,13 @@ const Pastille = ({ hex }: { hex: string }) => (hex ? <span className="inline-fl
 /** Onglet Charte : ce que le client a rempli dans « Votre DA » (lecture seule côté équipe), aperçu, fichiers déposés. */
 export async function CharteOnglet({ clientId }: Ctx) {
   const [client, charte] = await Promise.all([
-    prisma.client.findUniqueOrThrow({ where: { id: clientId }, select: { name: true, logoPath: true } }),
+    prisma.client.findUniqueOrThrow({ where: { id: clientId }, select: { logoPath: true } }),
     prisma.charte.findUnique({ where: { clientId }, include: { pieces: { orderBy: { createdAt: "asc" } } } }),
   ]);
   const c = lireCharte(charte?.contenu);
   const pieces = await Promise.all((charte?.pieces ?? []).map(async (p) => ({ ...p, url: await signedUrl("site-assets", p.storagePath, 3600), image: /^image\//.test(p.contentType ?? "") })));
   const aLogo = !!client.logoPath || pieces.some((p) => p.kind === "logo");
   const av = avancementCharte(c, aLogo);
-  const logoUrl = client.logoPath ? logoSrc(clientId, client.logoPath, false) : pieces.find((p) => p.kind === "logo" && p.image)?.url ?? null;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
@@ -36,15 +33,12 @@ export async function CharteOnglet({ clientId }: Ctx) {
           <p className="mt-2 text-xs text-muted">Le client remplit depuis son portail (Mon compte → Votre DA). L’équipe lit ici ; pour une correction, passez par lui ou par Messages.</p>
         </Card>
         <ul className="divide-y divide-border rounded-card border border-border bg-surface text-sm">
-          <Ligne l="Ambiance" v={c.ambiance.map((k) => lab(AMBIANCES, k)).join(", ")} />
-          <Ligne l="En trois mots" v={c.mots} />
+          <Ligne l="Ambiance" v={<span className="whitespace-pre-line font-normal">{c.mots}</span>} />
           <Ligne l="Couleur principale" v={<Pastille hex={c.couleurs.principale} />} />
           <Ligne l="Couleur secondaire" v={<Pastille hex={c.couleurs.secondaire} />} />
           <Ligne l="Couleur d’accent" v={<Pastille hex={c.couleurs.accent} />} />
           {c.couleursNote && <Ligne l="Note couleurs" v={<span className="whitespace-pre-line font-normal">{c.couleursNote}</span>} />}
-          <Ligne l="Police des titres" v={c.policeTitres && <span style={{ fontFamily: POLICES.find((p) => p.key === c.policeTitres)?.famille }}>{lab(POLICES, c.policeTitres)} (Aa)</span>} />
-          <Ligne l="Police des textes" v={c.policeTextes && <span style={{ fontFamily: POLICES.find((p) => p.key === c.policeTextes)?.famille }}>{lab(POLICES, c.policeTextes)} (Aa)</span>} />
-          {c.policesNote && <Ligne l="Polices existantes" v={<span className="font-normal">{c.policesNote}</span>} />}
+          <Ligne l="Polices" v={<span className="whitespace-pre-line font-normal">{c.policesNote}</span>} />
           <Ligne l="Espacements" v={lab(DENSITES, c.densite)} />
           <Ligne l="Formes" v={lab(FORMES, c.formes)} />
           <Ligne l="Clair / sombre" v={lab(MODES, c.mode)} />
@@ -55,8 +49,6 @@ export async function CharteOnglet({ clientId }: Ctx) {
         </ul>
       </div>
       <div>
-        <SectionTitle>Aperçu</SectionTitle>
-        <div className="mx-auto max-w-md"><ApercuCharte charte={c} nom={client.name} logoUrl={logoUrl} /></div>
         <SectionTitle icon={PaperclipIcon}>Fichiers déposés ({pieces.length})</SectionTitle>
         {pieces.length === 0 ? <p className="text-sm text-text">Aucun fichier pour l’instant.</p> : (
           <ul className="grid gap-2">

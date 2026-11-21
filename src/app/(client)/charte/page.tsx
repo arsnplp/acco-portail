@@ -3,7 +3,6 @@ import { PaletteIcon, PaperclipIcon } from "lucide-react";
 import { requireClientContext } from "@/lib/auth";
 import { Page } from "@/components/page";
 import { signedUrl } from "@/lib/storage";
-import { logoSrc } from "@/lib/logo-utils";
 import { avancementCharte, chargerCharte, lireCharte, PIECE_KINDS } from "@/lib/charte";
 import { fmtDate } from "@/lib/format";
 import { CharteForm, DepotPiece, SupprimerPiece } from "./form";
@@ -18,7 +17,6 @@ export default async function ChartePage() {
   const aLogo = !!client.logoPath || charte.pieces.some((p) => p.kind === "logo");
   const av = avancementCharte(c, aLogo);
   const pieces = await Promise.all(charte.pieces.map(async (p) => ({ ...p, url: await signedUrl("site-assets", p.storagePath, 3600), image: /^image\//.test(p.contentType ?? "") })));
-  const logoUrl = client.logoPath ? logoSrc(client.id, client.logoPath, false) : pieces.find((p) => p.kind === "logo" && p.image)?.url ?? null;
 
   return (
     <Page title="Votre DA" subtitle="Votre charte graphique : ce qui fait que votre site vous ressemble.">
@@ -28,7 +26,7 @@ export default async function ChartePage() {
         <p className="mt-2 text-xs text-text">Rien n’est obligatoire : répondez à ce que vous savez, on s’occupe du reste. Vous pouvez revenir quand vous voulez.</p>
       </div>
 
-      <CharteForm init={c} nom={client.name} logoUrl={logoUrl} aLogo={aLogo} />
+      <CharteForm init={c} aLogo={aLogo} />
 
       <section className="mt-6">
         <h2 className="mb-1 flex items-center gap-2 text-base font-semibold text-title"><PaperclipIcon size={16} className="text-text" /> Vos fichiers</h2>

@@ -1,10 +1,9 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { CheckIcon, Trash2Icon, UploadIcon } from "lucide-react";
+import { Trash2Icon, UploadIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { AMBIANCES, DENSITES, FORMES, IMAGES, LOGO_ETATS, MAX_AMBIANCES, MODES, POLICES, hexOk, type Charte } from "@/lib/charte";
-import { ApercuCharte } from "@/components/charte/apercu";
+import { DENSITES, FORMES, IMAGES, LOGO_ETATS, MODES, hexOk, type Charte } from "@/lib/charte";
 import { Textarea, FormError } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { saveCharte, supprimerPieceCharte, uploadPieceCharte, type CharteState } from "./actions";
@@ -60,42 +59,21 @@ function Couleur({ label, value, onChange, aide }: { label: string; value: strin
 
 /* ───────── formulaire principal ───────── */
 
-export function CharteForm({ init, nom, logoUrl, aLogo }: { init: Charte; nom: string; logoUrl: string | null; aLogo: boolean }) {
+export function CharteForm({ init, aLogo }: { init: Charte; aLogo: boolean }) {
   const [c, setC] = useState<Charte>(init);
   const [state, action] = useActionState<CharteState, FormData>(saveCharte, {});
   const maj = <K extends keyof Charte>(k: K, v: Charte[K]) => setC((p) => ({ ...p, [k]: v }));
-  const toggleAmbiance = (k: string) => setC((p) => ({ ...p, ambiance: p.ambiance.includes(k) ? p.ambiance.filter((x) => x !== k) : p.ambiance.length >= MAX_AMBIANCES ? p.ambiance : [...p.ambiance, k] }));
   const pastille = (couleur: string) => <span className="mb-1 block h-2 w-8 rounded-full" style={{ background: couleur }} />;
 
   return (
     <form action={action} className="space-y-4">
       <input type="hidden" name="contenu" value={JSON.stringify(c)} />
 
-      {/* Aperçu en direct, collé en haut : le client voit tout de suite l'effet de ses choix. */}
-      <div className="sticky top-14 z-10 -mx-4 bg-bg/95 px-4 pb-1.5 pt-1 backdrop-blur">
-        <ApercuCharte charte={c} nom={nom} logoUrl={logoUrl} compact />
-        <p className="mt-1 text-center text-[11px] text-muted">Aperçu indicatif : il bouge avec vos choix.</p>
-      </div>
-
-      <Bloc titre="1. L’ambiance" aide={`Choisissez jusqu’à ${MAX_AMBIANCES} mots qui vous ressemblent.`}>
-        <div className="flex flex-wrap gap-2">
-          {AMBIANCES.map((a) => {
-            const on = c.ambiance.includes(a.key);
-            const plein = !on && c.ambiance.length >= MAX_AMBIANCES;
-            return (
-              <button key={a.key} type="button" onClick={() => toggleAmbiance(a.key)} disabled={plein} aria-pressed={on} title={a.aide} className={cn("inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-colors", on ? "border-title bg-title text-bg" : "border-border text-title hover:border-text", plein && "opacity-40")}>
-                {on && <CheckIcon size={14} />} {a.label}
-              </button>
-            );
-          })}
-        </div>
-        <label className="mt-3 block">
-          <span className="mb-1 block text-xs font-medium text-text-strong">En trois mots, votre entreprise c’est…</span>
-          <input value={c.mots} onChange={(e) => maj("mots", e.target.value)} maxLength={120} placeholder="ex. artisanal, de confiance, chaleureux" className="w-full rounded-card border border-border bg-surface px-3 py-2.5 text-sm text-title placeholder:text-muted outline-none focus:border-blue" />
-        </label>
+      <Bloc titre="1. L’ambiance" aide="Décrivez avec vos mots l’impression que votre site doit donner.">
+        <Textarea value={c.mots} onChange={(e) => maj("mots", e.target.value)} maxLength={600} placeholder="ex. chaleureux et artisanal, épuré et moderne, sobre et sérieux, coloré et fun…" className="min-h-20 text-sm" />
       </Bloc>
 
-      <Bloc titre="2. Les couleurs" aide="Touchez la pastille pour choisir, ou collez un code si vous l’avez. Rien d’obligatoire.">
+      <Bloc titre="2. Les couleurs" aide="Touchez la pastille pour choisir, ou collez un code si vous l’avez.">
         <div className="grid gap-2">
           <Couleur label="Principale" aide="boutons, titres, ce qu’on voit en premier" value={c.couleurs.principale} onChange={(v) => maj("couleurs", { ...c.couleurs, principale: v })} />
           <Couleur label="Secondaire" aide="fonds, encadrés" value={c.couleurs.secondaire} onChange={(v) => maj("couleurs", { ...c.couleurs, secondaire: v })} />
@@ -104,12 +82,8 @@ export function CharteForm({ init, nom, logoUrl, aLogo }: { init: Charte; nom: s
         <Textarea value={c.couleursNote} onChange={(e) => maj("couleursNote", e.target.value)} maxLength={500} placeholder="Couleurs déjà sur votre enseigne ou vos cartes, couleurs à éviter…" className="mt-2 min-h-16 text-sm" />
       </Bloc>
 
-      <Bloc titre="3. Les polices" aide="Le style d’écriture. Regardez l’aperçu pour sentir la différence.">
-        <p className="mb-1.5 text-xs font-medium text-text-strong">Pour les titres</p>
-        <Choix options={POLICES} value={c.policeTitres} onChange={(v) => maj("policeTitres", v)} rendu={(k) => <span className="block truncate text-xl leading-tight text-title" style={{ fontFamily: POLICES.find((p) => p.key === k)?.famille }}>Aa</span>} />
-        <p className="mb-1.5 mt-3 text-xs font-medium text-text-strong">Pour les textes</p>
-        <Choix options={POLICES} value={c.policeTextes} onChange={(v) => maj("policeTextes", v)} rendu={(k) => <span className="block truncate text-xl leading-tight text-title" style={{ fontFamily: POLICES.find((p) => p.key === k)?.famille }}>Aa</span>} />
-        <Textarea value={c.policesNote} onChange={(e) => maj("policesNote", e.target.value)} maxLength={300} placeholder="Si vous utilisez déjà une police (enseigne, cartes de visite), son nom ici. Vous pouvez aussi déposer le fichier plus bas." className="mt-2 min-h-16 text-sm" />
+      <Bloc titre="3. Les polices" aide="Le nom de la ou des polices que vous utilisez déjà (enseigne, cartes de visite, réseaux). Si vous ne savez pas, laissez vide.">
+        <Textarea value={c.policesNote} onChange={(e) => maj("policesNote", e.target.value)} maxLength={300} placeholder="ex. Montserrat pour les titres, Open Sans pour les textes" className="min-h-16 text-sm" />
       </Bloc>
 
       <Bloc titre="4. Les espacements" aide="Plutôt aéré ou plutôt rempli ?">

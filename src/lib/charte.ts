@@ -1,18 +1,18 @@
 /**
  * Charte graphique du client (« Votre DA » dans le portail, onglet « Charte » de la fiche client côté équipe).
- * Tout est facultatif : le client coche des ambiances, choisit ses couleurs, un style de police, la densité, les formes,
- * dépose son logo et ses inspirations. L'aperçu se met à jour en direct pour qu'il voie ce que ça donne.
+ * Tout est facultatif : le client décrit l'ambiance, choisit ses couleurs, nomme ses polices, la densité, les formes,
+ * dépose son logo et ses inspirations.
  */
 import { prisma } from "@/lib/prisma";
 
 export type Charte = {
   ambiance: string[]; // 3 maximum
-  mots: string; // trois mots qui décrivent la marque
+  mots: string; // ambiance et style voulus, en texte libre
   couleurs: { principale: string; secondaire: string; accent: string }; // hex ou vide
   couleursNote: string; // couleurs existantes / à éviter
   policeTitres: string; // clé de POLICES ou vide
   policeTextes: string;
-  policesNote: string; // polices déjà utilisées (enseigne, cartes de visite…)
+  policesNote: string; // nom de la ou des polices utilisées (texte libre)
   densite: string; // aere | equilibre | dense
   formes: string; // arrondi | droit
   mode: string; // clair | sombre | les-deux
@@ -97,7 +97,7 @@ export function nettoyerCharte(raw: unknown): Charte {
   const dans = (liste: { key: string }[], v: string) => (liste.some((x) => x.key === v) ? v : "");
   const txt = (v: string, max: number) => v.trim().slice(0, max);
   return {
-    ambiance: c.ambiance, mots: txt(c.mots, 120), couleurs: c.couleurs, couleursNote: txt(c.couleursNote, 500),
+    ambiance: c.ambiance, mots: txt(c.mots, 600), couleurs: c.couleurs, couleursNote: txt(c.couleursNote, 500),
     policeTitres: dans(POLICES, c.policeTitres), policeTextes: dans(POLICES, c.policeTextes), policesNote: txt(c.policesNote, 300),
     densite: dans(DENSITES, c.densite), formes: dans(FORMES, c.formes), mode: dans(MODES, c.mode), images: dans(IMAGES, c.images), logoEtat: dans(LOGO_ETATS, c.logoEtat),
     inspirations: txt(c.inspirations, 1500), eviter: txt(c.eviter, 1000),
@@ -107,9 +107,9 @@ export function nettoyerCharte(raw: unknown): Charte {
 /** Avancement : parties renseignées sur les 8 (ambiance, couleurs, polices, espacements, formes, mode, images, logo). */
 export function avancementCharte(c: Charte, aLogo: boolean) {
   const parties: { label: string; ok: boolean }[] = [
-    { label: "Ambiance", ok: c.ambiance.length > 0 },
+    { label: "Ambiance", ok: !!c.mots.trim() },
     { label: "Couleurs", ok: !!c.couleurs.principale },
-    { label: "Polices", ok: !!c.policeTitres || !!c.policeTextes },
+    { label: "Polices", ok: !!c.policesNote.trim() },
     { label: "Espacements", ok: !!c.densite },
     { label: "Formes", ok: !!c.formes },
     { label: "Clair / sombre", ok: !!c.mode },
@@ -127,11 +127,10 @@ export async function chargerCharte(clientId: string) {
 /** Résumé texte pour l'équipe (fiche client, brief, IA). */
 export function resumeCharte(c: Charte) {
   const l: string[] = [];
-  if (c.ambiance.length) l.push(`Ambiance : ${c.ambiance.map((k) => lab(AMBIANCES, k)).join(", ")}`);
-  if (c.mots) l.push(`Mots : ${c.mots}`);
+  if (c.mots) l.push(`Ambiance : ${c.mots}`);
   const cols = [c.couleurs.principale && `principale ${c.couleurs.principale}`, c.couleurs.secondaire && `secondaire ${c.couleurs.secondaire}`, c.couleurs.accent && `accent ${c.couleurs.accent}`].filter(Boolean);
   if (cols.length) l.push(`Couleurs : ${cols.join(", ")}`);
-  if (c.policeTitres || c.policeTextes) l.push(`Polices : titres ${lab(POLICES, c.policeTitres) || "—"}, textes ${lab(POLICES, c.policeTextes) || "—"}`);
+  if (c.policesNote) l.push(`Polices : ${c.policesNote}`);
   if (c.densite) l.push(`Espacements : ${lab(DENSITES, c.densite)}`);
   if (c.formes) l.push(`Formes : ${lab(FORMES, c.formes)}`);
   if (c.mode) l.push(`Mode : ${lab(MODES, c.mode)}`);
