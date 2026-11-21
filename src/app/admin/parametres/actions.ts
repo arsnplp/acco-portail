@@ -11,7 +11,8 @@ import { disconnectGoogle, disconnectUserGoogle } from "@/lib/google-oauth";
 
 export async function saveSettings(formData: FormData) {
   await requireGestionnaire();
-  for (const key of ["google_review_url", "referral_reward_label", "rdv_description_modele"]) {
+  for (const key of ["google_review_url", "referral_reward_label", "rdv_description_modele", "contrat_modele", "agence_nom", "agence_adresse", "agence_siret", "agence_forme", "agence_representant", "agence_email"]) {
+    if (!formData.has(key)) continue;
     const value = String(formData.get(key) ?? "").trim();
     await prisma.setting.upsert({ where: { key }, create: { key, value }, update: { value } });
   }

@@ -34,8 +34,8 @@ export async function nouvelleReference(now = new Date()) {
   return `ACCO-${annee}-${String(max + 1).padStart(4, "0")}`;
 }
 
-export type ContratComplet = Contrat & { lignes: LigneContrat[]; client: { name: string; address: string | null; siren: string | null; email: string | null } | null; prospect: { societe: string; adresse: string | null; siren: string | null } | null; commercial: { firstName: string | null; lastName: string | null; email: string } | null; site: { name: string } | null };
-export const chargerContrat = (id: string) => prisma.contrat.findUnique({ where: { id }, include: { lignes: { orderBy: { ordre: "asc" } }, client: { select: { name: true, address: true, siren: true, email: true } }, prospect: { select: { societe: true, adresse: true, siren: true } }, commercial: { select: { firstName: true, lastName: true, email: true } }, site: { select: { name: true } } } }) as Promise<ContratComplet | null>;
+export type ContratComplet = Contrat & { lignes: LigneContrat[]; client: { name: string; address: string | null; siren: string | null; email: string | null; formeJuridique?: string | null; siret?: string | null; rcsVille?: string | null; capitalEuros?: number | null; representantNom?: string | null; representantFonction?: string | null } | null; prospect: { societe: string; adresse: string | null; siren: string | null } | null; commercial: { firstName: string | null; lastName: string | null; email: string } | null; site: { name: string } | null };
+export const chargerContrat = (id: string) => prisma.contrat.findUnique({ where: { id }, include: { lignes: { orderBy: { ordre: "asc" } }, client: { select: { name: true, address: true, siren: true, email: true, formeJuridique: true, siret: true, rcsVille: true, capitalEuros: true, representantNom: true, representantFonction: true } }, prospect: { select: { societe: true, adresse: true, siren: true } }, commercial: { select: { firstName: true, lastName: true, email: true } }, site: { select: { name: true } } } }) as Promise<ContratComplet | null>;
 
 /** Contact principal (email) du client ou du prospect : destinataire du contrat. */
 export async function signataireParDefaut(c: ContratComplet) {
@@ -74,35 +74,96 @@ export function clausesParDefaut(c: Contrat) {
   ];
 }
 
-/** Construit le PDF du contrat (octets). */
+export { INFOS_CLIENT_CHAMPS, type InfosClient } from "@/lib/contrat-infos";
+import { INFOS_CLIENT_CHAMPS, type InfosClient } from "@/lib/contrat-infos";
+/** Infos du contrat : ce qui a été saisi dans le générateur, sinon la fiche client / prospect. */
+export function infosClientDe(c: ContratComplet & { client?: (ContratComplet["client"] & Partial<{ formeJuridique: string | null; siret: string | null; rcsVille: string | null; capitalEuros: number | null; representantNom: string | null; representantFonction: string | null }>) | null }): InfosClient {
+  const saisi = ((c.contenu as { client?: Partial<InfosClient> } | null)?.client ?? {}) as Partial<InfosClient>;
+  const cl = c.client;
+  const base: InfosClient = {
+    nom: cl?.name ?? c.prospect?.societe ?? "", forme: cl?.formeJuridique ?? "", adresse: cl?.address ?? c.prospect?.adresse ?? "", siret: cl?.siret ?? cl?.siren ?? c.prospect?.siren ?? "",
+    rcs: cl?.rcsVille ?? "", capital: cl?.capitalEuros ? String(cl.capitalEuros) : "", representant: cl?.representantNom ?? c.signataireNom ?? "", fonction: cl?.representantFonction ?? "", email: cl?.email ?? c.signataireEmail ?? "",
+  };
+  for (const k of Object.keys(base) as (keyof InfosClient)[]) if (saisi[k]?.trim()) base[k] = saisi[k]!.trim();
+  return base;
+}
+export const infosManquantes = (i: InfosClient) => INFOS_CLIENT_CHAMPS.filter((f) => f.requis && !i[f.key].trim()).map((f) => f.label);
+
+/** Construit le PDF du contrat (octets) : page de garde, parties, prestations, articles du modèle, signatures. */
 export async function construirePdf(c: ContratComplet) {
+  const { reglagesContrat, rendreModele, articlesDuModele } = await import("@/lib/contrat-modele");
+  const { modele, agence } = await reglagesContrat();
+  const infos = infosClientDe(c);
   const pdf = await PDFDocument.create();
   const font = await pdf.embedFont(StandardFonts.Helvetica), bold = await pdf.embedFont(StandardFonts.HelveticaBold);
-  const marge = 56, largeur = 595.28 - 2 * marge;
-  let page: PDFPage = pdf.addPage([595.28, 841.89]), y = 841.89 - marge;
-  const nouvellePage = () => { page = pdf.addPage([595.28, 841.89]); y = 841.89 - marge; };
-  const texte = (t: string, size = 10, f: PDFFont = font, gap = 4) => {
-    for (const l of wrap(f, ascii(t), size, largeur)) { if (y < marge + 40) nouvellePage(); page.drawText(l, { x: marge, y, size, font: f, color: rgb(0.1, 0.1, 0.1) }); y -= size + gap; }
+  const W = 595.28, H = 841.89, marge = 56, largeur = W - 2 * marge;
+  const noir = rgb(0.08, 0.08, 0.1), gris = rgb(0.45, 0.45, 0.5);
+  const clean = (t: string) => ascii(t.replace(/œ/g, "oe").replace(/Œ/g, "OE"));
+
+  // ── Page de garde ──
+  let page: PDFPage = pdf.addPage([W, H]), y = H - marge;
+  page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: rgb(0.97, 0.97, 0.98) });
+  page.drawText(clean(agence.nom.toLowerCase()), { x: marge, y: H - 90, size: 30, font: bold, color: noir });
+  const annee = String((c.signeAt ?? c.debutEngagement ?? new Date()).getFullYear());
+  page.drawText(annee, { x: marge, y: H / 2 + 40, size: 150, font: bold, color: rgb(0.9, 0.9, 0.92) });
+  page.drawText("Contrat de prestation", { x: marge, y: H / 2 - 10, size: 34, font: bold, color: noir });
+  page.drawText(clean("de services digitaux"), { x: marge, y: H / 2 - 48, size: 22, font, color: gris });
+  const sousTitre = [...new Set(c.lignes.map((l) => l.libelle.split(":")[0].trim()))].join(" · ").toUpperCase();
+  for (const l of wrap(font, clean(sousTitre), 10, largeur).slice(0, 2)) { page.drawText(l, { x: marge, y: H / 2 - 80 - (sousTitre ? 0 : 0), size: 10, font, color: gris }); }
+  page.drawText(clean(`${infos.nom || "Client"}`), { x: marge, y: 200, size: 16, font: bold, color: noir });
+  page.drawText(clean(`${c.reference}${c.version > 1 ? ` - avenant n°${c.version - 1}` : ""} · ${fmtDate(new Date())}`), { x: marge, y: 178, size: 10, font, color: gris });
+  page.drawRectangle({ x: marge, y: 120, width: largeur, height: 2, color: noir });
+  page.drawText(clean(`${agence.nom} · ${agence.adresse} · SIRET ${agence.siret}`), { x: marge, y: 100, size: 9, font, color: gris });
+
+  // ── Pages de texte ──
+  const nouvellePage = () => { page = pdf.addPage([W, H]); y = H - marge; };
+  const texte = (t: string, size = 10, f: PDFFont = font, gap = 4, color = noir) => {
+    for (const l of wrap(f, clean(t), size, largeur)) { if (y < marge + 40) nouvellePage(); page.drawText(l, { x: marge, y, size, font: f, color }); y -= size + gap; }
   };
-  const titre = (t: string) => { y -= 8; texte(t, 12, bold, 6); };
-  page.drawText("ACCO LAB", { x: marge, y, size: 20, font: bold, color: rgb(0, 0, 0) }); y -= 26;
-  texte(`Contrat ${c.reference}${c.version > 1 ? ` - avenant n°${c.version - 1}` : ""} - ${c.titre}`, 11, bold, 6);
-  texte(`Genere le ${fmtDate(new Date())}`, 9, font, 10);
-  titre("Parties");
-  const societe = c.client?.name ?? c.prospect?.societe ?? "Client";
-  texte(`Prestataire : ACCO LAB, agence web (acco-lab.fr).`);
-  texte(`Client : ${societe}${(c.client?.siren ?? c.prospect?.siren) ? `, SIREN ${c.client?.siren ?? c.prospect?.siren}` : ""}${(c.client?.address ?? c.prospect?.adresse) ? `, ${c.client?.address ?? c.prospect?.adresse}` : ""}.`);
-  if (c.site) texte(`Site concerne : ${c.site.name}.`);
-  if (c.commercial) texte(`Interlocuteur ACCO LAB : ${[c.commercial.firstName, c.commercial.lastName].filter(Boolean).join(" ")} (${c.commercial.email}).`);
+  const titre = (t: string) => { if (y < marge + 80) nouvellePage(); y -= 10; texte(t, 12, bold, 6); };
+  nouvellePage();
+  texte("CONTRAT DE PRESTATION DE SERVICES DIGITAUX", 15, bold, 4);
+  texte(sousTitre || "CRÉATION WEB, HÉBERGEMENT & ACCOMPAGNEMENT", 8.5, bold, 14, gris);
+  texte(`${agence.nom}${agence.forme ? ` (${agence.forme})` : ""}, situé au ${agence.adresse}, immatriculé sous le numéro ${agence.siret}${agence.representant ? `, représenté par ${agence.representant}` : ""}, ci-après dénommé « le Prestataire ».`, 10, font, 8);
+  texte("ET :", 10, bold, 8);
+  const capital = infos.capital ? `, au capital de ${Number(infos.capital).toLocaleString("fr-FR")} €` : "";
+  texte(`${infos.nom}${infos.forme ? ` (${infos.forme})` : ""}${capital}, situé au ${infos.adresse || "—"}, immatriculé sous le numéro ${infos.siret || "—"}${infos.rcs ? ` (RCS ${infos.rcs})` : ""}${infos.representant ? `, représenté par ${infos.representant}${infos.fonction ? ` en qualité de ${infos.fonction}` : ""}` : ""}, ci-après dénommé « le Client ».`, 10, font, 10);
+  texte("Il a été convenu ce qui suit.", 10, font, 8);
+
   titre("Prestations");
   for (const l of c.lignes) texte(`- ${l.libelle}${l.quantite > 1 ? ` x${l.quantite}` : ""} : ${euros(l.montantHt * l.quantite)} HT${l.billing === "MENSUEL" ? " / mois" : " (ponctuel)"}`);
-  texte(`Total mensuel : ${euros(c.montantMensuelHt)} HT${c.montantPonctuelHt ? ` - Ponctuel : ${euros(c.montantPonctuelHt)} HT` : ""}`, 10, bold);
-  const clauses = (c.contenu as { clauses?: [string, string][] } | null)?.clauses ?? clausesParDefaut(c);
-  for (const [t, corps] of clauses) { titre(t); texte(corps); }
+  texte(`Total mensuel : ${euros(c.montantMensuelHt)} HT${c.montantPonctuelHt ? ` · Ponctuel : ${euros(c.montantPonctuelHt)} HT` : ""}`, 10, bold);
+  if (c.site) texte(`Site concerné : ${c.site.name}.`, 10, font);
+
+  const vars: Record<string, string> = {
+    "client.nom": infos.nom, "client.forme": infos.forme, "client.adresse": infos.adresse, "client.siret": infos.siret, "client.representant": infos.representant, "client.fonction": infos.fonction, "client.email": infos.email,
+    "agence.nom": agence.nom, "agence.adresse": agence.adresse, "agence.siret": agence.siret,
+    prestations: c.lignes.map((l) => l.libelle).join(", "), mensuel: euros(c.montantMensuelHt), ponctuel: euros(c.montantPonctuelHt), formule: c.formule ? FORMULE[c.formule].label : "convenue",
+    duree: String(c.dureeMois), reconduction: String(c.reconductionMois), preavis: String(c.preavisJours), debut: c.debutEngagement ? fmtDate(c.debutEngagement) : "la signature", fin: c.finEngagement ? fmtDate(c.finEngagement) : "",
+    fin_phrase: c.finEngagement ? ` jusqu'au ${fmtDate(c.finEngagement)}` : "", ponctuel_phrase: c.montantPonctuelHt ? ` et des prestations ponctuelles de ${euros(c.montantPonctuelHt)} HT` : "",
+    paiement: c.moyenPaiement ? MOYEN_PAIEMENT_LABEL[c.moyenPaiement] : "à convenir", commercial: c.commercial ? [c.commercial.firstName, c.commercial.lastName].filter(Boolean).join(" ") : agence.nom, date: fmtDate(new Date()), reference: c.reference,
+  };
+  // Clauses figées sur le contrat (générées une première fois) sinon le modèle courant.
+  const figees = (c.contenu as { clauses?: [string, string][] } | null)?.clauses;
+  const articles = figees && figees.length ? figees : articlesDuModele(rendreModele(modele, vars));
+  for (const [t, corps] of articles) { if (t) titre(t); texte(corps, 10, font, 4); }
+
   titre("Signatures");
-  texte("Pour ACCO LAB : ________________________          Pour le Client : ________________________");
-  texte("Date : ____ / ____ / ________                                    Date : ____ / ____ / ________");
-  y -= 10; texte(`Reference ${c.reference} - page generee par l'application ACCO LAB.`, 8);
+  texte(`Fait en deux exemplaires, le ${fmtDate(new Date())}.`, 10, font, 10);
+  if (y < marge + 120) nouvellePage();
+  const col = largeur / 2 - 10;
+  page.drawText(clean(`Pour ${agence.nom}`), { x: marge, y, size: 10, font: bold, color: noir });
+  page.drawText("Pour le Client", { x: marge + col + 20, y, size: 10, font: bold, color: noir }); y -= 14;
+  page.drawText(clean(agence.representant || c.commercial ? `${agence.representant || [c.commercial?.firstName, c.commercial?.lastName].filter(Boolean).join(" ")}` : ""), { x: marge, y, size: 9, font, color: gris });
+  page.drawText(clean(`${infos.representant}${infos.fonction ? `, ${infos.fonction}` : ""}`), { x: marge + col + 20, y, size: 9, font, color: gris }); y -= 70;
+  page.drawRectangle({ x: marge, y, width: col, height: 0.8, color: gris });
+  page.drawRectangle({ x: marge + col + 20, y, width: col, height: 0.8, color: gris }); y -= 12;
+  page.drawText(clean('Signature précédée de « Lu et approuvé »'), { x: marge, y, size: 8, font, color: gris });
+  page.drawText(clean('Signature précédée de « Lu et approuvé »'), { x: marge + col + 20, y, size: 8, font, color: gris });
+
+  // Pied de page numéroté.
+  const pages = pdf.getPages();
+  pages.forEach((pg, i) => { if (i === 0) return; pg.drawText(clean(`${c.reference} · ${agence.nom} · page ${i} / ${pages.length - 1}`), { x: marge, y: 30, size: 8, font, color: gris }); });
   return pdf.save();
 }
 
@@ -116,7 +177,7 @@ export async function genererPdf(contratId: string) {
   const { error } = await createSupabaseAdmin().storage.from("documents").upload(path, Buffer.from(bytes), { contentType: "application/pdf", upsert: false });
   if (error) throw new Error(error.message);
   const hash = sha256(bytes);
-  await prisma.contrat.update({ where: { id: c.id }, data: { pdfPath: path, pdfSha256: hash, contenu: { ...((c.contenu as object) ?? {}), clauses: (c.contenu as { clauses?: unknown } | null)?.clauses ?? clausesParDefaut(c) } as Prisma.InputJsonValue } });
+  await prisma.contrat.update({ where: { id: c.id }, data: { pdfPath: path, pdfSha256: hash } });
   return { path, hash };
 }
 export const lienPdf = (path: string | null) => (path ? signedUrl("documents", path, 3600) : Promise.resolve(null));

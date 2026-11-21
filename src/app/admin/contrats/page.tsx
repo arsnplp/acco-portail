@@ -31,7 +31,7 @@ export default async function ContratsPage({ searchParams }: { searchParams: Pro
   });
   const visibles = contrats.filter((c) => matchRecherche(q, [c.reference, c.titre, c.client?.name, c.prospect?.societe]));
   return (
-    <AdminPage title="Contrats" action={<Link href="/admin/clients" className="text-sm text-text hover:text-title">Nouveau contrat : depuis une fiche prospect ou client</Link>}>
+    <AdminPage title="Contrats" action={<Link href="/admin/contrats/nouveau" className="inline-flex h-9 items-center rounded-card bg-title px-3 text-sm font-semibold text-bg hover:bg-text-strong">Nouveau contrat</Link>}>
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <div className="flex rounded-full border border-border p-0.5 text-sm">{VUES.map(([k, l]) => <Link key={k} href={`/admin/contrats?vue=${k}${q ? `&q=${encodeURIComponent(q)}` : ""}`} className={cn("rounded-full px-3 py-1.5", vue[0] === k ? "bg-title font-semibold text-bg" : "text-text hover:text-title")}>{l}</Link>)}</div>
         <form method="get" action="/admin/contrats" className="flex flex-1 gap-2"><input type="hidden" name="vue" value={vue[0]} /><input name="q" defaultValue={q} placeholder="Référence, titre, société" className="h-10 min-w-40 flex-1 rounded-full border border-border bg-surface px-4 text-sm text-title outline-none placeholder:text-muted focus:border-blue" /><button type="submit" className="h-10 rounded-full border border-border px-4 text-sm text-text hover:text-title">Filtrer</button></form>

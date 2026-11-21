@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { fmtDate, fmtPrice } from "@/lib/format";
 import { fmtDayTime, teamName } from "@/lib/crm";
-import { CONTRAT_STATUT, MOYEN_PAIEMENT_LABEL, lienPdf, productionAutorisee, signataireParDefaut, chargerContrat } from "@/lib/contrats";
+import { CONTRAT_STATUT, MOYEN_PAIEMENT_LABEL, lienPdf, productionAutorisee, signataireParDefaut, chargerContrat, infosClientDe, infosManquantes } from "@/lib/contrats";
 import { VALIDATION_LABEL } from "@/lib/validations";
 import { activePromo } from "@/lib/offers";
 import { PaiementButtons } from "@/app/admin/clients/[id]/forms";
@@ -33,6 +33,7 @@ export default async function ContratPage({ params }: { params: Promise<{ id: st
     c.clientId ? prisma.site.findMany({ where: { clientId: c.clientId }, select: { id: true, name: true } }) : [],
   ]);
   const societe = c.client?.name ?? c.prospect?.societe ?? "—";
+  const infos = infosClientDe(c), manquants = infosManquantes(infos);
   const ouvert = c.statut === "ENVOYE" || c.statut === "CONSULTE";
   const exception = validations.find((v) => v.type === "EXCEPTION_TARIFAIRE" && v.statut !== "VALIDEE");
   const back = c.clientId ? { href: `/admin/clients/${c.clientId}?onglet=contrats`, label: societe } : c.prospectId ? { href: `/crm/prospects/${c.prospectId}`, label: societe } : { href: "/admin/contrats", label: "Contrats" };
@@ -50,6 +51,7 @@ export default async function ContratPage({ params }: { params: Promise<{ id: st
         <Card><p className="text-xs text-text">Signature</p><p className="mt-1 font-semibold text-title">{c.signeAt ? `Signée le ${fmtDate(c.signeAt)}` : c.consulteAt ? `Consulté le ${fmtDate(c.consulteAt)}` : c.envoyeAt ? `Envoyé le ${fmtDate(c.envoyeAt)}` : c.refuseAt ? `Refusé le ${fmtDate(c.refuseAt)}` : "Brouillon"}</p><p className="text-xs text-text">{c.signataireNom ? `${c.signataireNom}${c.signataireEmail ? ` · ${c.signataireEmail}` : ""}` : destinataire ? `Destinataire : ${destinataire.email}` : "Pas d’email de contact"}{c.refusMotif ? ` · ${c.refusMotif}` : ""}</p></Card>
       </div>
 
+      {c.statut === "BROUILLON" && manquants.length > 0 && <p className="mt-3 rounded-card border border-yellow/40 bg-yellow/10 px-4 py-2 text-sm text-yellow">Avant d’envoyer : complétez {manquants.join(", ").toLowerCase()} dans « Modifier le brouillon » ci-dessous.</p>}
       {exception && <p className="mt-3 rounded-card border border-yellow/40 bg-yellow/10 px-4 py-2 text-sm text-yellow">Exception tarifaire {exception.statut === "REFUSEE" ? "refusée" : "en attente de validation (Bilel ou Lucas)"} : l’envoi est bloqué{exception.motif ? ` · ${exception.motif}` : ""}.</p>}
       {c.statut === "SIGNE" && (
         <div className={`mt-3 rounded-card border px-4 py-3 text-sm ${prod.ok ? "border-green/40 bg-green/10 text-green" : "border-pink/40 bg-pink/10 text-pink"}`}>
@@ -87,7 +89,7 @@ export default async function ContratPage({ params }: { params: Promise<{ id: st
       {c.statut === "BROUILLON" && (
         <>
           <SectionTitle>Modifier le brouillon</SectionTitle>
-          <ContratForm pour={societe} clientId={c.clientId} prospectId={c.prospectId} sites={sites}
+          <ContratForm pour={societe} clientId={c.clientId} prospectId={c.prospectId} sites={sites} infos={infos}
             offres={offres.map((o) => ({ id: o.id, name: o.name, billing: o.billing, prix: activePromo(o)?.price ?? o.priceCents, setup: o.setupCents ?? 0, parentName: o.parent?.name ?? null }))}
             init={{ id: c.id, titre: c.titre, formule: c.formule, moyenPaiement: c.moyenPaiement, dureeMois: c.dureeMois, reconductionMois: c.reconductionMois, preavisJours: c.preavisJours, debutEngagement: c.debutEngagement ? c.debutEngagement.toLocaleDateString("en-CA", { timeZone: "Europe/Paris" }) : "", siteId: c.siteId, lignes: full.lignes.map((l) => ({ offerId: l.offerId, libelle: l.libelle, billing: l.billing, montantHt: l.montantHt, siteId: l.siteId, quantite: l.quantite })) }} />
         </>

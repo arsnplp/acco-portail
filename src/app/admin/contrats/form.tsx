@@ -5,6 +5,7 @@ import { PlusIcon, Trash2Icon } from "lucide-react";
 import { Field, FormError, Input, Select } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { creerContrat, modifierContrat, type ContratState } from "./actions";
+import { INFOS_CLIENT_CHAMPS, type InfosClient } from "@/lib/contrat-infos";
 
 export type OffreChoix = { id: string; name: string; billing: "MENSUEL" | "PONCTUEL"; prix: number; setup: number; parentName: string | null };
 export type LigneForm = { offerId: string | null; libelle: string; billing: "MENSUEL" | "PONCTUEL"; montantHt: number; siteId: string | null; quantite: number };
@@ -19,7 +20,8 @@ const MOYENS: Array<[string, string]> = [["SEPA", "Prélèvement SEPA"], ["CARTE
  * Générateur commun (5.1) : même formulaire pour un prospect (Prospection) et un client existant (Suivi).
  * Lignes de prestation depuis le catalogue (prix non rétroactifs : le montant est copié) ou libres, ciblées sur un site.
  */
-export function ContratForm({ init, offres, sites, prospectId, clientId, pour }: { init: ContratInit; offres: OffreChoix[]; sites: { id: string; name: string }[]; prospectId?: string | null; clientId?: string | null; pour: string }) {
+export function ContratForm({ init, offres, sites, prospectId, clientId, pour, infos }: { init: ContratInit; offres: OffreChoix[]; sites: { id: string; name: string }[]; prospectId?: string | null; clientId?: string | null; pour: string; infos: InfosClient }) {
+  const manquants = INFOS_CLIENT_CHAMPS.filter((f) => f.requis && !infos[f.key]).length;
   const [lignes, setLignes] = useState<LigneForm[]>(init.lignes);
   const [debut, setDebut] = useState(init.debutEngagement);
   const [duree, setDuree] = useState(init.dureeMois);
@@ -41,6 +43,16 @@ export function ContratForm({ init, offres, sites, prospectId, clientId, pour }:
       {clientId && <input type="hidden" name="clientId" value={clientId} />}
       <input type="hidden" name="lignes" value={JSON.stringify(lignes)} />
       <p className="text-sm text-text">Contrat pour <span className="font-semibold text-text-strong">{pour}</span>.</p>
+
+      <section className="rounded-card border border-border bg-surface p-4">
+        <p className="text-sm font-semibold text-title">Informations du client sur le contrat</p>
+        <p className="mb-3 text-xs text-text">{manquants ? `Préremplies depuis la fiche ; ${manquants} champ${manquants > 1 ? "s" : ""} à compléter à la main (en jaune).` : "Préremplies depuis la fiche, modifiables ici."} Ce qui est saisi ici est reporté sur la fiche client.</p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {INFOS_CLIENT_CHAMPS.map((f) => (
+            <Field key={f.key} label={f.label} hint={f.aide}><Input name={`ci_${f.key}`} defaultValue={infos[f.key]} required={f.requis} type={f.key === "email" ? "email" : "text"} inputMode={f.key === "capital" ? "numeric" : undefined} className={f.requis && !infos[f.key] ? "border-yellow" : undefined} /></Field>
+          ))}
+        </div>
+      </section>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Titre du contrat"><Input name="titre" required defaultValue={init.titre} placeholder="Site vitrine + maintenance" /></Field>
         <Field label="Formule"><Select name="formule" defaultValue={init.formule ?? ""}><option value="">—</option>{FORMULES.map((f) => <option key={f} value={f}>{f}</option>)}</Select></Field>

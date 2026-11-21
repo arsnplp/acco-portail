@@ -11,6 +11,8 @@ import { estExterne } from "@/lib/permissions";
 import { demanderValidation } from "@/lib/validations";
 import { uploadFile } from "@/lib/storage";
 import { activePromo } from "@/lib/offers";
+import { INFOS_CLIENT_CHAMPS, type InfosClient } from "@/lib/contrat-infos";
+import type { Prisma } from "@prisma/client";
 
 const rafraichir = (clientId: string | null, contratId: string) => { if (clientId) revalidatePath(`/admin/clients/${clientId}`); revalidatePath(`/admin/contrats/${contratId}`); revalidatePath("/admin/contrats"); };
 
@@ -94,6 +96,23 @@ function lireChamps(fd: FormData) {
     montantPonctuelHt: lignes.filter((l) => l.billing === "PONCTUEL").reduce((a, l) => a + l.montantHt * (l.quantite ?? 1), 0),
   };
 }
+/** Bloc « Informations du client » du générateur : copié dans contenu.client, et reporté sur la fiche client pour les champs vides. */
+function lireInfos(fd: FormData): InfosClient {
+  const out = {} as InfosClient;
+  for (const f of INFOS_CLIENT_CHAMPS) out[f.key] = String(fd.get(`ci_${f.key}`) ?? "").trim().slice(0, 200);
+  return out;
+}
+async function reporterInfosClient(clientId: string | null, i: InfosClient) {
+  if (!clientId) return;
+  const cl = await prisma.client.findUnique({ where: { id: clientId }, select: { formeJuridique: true, siret: true, address: true, rcsVille: true, capitalEuros: true, representantNom: true, representantFonction: true, email: true } });
+  if (!cl) return;
+  const capital = parseInt(i.capital.replace(/\D/g, ""), 10);
+  await prisma.client.update({ where: { id: clientId }, data: {
+    formeJuridique: i.forme || cl.formeJuridique, siret: i.siret || cl.siret, address: i.adresse || cl.address, rcsVille: i.rcs || cl.rcsVille, capitalEuros: Number.isFinite(capital) && capital > 0 ? capital : cl.capitalEuros,
+    representantNom: i.representant || cl.representantNom, representantFonction: i.fonction || cl.representantFonction, email: cl.email || i.email || null,
+  } });
+}
+
 /** Exception tarifaire (5.3, 20.1) : une ligne du catalogue vendue sous son prix demande la validation de Bilel ou Lucas. */
 async function detecterRemise(lignes: LigneSaisie[]) {
   const ids = lignes.map((l) => l.offerId).filter((x): x is string => !!x);
@@ -114,12 +133,14 @@ export async function creerContrat(_prev: ContratState, fd: FormData): Promise<C
   if ((prospectId && !prospect) || (clientId && !client)) return { error: "Fiche introuvable." };
   if (d.siteId && !(await prisma.site.findFirst({ where: { id: d.siteId, clientId: clientId ?? prospect?.clientId ?? "" } }))) return { error: "Site introuvable sur cette fiche." };
   const remises = await detecterRemise(d.lignes);
+  const infos = lireInfos(fd);
   const contrat = await prisma.contrat.create({ data: {
-    reference: await nouvelleReference(), prospectId, clientId: clientId ?? prospect?.clientId ?? null, siteId: d.siteId, titre: d.titre, formule: d.formule, moyenPaiement: d.moyenPaiement,
+    reference: await nouvelleReference(), prospectId, clientId: clientId ?? prospect?.clientId ?? null, siteId: d.siteId, titre: d.titre, formule: d.formule, moyenPaiement: d.moyenPaiement, contenu: { client: infos } as Prisma.InputJsonValue,
     dureeMois: d.dureeMois, reconductionMois: d.reconductionMois, preavisJours: d.preavisJours, debutEngagement: d.debutEngagement, finEngagement: d.finEngagement,
     montantMensuelHt: d.montantMensuelHt, montantPonctuelHt: d.montantPonctuelHt, commercialId: client?.commercialId ?? prospect?.commercialId ?? me.id, createdById: me.id,
     lignes: { create: d.lignes.map((l, i) => ({ offerId: l.offerId, siteId: l.siteId, libelle: l.libelle, billing: l.billing, montantHt: l.montantHt, quantite: l.quantite ?? 1, ordre: i })) },
   } });
+  await reporterInfosClient(contrat.clientId, infos);
   if (remises.length && !can(me, "validation_commerciale")) await demanderValidation({ type: "EXCEPTION_TARIFAIRE", contratId: contrat.id, clientId: contrat.clientId, demandeParId: me.id, commentaire: `${contrat.reference} : prix sous le catalogue (${remises.join(", ")})`, href: `/admin/contrats/${contrat.id}` });
   await logActivite({ kind: "contrat", texte: `Contrat ${contrat.reference} créé (brouillon)`, href: `/admin/contrats/${contrat.id}`, userId: me.id, clientId: contrat.clientId, siteId: contrat.siteId });
   if (prospectId) revalidatePath(`/crm/prospects/${prospectId}`);
@@ -137,14 +158,16 @@ export async function modifierContrat(contratId: string, _prev: ContratState, fd
   if (!d.titre) return { error: "Donnez un titre au contrat." };
   if (d.lignes.length === 0) return { error: "Ajoutez au moins une ligne de prestation." };
   const remises = await detecterRemise(d.lignes);
+  const infos = lireInfos(fd);
   await prisma.$transaction([
     prisma.ligneContrat.deleteMany({ where: { contratId } }),
     prisma.contrat.update({ where: { id: contratId }, data: {
-      siteId: d.siteId, titre: d.titre, formule: d.formule, moyenPaiement: d.moyenPaiement, dureeMois: d.dureeMois, reconductionMois: d.reconductionMois, preavisJours: d.preavisJours,
+      siteId: d.siteId, titre: d.titre, formule: d.formule, moyenPaiement: d.moyenPaiement, dureeMois: d.dureeMois, reconductionMois: d.reconductionMois, preavisJours: d.preavisJours, contenu: { ...((c.contenu as object) ?? {}), client: infos, clauses: undefined } as Prisma.InputJsonValue,
       debutEngagement: d.debutEngagement, finEngagement: d.finEngagement, montantMensuelHt: d.montantMensuelHt, montantPonctuelHt: d.montantPonctuelHt, pdfPath: null, pdfSha256: null, majFinanciereAt: new Date(),
       lignes: { create: d.lignes.map((l, i) => ({ offerId: l.offerId, siteId: l.siteId, libelle: l.libelle, billing: l.billing, montantHt: l.montantHt, quantite: l.quantite ?? 1, ordre: i })) },
     } }),
   ]);
+  await reporterInfosClient(c.clientId, infos);
   if (remises.length && !can(me, "validation_commerciale")) await demanderValidation({ type: "EXCEPTION_TARIFAIRE", contratId, clientId: c.clientId, demandeParId: me.id, commentaire: `${c.reference} : prix sous le catalogue (${remises.join(", ")})`, href: `/admin/contrats/${contratId}` });
   await logActivite({ kind: "contrat", texte: `Contrat ${c.reference} modifié (brouillon)`, href: `/admin/contrats/${contratId}`, userId: me.id, clientId: c.clientId });
   rafraichir(c.clientId, contratId);

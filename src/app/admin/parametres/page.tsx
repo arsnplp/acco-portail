@@ -8,6 +8,8 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { oauthConfigured, connectedGoogleEmail } from "@/lib/google-oauth";
 import { listProperties } from "@/lib/google-search";
 import { saveSettings, disconnectGoogleAction } from "./actions";
+import { AGENCE_DEFAUT, CONTRAT_MODELE_DEFAUT, VARIABLES_CONTRAT } from "@/lib/contrat-modele";
+import { FileSignatureIcon } from "lucide-react";
 import { ServicesForm } from "./services-form";
 import { isGestionnaire, requireTeam } from "@/lib/auth";
 import { secretsStatus, featureToggles } from "@/lib/settings";
@@ -75,6 +77,22 @@ export default async function ParametresPage({ searchParams }: { searchParams: P
         <Field label="Lien « Laisser un avis » sur la fiche Google d’Acco"><Input name="google_review_url" defaultValue={get("google_review_url")} placeholder="https://g.page/r/…/review" /></Field>
         <Field label="Récompense de parrainage"><Input name="referral_reward_label" defaultValue={get("referral_reward_label")} placeholder="1 mois d’abonnement offert" /></Field>
         <Field label="Modèle d’invitation de rendez-vous (Google Agenda)" hint="variables : {{prenom}} {{societe}} {{commercial}} {{lieu}}"><Textarea name="rdv_description_modele" defaultValue={get("rdv_description_modele") || RDV_MODELE_DEFAUT} className="min-h-40 text-sm" /></Field>
+        <SubmitButton size="sm">Enregistrer</SubmitButton>
+      </form>
+
+      <SectionTitle icon={FileSignatureIcon}>Contrats</SectionTitle>
+      <form action={saveSettings} className="space-y-3 rounded-card border border-border bg-surface p-4">
+        <p className="text-xs text-text">Identité de l’agence telle qu’elle figure sur les contrats, et texte des articles. Les prestations, montants et dates viennent du contrat ; le texte ci-dessous est repris tel quel dans le PDF.</p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Field label="Raison sociale"><Input name="agence_nom" defaultValue={get("agence_nom") || AGENCE_DEFAUT.nom} /></Field>
+          <Field label="Forme juridique"><Input name="agence_forme" defaultValue={get("agence_forme") || AGENCE_DEFAUT.forme} /></Field>
+          <Field label="SIRET"><Input name="agence_siret" defaultValue={get("agence_siret") || AGENCE_DEFAUT.siret} /></Field>
+          <Field label="Adresse du siège"><Input name="agence_adresse" defaultValue={get("agence_adresse") || AGENCE_DEFAUT.adresse} /></Field>
+          <Field label="Représentant (signataire Acco)"><Input name="agence_representant" defaultValue={get("agence_representant")} placeholder="Prénom Nom, Président" /></Field>
+          <Field label="Email"><Input name="agence_email" defaultValue={get("agence_email") || AGENCE_DEFAUT.email} /></Field>
+        </div>
+        <Field label="Articles du contrat" hint="un article par « ## Titre » ; variables ci-dessous"><Textarea name="contrat_modele" defaultValue={get("contrat_modele") || CONTRAT_MODELE_DEFAUT} className="min-h-[28rem] font-mono text-xs" /></Field>
+        <p className="text-[11px] leading-relaxed text-muted">{VARIABLES_CONTRAT.map(([v, l]) => `${v} ${l}`).join(" · ")} · {"{{fin_phrase}}"} « jusqu’au … » si fin connue · {"{{ponctuel_phrase}}"} « et des prestations ponctuelles de … » si ponctuel</p>
         <SubmitButton size="sm">Enregistrer</SubmitButton>
       </form>
     </AdminPage>
