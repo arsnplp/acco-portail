@@ -22,8 +22,9 @@ export async function proxy(request: NextRequest) {
     },
   );
 
-  // Rafraîchit la session si besoin (ne pas supprimer).
-  const { data: { user } } = await supabase.auth.getUser();
+  // Vérifie le jeton localement (clés asymétriques, JWKS en cache) et rafraîchit la session si elle expire : aucun appel réseau à chaque page.
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims ?? null;
 
   const { pathname } = request.nextUrl;
   const isPublic = PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));

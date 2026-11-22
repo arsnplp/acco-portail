@@ -9,10 +9,12 @@ import { multi } from "@/lib/filtres";
 import { CLOS, MOTIFS_ABANDON, MOTIFS_PERTE, PIPELINE, SEQUENCE_APPELS, STATUT, TOUS_STATUTS, contactName, formatTel, teamName, todayBounds } from "@/lib/crm";
 import { Liste, type Row } from "./liste";
 
+import { isAircallMeta } from "@/lib/echange-meta";
+
 export const metadata = { title: "Tous les prospects" };
 
 type SP = { q?: string; s?: string; c?: string; cible?: string; appels?: string; motif?: string; notes?: string; j?: string; p?: string };
-const PAGE = 100;
+const PAGE = 50;
 const APPELS_TYPES = ["NRP", "APPEL", "PRISE_RDV"] as const;
 
 /**
@@ -76,7 +78,7 @@ export default async function ProspectsPage({ searchParams }: { searchParams: Pr
     id: p.id, societe: p.societe, contact: contactName(p.contacts[0]), telephone: formatTel(p.contacts[0]?.telephone ?? p.telephone), siteWeb: p.siteWeb, statut: p.statut,
     relanceAt: p.relanceAt?.toISOString() ?? null, rappelAt: p.rappelAt?.toISOString() ?? null, commercialId: p.commercialId, cible: p.cible?.nom ?? null, motif: p.motifPerte,
     appels: p._count.echanges, updatedAt: p.updatedAt.toISOString(), client: !!p.clientId,
-    derniers: p.echanges.map((e) => ({ id: e.id, type: e.type, date: e.date.toISOString(), notes: e.notes, origine: e.origine, auteur: e.auteur ? teamName(e.auteur) : e.auteurNom, meta: e.meta })),
+    derniers: p.echanges.map((e) => ({ id: e.id, type: e.type, date: e.date.toISOString(), notes: e.notes, origine: e.origine, auteur: e.auteur ? teamName(e.auteur) : e.auteurNom, meta: isAircallMeta(e.meta) ? { ...e.meta, transcription: null } : e.meta })),
   }));
 
   const href = (patch: Partial<SP>) => {

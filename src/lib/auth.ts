@@ -15,24 +15,18 @@ export const CLIENT_COOKIE = "acco_client";
  */
 export const getCurrentUser = cache(async () => {
   const supabase = await createSupabaseServer();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) return null;
+  // Jeton vérifié localement (pas d'aller-retour vers Supabase à chaque page) ; une ligne User lue, créée seulement à la première connexion.
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (!claims?.sub || !claims.email) return null;
 
-  const email = authUser.email!.toLowerCase();
-  const meta = (authUser.user_metadata ?? {}) as Record<string, string | undefined>;
-
-  const user = await prisma.user.upsert({
-    where: { id: authUser.id },
-    create: {
-      id: authUser.id,
-      email,
-      firstName: meta.first_name ?? null,
-      lastName: meta.last_name ?? null,
-      role: EQUIPE.includes(meta.role as Role) ? (meta.role as Role) : "CLIENT",
-    },
-    update: { email },
-    include: { memberships: { include: { client: true }, orderBy: { createdAt: "asc" } } },
-  });
+  const email = claims.email.toLowerCase();
+  const meta = (claims.user_metadata ?? {}) as Record<string, string | undefined>;
+  const inclure = { memberships: { include: { client: true }, orderBy: { createdAt: "asc" as const } } };
+  const user = (await prisma.user.findUnique({ where: { id: claims.sub }, include: inclure })) ?? (await prisma.user.create({
+    data: { id: claims.sub, email, firstName: meta.first_name ?? null, lastName: meta.last_name ?? null, role: EQUIPE.includes(meta.role as Role) ? (meta.role as Role) : "CLIENT" },
+    include: inclure,
+  }));
   // Casquette unique (Bilel) : un administrateur passé « simple commercial » est vu partout comme un COMMERCIAL
   // (menus, droits, périmètre) ; `roleReel` garde son rôle d'origine pour lui permettre de revenir.
   const commercial = user.role === "ADMIN" && user.roleActif === "COMMERCIAL";

@@ -152,3 +152,15 @@ Astuce : enregistrer ces commandes dans `~/deploy.sh` et lancer `bash ~/deploy.s
 - **Lien magique qui renvoie « lien invalide »** : vérifier `NEXT_PUBLIC_APP_URL` et les Redirect URLs Supabase.
 - **Emails non reçus** : Resend → Logs ; vérifier que le domaine `acco-lab.fr` est toujours « verified ».
 - **Build qui échoue par manque de mémoire** (VPS 1 Go) : ajouter du swap `fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile`.
+
+
+## Base de données : mode session (performances)
+
+`DATABASE_URL` doit pointer sur le pooler Supabase en **mode session (port 5432)**, pas en mode transaction (6543) :
+l'app est un serveur unique et persistant, et le mode transaction coûte ~100 ms par requête contre ~15 ms en session.
+
+```
+DATABASE_URL=postgresql://postgres.<ref>:<mot de passe>@aws-1-eu-central-1.pooler.supabase.com:5432/postgres?connection_limit=5
+```
+
+Sur le VPS, après modification de `/var/www/acco-portail/.env` : `pm2 restart acco-portail`.
