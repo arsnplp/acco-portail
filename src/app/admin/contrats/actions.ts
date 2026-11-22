@@ -13,6 +13,7 @@ import { uploadFile } from "@/lib/storage";
 import { activePromo } from "@/lib/offers";
 import { INFOS_CLIENT_CHAMPS, type InfosClient } from "@/lib/contrat-infos";
 import type { Prisma } from "@prisma/client";
+import { FORMULES_DETAIL, type ChoixContrat } from "@/lib/contrat-articles";
 
 const rafraichir = (clientId: string | null, contratId: string) => { if (clientId) revalidatePath(`/admin/clients/${clientId}`); revalidatePath(`/admin/contrats/${contratId}`); revalidatePath("/admin/contrats"); };
 
@@ -261,4 +262,48 @@ export async function cloreContrat(contratId: string) {
   await prisma.subscription.updateMany({ where: { contratId, status: "ACTIF" }, data: { status: "RESILIE", cancelledAt: new Date() } });
   await logActivite({ kind: "contrat", texte: `Contrat ${c.reference} terminé (archivé)`, href: `/admin/contrats/${contratId}`, userId: me.id, clientId: c.clientId });
   rafraichir(c.clientId, contratId);
+}
+
+/** Assistant en 4 étapes (maquette de Bilel) : crée le brouillon avec ses lignes, les infos client, les choix (mois offert, options), génère le PDF et ouvre le contrat. */
+export async function creerContratAssistant(_prev: ContratState, fd: FormData): Promise<ContratState> {
+  const me = await requireTeam();
+  if (estExterne(me)) return { error: "Réservé à l’équipe commerciale." };
+  let choix: ChoixContrat & { mensuelBase?: number; optionIds?: string[] };
+  try { choix = JSON.parse(String(fd.get("choix") ?? "{}")); } catch { return { error: "Formulaire illisible." }; }
+  const prospectId = String(fd.get("prospectId") ?? "") || null, clientId = String(fd.get("clientId") ?? "") || null;
+  if (!prospectId && !clientId) return { error: "Contrat sans prospect ni client." };
+  const infos = lireInfos(fd);
+  const manquants = INFOS_CLIENT_CHAMPS.filter((f) => f.requis && !infos[f.key]).map((f) => f.label);
+  if (manquants.length) return { error: `À compléter : ${manquants.join(", ")}.` };
+  const formule = choix.formule && choix.formule in FORMULES_DETAIL ? choix.formule : null;
+  const mensuelBase = Math.max(0, Math.round(Number(choix.mensuelBase) || 0));
+  if (!formule || mensuelBase <= 0) return { error: "Choisissez une formule et une mensualité." };
+  const [prospect, client] = await Promise.all([prospectId ? prisma.prospect.findUnique({ where: { id: prospectId }, select: { id: true, commercialId: true, clientId: true } }) : null, clientId ? prisma.client.findUnique({ where: { id: clientId }, select: { id: true, commercialId: true } }) : null]);
+  if ((prospectId && !prospect) || (clientId && !client)) return { error: "Fiche introuvable." };
+  const offres = await prisma.offer.findMany({ where: { id: { in: (choix.optionIds ?? []).filter((x): x is string => typeof x === "string") } }, include: { promotions: true } });
+  const dureeMois = [0, 12, 24, 36].includes(Number(choix.dureeMois)) ? Number(choix.dureeMois) : 24;
+  const signature = /^\d{4}-\d{2}-\d{2}$/.test(choix.dateSignature) ? new Date(`${choix.dateSignature}T12:00:00`) : new Date();
+  const debut = new Date(signature); if (choix.moisOffert) debut.setMonth(debut.getMonth() + 1);
+  const fin = dureeMois ? new Date(new Date(debut).setMonth(debut.getMonth() + dureeMois)) : null;
+  const frais = Math.max(0, Math.round(Number(choix.frais) || 0));
+  const lignes = [
+    { offerId: null as string | null, libelle: `Formule ${FORMULES_DETAIL[formule].label}`, billing: "MENSUEL" as const, montantHt: mensuelBase, quantite: 1 },
+    ...(frais ? [{ offerId: null as string | null, libelle: "Frais de lancement", billing: "PONCTUEL" as const, montantHt: frais, quantite: 1 }] : []),
+    ...offres.map((o) => ({ offerId: o.id as string | null, libelle: o.name, billing: o.billing, montantHt: activePromo(o)?.price ?? o.priceCents, quantite: 1 })),
+  ];
+  const montantMensuelHt = lignes.filter((l) => l.billing === "MENSUEL").reduce((a, l) => a + l.montantHt, 0), montantPonctuelHt = lignes.filter((l) => l.billing === "PONCTUEL").reduce((a, l) => a + l.montantHt, 0);
+  const moyen = MOYENS.includes(choix.moyenPaiement as (typeof MOYENS)[number]) ? (choix.moyenPaiement as (typeof MOYENS)[number]) : null;
+  const choixStocke: ChoixContrat = { formule, titre: `Formule ${FORMULES_DETAIL[formule].label}`, dureeMois, frais, mensuel: montantMensuelHt, moisOffert: !!choix.moisOffert, options: offres.map((o) => ({ libelle: o.name, detail: o.benefit, montantHt: activePromo(o)?.price ?? o.priceCents, billing: o.billing })), moyenPaiement: moyen ?? "", jourPrelevement: Math.min(28, Math.max(1, Number(choix.jourPrelevement) || 1)), dateSignature: signature.toISOString().slice(0, 10) };
+  const contrat = await prisma.contrat.create({ data: {
+    reference: await nouvelleReference(), prospectId, clientId: clientId ?? prospect?.clientId ?? null, titre: `${choixStocke.titre}${offres.length ? ` + ${offres.map((o) => o.name).join(", ")}` : ""}`, formule, moyenPaiement: moyen,
+    dureeMois, reconductionMois: dureeMois, preavisJours: 30, jourPrelevement: choixStocke.jourPrelevement, debutEngagement: debut, finEngagement: fin, montantMensuelHt, montantPonctuelHt,
+    contenu: { client: infos, choix: choixStocke } as Prisma.InputJsonValue, commercialId: client?.commercialId ?? prospect?.commercialId ?? me.id, createdById: me.id,
+    lignes: { create: lignes.map((l, i) => ({ ...l, ordre: i })) },
+  } });
+  await reporterInfosClient(contrat.clientId, infos);
+  try { await genererPdf(contrat.id); } catch (e) { await logActivite({ kind: "contrat", texte: `Contrat ${contrat.reference} créé, PDF en erreur : ${(e as Error).message}`, href: `/admin/contrats/${contrat.id}`, userId: me.id, clientId: contrat.clientId }); }
+  await logActivite({ kind: "contrat", texte: `Contrat ${contrat.reference} généré (${choixStocke.titre}, ${dureeMois ? `${dureeMois} mois` : "sans engagement"})`, href: `/admin/contrats/${contrat.id}`, userId: me.id, clientId: contrat.clientId });
+  if (prospectId) revalidatePath(`/crm/prospects/${prospectId}`);
+  rafraichir(contrat.clientId, contrat.id);
+  redirect(`/admin/contrats/${contrat.id}`);
 }

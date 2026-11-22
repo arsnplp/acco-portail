@@ -9,10 +9,9 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/field";
 import { LogoClient } from "@/components/ui/logo-client";
 import { activePromo } from "@/lib/offers";
-import { parisDay } from "@/lib/crm";
-import { STATUT } from "@/lib/crm";
+import { parisDay, STATUT } from "@/lib/crm";
 import { infosClientDe, type ContratComplet } from "@/lib/contrats";
-import { ContratForm } from "../form";
+import { AssistantContrat } from "./assistant";
 
 export const metadata = { title: "Nouveau contrat" };
 
@@ -40,14 +39,13 @@ export default async function NouveauContratPage({ searchParams }: { searchParam
   if (!infos.fonction && contact?.fonction) infos.fonction = contact.fonction;
   return (
     <AdminPage title="Nouveau contrat" back={client ? { href: `/admin/clients/${client.id}?onglet=contrats`, label: pour } : { href: `/crm/prospects/${prospect!.id}`, label: pour }}>
-      <ContratForm
+      <AssistantContrat
         pour={pour}
         prospectId={prospect?.id ?? null}
         clientId={client?.id ?? prospect?.clientId ?? null}
-        sites={sites}
         infos={infos}
-        offres={offres.map((o) => ({ id: o.id, name: o.name, billing: o.billing, prix: activePromo(o)?.price ?? o.priceCents, setup: o.setupCents ?? 0, parentName: o.parent?.name ?? null }))}
-        init={{ titre: "", formule: client?.formule ?? null, moyenPaiement: null, dureeMois: 24, reconductionMois: 24, preavisJours: 30, debutEngagement: parisDay(), siteId: sites.length === 1 ? sites[0].id : null, lignes: [] }}
+        today={parisDay()}
+        options={offres.map((o) => ({ id: o.id, name: o.name, benefit: o.benefit, billing: o.billing, prix: activePromo(o)?.price ?? o.priceCents }))}
       />
     </AdminPage>
   );

@@ -76,6 +76,7 @@ export function clausesParDefaut(c: Contrat) {
 
 export { INFOS_CLIENT_CHAMPS, type InfosClient } from "@/lib/contrat-infos";
 import { INFOS_CLIENT_CHAMPS, type InfosClient } from "@/lib/contrat-infos";
+import { articlesContrat, type ChoixContrat } from "@/lib/contrat-articles";
 /** Infos du contrat : ce qui a été saisi dans le générateur, sinon la fiche client / prospect. */
 export function infosClientDe(c: ContratComplet & { client?: (ContratComplet["client"] & Partial<{ formeJuridique: string | null; siret: string | null; rcsVille: string | null; capitalEuros: number | null; representantNom: string | null; representantFonction: string | null }>) | null }): InfosClient {
   const saisi = ((c.contenu as { client?: Partial<InfosClient> } | null)?.client ?? {}) as Partial<InfosClient>;
@@ -130,9 +131,15 @@ export async function construirePdf(c: ContratComplet) {
   texte(`${infos.nom}${infos.forme ? ` (${infos.forme})` : ""}${capital}, situé au ${infos.adresse || "—"}, immatriculé sous le numéro ${infos.siret || "—"}${infos.rcs ? ` (RCS ${infos.rcs})` : ""}${infos.representant ? `, représenté par ${infos.representant}${infos.fonction ? ` en qualité de ${infos.fonction}` : ""}` : ""}, ci-après dénommé « le Client ».`, 10, font, 10);
   texte("Il a été convenu ce qui suit.", 10, font, 8);
 
-  titre("Prestations");
-  for (const l of c.lignes) texte(`- ${l.libelle}${l.quantite > 1 ? ` x${l.quantite}` : ""} : ${euros(l.montantHt * l.quantite)} HT${l.billing === "MENSUEL" ? " / mois" : " (ponctuel)"}`);
-  texte(`Total mensuel : ${euros(c.montantMensuelHt)} HT${c.montantPonctuelHt ? ` · Ponctuel : ${euros(c.montantPonctuelHt)} HT` : ""}`, 10, bold);
+  const choix = (c.contenu as { choix?: ChoixContrat } | null)?.choix ?? null;
+  if (choix) {
+    // Contrat créé par l'assistant : articles 1 à 3 (prestations, création, conditions financières) d'après les choix.
+    for (const [t, corps] of articlesContrat(choix)) { titre(t); texte(corps, 10, font, 4); }
+  } else {
+    titre("Prestations");
+    for (const l of c.lignes) texte(`- ${l.libelle}${l.quantite > 1 ? ` x${l.quantite}` : ""} : ${euros(l.montantHt * l.quantite)} HT${l.billing === "MENSUEL" ? " / mois" : " (ponctuel)"}`);
+    texte(`Total mensuel : ${euros(c.montantMensuelHt)} HT${c.montantPonctuelHt ? ` · Ponctuel : ${euros(c.montantPonctuelHt)} HT` : ""}`, 10, bold);
+  }
   if (c.site) texte(`Site concerné : ${c.site.name}.`, 10, font);
 
   const vars: Record<string, string> = {

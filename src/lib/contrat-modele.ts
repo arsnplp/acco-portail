@@ -17,34 +17,28 @@ export const VARIABLES_CONTRAT: [string, string][] = [
   ["{{paiement}}", "moyen de paiement"], ["{{commercial}}", "interlocuteur ACCO"], ["{{date}}", "date du jour"], ["{{reference}}", "référence du contrat"],
 ];
 
-export const CONTRAT_MODELE_DEFAUT = `## Article 1 - Objet
-Le présent contrat a pour objet la fourniture par {{agence.nom}} au Client des prestations de services digitaux décrites ci-dessus : {{prestations}}.
+export const CONTRAT_MODELE_DEFAUT = `## Article 4 - Durée et reconduction
+Le contrat est conclu pour la durée d'engagement indiquée à l'article 3 à compter du {{debut}}{{fin_phrase}}. À l'issue de cette période, il est reconduit tacitement par périodes de {{reconduction}} mois, sauf dénonciation par l'une des parties par lettre recommandée avec accusé de réception au moins {{preavis}} jours avant l'échéance.
 
-## Article 2 - Durée et reconduction
-Le contrat est conclu pour une durée d'engagement de {{duree}} mois à compter du {{debut}}{{fin_phrase}}. À l'issue de cette période, il est reconduit tacitement par périodes de {{reconduction}} mois, sauf dénonciation par l'une des parties par lettre recommandée avec accusé de réception au moins {{preavis}} jours avant l'échéance.
-
-## Article 3 - Prix et modalités de paiement
-En contrepartie des prestations, le Client verse à {{agence.nom}} un abonnement mensuel de {{mensuel}} HT{{ponctuel_phrase}}, TVA en sus au taux en vigueur. Moyen de paiement : {{paiement}}. La première mensualité est due à la signature ; la production démarre à réception du premier règlement. Tout retard de paiement entraîne de plein droit des pénalités au taux légal et une indemnité forfaitaire de recouvrement de 40 euros.
-
-## Article 4 - Obligations du Prestataire
+## Article 5 - Obligations du Prestataire
 {{agence.nom}} s'engage à réaliser les prestations avec soin et selon les règles de l'art, à héberger et maintenir le site pendant toute la durée du contrat, et à informer le Client de toute difficulté. {{agence.nom}} est tenu à une obligation de moyens.
 
-## Article 5 - Obligations du Client
+## Article 6 - Obligations du Client
 Le Client fournit dans les délais convenus les éléments nécessaires à la réalisation des prestations (textes, images, logo, accès) et garantit qu'il détient les droits sur ces éléments. Il valide les étapes (brief, maquette, mise en ligne) dans un délai raisonnable.
 
-## Article 6 - Propriété intellectuelle
+## Article 7 - Propriété intellectuelle
 Le Client est propriétaire de son nom de domaine et des contenus qu'il fournit. Les créations réalisées par {{agence.nom}} restent sa propriété jusqu'au complet paiement des sommes dues ; à l'issue de l'engagement et sous réserve du paiement intégral, le Client dispose d'un droit d'usage du site. Les outils, modèles et savoir-faire de {{agence.nom}} restent sa propriété.
 
-## Article 7 - Évolutions
+## Article 8 - Évolutions
 Toute évolution de la formule ou des prestations fait l'objet d'un avenant signé, applicable à la prochaine échéance mensuelle. Aucune diminution de formule n'est possible pendant la période d'engagement.
 
-## Article 8 - Résiliation
-En cas de manquement grave de l'une des parties non réparé dans un délai de 30 jours après mise en demeure, l'autre partie peut résilier le contrat de plein droit. En cas de résiliation anticipée par le Client, les mensualités restant dues jusqu'à la fin de l'engagement sont exigibles.
+## Article 9 - Retard de paiement et résiliation
+Tout retard de paiement entraîne de plein droit des pénalités au taux légal et une indemnité forfaitaire de recouvrement de 40 euros. En cas de manquement grave de l'une des parties non réparé dans un délai de 30 jours après mise en demeure, l'autre partie peut résilier le contrat de plein droit. En cas de résiliation anticipée par le Client, les mensualités restant dues jusqu'à la fin de l'engagement sont exigibles.
 
-## Article 9 - Données personnelles et confidentialité
+## Article 10 - Données personnelles et confidentialité
 Chaque partie s'engage à respecter la réglementation applicable à la protection des données personnelles et à garder confidentielles les informations échangées dans le cadre du contrat.
 
-## Article 10 - Acceptation et litiges
+## Article 11 - Acceptation et litiges
 Le Client accepte le présent contrat par signature manuscrite ou par acceptation en ligne (identification par email et code à usage unique), qui vaut signature ; l'empreinte numérique du document accepté est conservée avec le certificat de preuve. Le contrat est soumis au droit français. À défaut d'accord amiable, les tribunaux compétents sont ceux du siège de {{agence.nom}}.`;
 
 export async function reglagesContrat() {
