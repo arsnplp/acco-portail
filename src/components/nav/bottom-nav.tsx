@@ -2,15 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Globe, Tag, MessageCircle, type LucideIcon } from "lucide-react";
+import { Home, LayoutGrid, Tag, MessageCircle, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 
-export type NavItem = { href: string; label: string; icon: LucideIcon; badge?: number };
+export type NavItem = { href: string; label: string; icon: LucideIcon; badge?: number; aussi?: string[] };
 
 export const CLIENT_NAV: NavItem[] = [
   { href: "/", label: "Accueil", icon: Home },
-  { href: "/sites", label: "Mes sites", icon: Globe },
-  { href: "/offres", label: "Services", icon: Tag },
+  { href: "/services", label: "Mes services", icon: LayoutGrid, aussi: ["/sites"] },
+  { href: "/offres", label: "Offres", icon: Tag },
   { href: "/messages", label: "Messages", icon: MessageCircle },
 ];
 
@@ -23,8 +23,8 @@ export function BottomNav({ items, badges = {} }: { items: NavItem[]; badges?: R
       aria-label="Navigation principale"
     >
       <ul className="mx-auto grid max-w-lg" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))`, height: "var(--nav-h)" }}>
-        {items.map(({ href, label, icon: Icon }) => {
-          const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+        {items.map((item) => { const { href, label, icon: Icon } = item;
+          const active = href === "/" ? pathname === "/" : pathname.startsWith(href) || (item.aussi ?? []).some((a) => pathname.startsWith(a));
           const badge = badges[href];
           return (
             <li key={href}>

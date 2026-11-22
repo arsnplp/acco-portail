@@ -23,7 +23,7 @@ export default async function SiteLayout({ children, params }: { children: React
   return (
     <main className="mx-auto w-full max-w-lg flex-1 pb-nav">
       <div className="px-4 pt-4">
-        <BackLink fallback="/sites" label="Mes sites" />
+        <BackLink fallback="/services" label="Mes services" />
         <div className="mt-3 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-xl truncate">{site.name}</h1>
