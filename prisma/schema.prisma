@@ -428,6 +428,7 @@ model Contrat {
   finEngagement           DateTime?
   contenu                 Json? // clauses et variables du modèle au moment de la génération
   pdfPath                 String? // PDF généré (bucket documents)
+  docxPath                String? // version Word du contrat (même contenu, page de garde image)
   pdfSha256               String? // empreinte du PDF exact accepté
   certificatPath          String? // certificat de preuve PDF
   scanPath                String? // PDF signé à la main et scanné

@@ -24,13 +24,14 @@ export default async function ContratPage({ params }: { params: Promise<{ id: st
   const c = await chargerContrat(id);
   if (!c) notFound();
   const finance = can(me, "finance");
-  const [full, validations, journal, pdfUrl, scanUrl, certUrl, destinataire, prod, offres, sites] = await Promise.all([
+  const [full, validations, journal, pdfUrl, scanUrl, certUrl, destinataire, prod, offres, sites, docxUrl] = await Promise.all([
     prisma.contrat.findUniqueOrThrow({ where: { id }, include: { avenants: { select: { id: true, reference: true, statut: true, version: true } }, parent: { select: { id: true, reference: true } }, subscriptions: { select: { id: true, label: true, status: true } }, lignes: { include: { site: { select: { name: true } } }, orderBy: { ordre: "asc" } } } }),
     prisma.validation.findMany({ where: { contratId: id }, orderBy: { createdAt: "asc" }, include: { assigne: { select: { firstName: true, email: true } }, decidePar: { select: { firstName: true, email: true } } } }),
     prisma.activite.findMany({ where: { href: `/admin/contrats/${id}` }, orderBy: { createdAt: "desc" }, take: 30, include: { user: { select: { firstName: true, email: true } } } }),
     lienPdf(c.pdfPath), lienPdf(c.scanPath), lienPdf(c.certificatPath), signataireParDefaut(c), productionAutorisee(id),
     c.statut === "BROUILLON" ? prisma.offer.findMany({ where: { isArchived: false }, orderBy: { order: "asc" }, include: { promotions: true, parent: { select: { name: true } } } }) : [],
     c.clientId ? prisma.site.findMany({ where: { clientId: c.clientId }, select: { id: true, name: true } }) : [],
+    lienPdf(c.docxPath),
   ]);
   const societe = c.client?.name ?? c.prospect?.societe ?? "—";
   const infos = infosClientDe(c), manquants = infosManquantes(infos);
@@ -62,6 +63,7 @@ export default async function ContratPage({ params }: { params: Promise<{ id: st
       <div className="mt-4 flex flex-wrap items-start gap-2">
         {c.statut !== "SIGNE" && c.statut !== "TERMINE" && <GenererPdfButton contratId={id} />}
         {pdfUrl && <a href={pdfUrl} target="_blank" rel="noreferrer" className="inline-flex h-9 items-center rounded-full border border-border px-3 text-xs font-semibold text-title hover:border-text">Ouvrir le PDF{c.pdfSha256 ? ` · SHA-256 ${c.pdfSha256.slice(0, 10)}…` : ""}</a>}
+        {docxUrl && <a href={docxUrl} className="inline-flex h-9 items-center rounded-full border border-border px-3 text-xs font-semibold text-title hover:border-text">Télécharger le Word (.docx)</a>}
         {scanUrl && <a href={scanUrl} target="_blank" rel="noreferrer" className="inline-flex h-9 items-center rounded-full border border-border px-3 text-xs font-semibold text-title hover:border-text">Scan signé</a>}
         {certUrl && <a href={certUrl} target="_blank" rel="noreferrer" className="inline-flex h-9 items-center rounded-full border border-border px-3 text-xs font-semibold text-title hover:border-text">Certificat de preuve</a>}
         {(c.statut === "BROUILLON" || ouvert) && !exception && <EnvoyerForm contratId={id} defaut={destinataire} relance={ouvert} />}
