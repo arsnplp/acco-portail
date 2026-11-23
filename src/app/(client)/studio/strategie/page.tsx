@@ -30,7 +30,7 @@ export default async function StrategiePage() {
           {c.espritTexte && <Card><p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[2px] text-text"><span className="size-2 rounded-full bg-yellow" /> Positionnement</p><h2 className="mt-2 text-xl font-bold text-title">{c.espritTexte}</h2>{c.adjectifs.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{c.adjectifs.map((a) => <span key={a} className="rounded-full border border-border px-3 py-1 text-sm text-text-strong">{a}</span>)}</div>}</Card>}
           {c.ressenti && <Card><p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[2px] text-text"><span className="size-2 rounded-full bg-yellow" /> Clientèle cible</p><h3 className="mt-2 text-lg font-bold text-title">Ce que vos clients doivent ressentir</h3><p className="mt-1 text-sm text-text">{c.ressenti}</p></Card>}
           {c.ton && <Card><h3 className="text-lg font-bold text-title">Votre ton de communication.</h3><p className="mt-1 text-sm text-text">{c.ton}</p>{c.privilegier && <p className="mt-2 text-sm text-green">✓ « {c.privilegier} »</p>}{c.eviter && <p className="mt-1 text-sm text-pink">✗ « {c.eviter} »</p>}</Card>}
-          <Link href={`/sites/${site.id}/da?v=esprit`} className="text-sm font-semibold text-title underline underline-offset-4">Voir ma DA complète ↗</Link>
+          <Link href={`/studio/marque/${site.id}?v=esprit`} className="text-sm font-semibold text-title underline underline-offset-4">Voir ma DA complète ↗</Link>
         </div>
       ))}
       {conseils.length > 0 && (

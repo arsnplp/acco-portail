@@ -28,7 +28,7 @@ export default async function CharteSitePage({ params }: { params: Promise<{ id:
   const pieces = await Promise.all(charte.pieces.map(async (p) => ({ ...p, url: await signedUrl("site-assets", p.storagePath, 3600), image: /^image\//.test(p.contentType ?? ""), action: externe ? undefined : <SupprimerPieceCharteButton siteId={id} id={p.id} /> })));
   return (
     <AdminPage title={`Charte graphique · ${site.name}`} back={{ href: `/admin/sites/${id}`, label: site.name }} action={<Badge tone={charte.publieeAt ? "green" : charteRenseignee(c) ? "yellow" : "neutral"}>{charte.publieeAt ? "Publiée" : charteRenseignee(c) ? "À publier" : "À rédiger"}</Badge>}>
-      <p className="-mt-3 text-sm text-text">{site.client.name}. À remplir à la livraison : ce qui a réellement été utilisé sur le site. Le client n’a rien à saisir ; une fois publiée, il la retrouve dans l’onglet « Votre DA » de son site, avec le logo et les polices à télécharger.{charte.publieeAt ? ` Publiée le ${fmtDayTime(charte.publieeAt)}.` : ""}</p>
+      <p className="-mt-3 text-sm text-text">{site.client.name}. À remplir à la livraison : ce qui a réellement été utilisé sur le site. Le client n’a rien à saisir ; une fois publiée, il la retrouve dans Studio → Mon univers de marque, avec le logo et les polices à télécharger.{charte.publieeAt ? ` Publiée le ${fmtDayTime(charte.publieeAt)}.` : ""}</p>
       {!externe && <div className="mt-3"><PublierCharteButton siteId={id} publiee={!!charte.publieeAt} /></div>}
       <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div>

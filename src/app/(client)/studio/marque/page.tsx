@@ -23,7 +23,7 @@ export default async function MarquePage() {
       ) : (
         <div className="grid gap-3">
           {publiees.map((s) => (
-            <Card key={s.id} href={`/sites/${s.id}/da`} className="flex items-center justify-between gap-3 py-3">
+            <Card key={s.id} href={`/studio/marque/${s.id}`} className="flex items-center justify-between gap-3 py-3">
               <div><p className="font-semibold text-title">{s.name}</p><p className="text-xs text-text">Logo, couleurs, typographies, esprit de marque et conseils</p></div>
               <Badge tone="green">✓ Validée</Badge>
             </Card>

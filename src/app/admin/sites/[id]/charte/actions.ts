@@ -34,7 +34,7 @@ export async function publierCharteSite(siteId: string, visible: boolean): Promi
   if (!site) return { error: "Site introuvable." };
   await prisma.charte.upsert({ where: { siteId }, create: { siteId, publieeAt: visible ? new Date() : null }, update: { publieeAt: visible ? new Date() : null } });
   if (visible && !site.charte?.publieeAt) {
-    await notifyClient({ clientId: site.clientId, siteId, kind: "DOCUMENT_DISPONIBLE", pref: "documents", title: `Votre DA est disponible · ${site.name}`, body: "Couleurs, polices, logo : retrouvez la charte graphique de votre site dans votre espace.", href: `/sites/${siteId}/da` });
+    await notifyClient({ clientId: site.clientId, siteId, kind: "DOCUMENT_DISPONIBLE", pref: "documents", title: `Votre DA est disponible · ${site.name}`, body: "Couleurs, polices, logo : retrouvez la charte graphique de votre site dans votre espace.", href: `/studio/marque/${siteId}` });
     await logActivite({ kind: "charte", texte: `Charte graphique publiée pour ${site.name}`, href: `/admin/sites/${siteId}/charte`, userId: me.id, clientId: site.clientId, siteId });
   }
   revalider(siteId);
