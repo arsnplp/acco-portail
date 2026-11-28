@@ -11,6 +11,7 @@ import { fmtDateShort } from "@/lib/format";
 import { servicesSouscrits, SERVICES, type ServiceKey } from "@/lib/services-client";
 import { PRESTATIONS, PRESTATIONS_EN_AVANT, POINT } from "@/lib/prestations";
 import { Art } from "../studio/art";
+import { BannierePhoto } from "@/components/client/banniere-photo";
 
 export const metadata = { title: "Accompagnement" };
 
@@ -46,7 +47,8 @@ export default async function AccompagnementPage() {
   const demandes = modifs + difficultes;
 
   return (
-    <Page title={<><span className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[2.4px] text-text"><span className="size-2 rounded-full bg-green" /> ACCO à vos côtés</span>Vous n’êtes pas seul.</>} subtitle="Un interlocuteur, une équipe et un accompagnement sur la durée.">
+    <Page>
+      <BannierePhoto image="accompagnement" surtitre="ACCO à vos côtés" titre="Vous n’êtes pas seul." texte="Un interlocuteur, une équipe et un accompagnement sur la durée." index="ACCO / Accompagnement" />
       <Card className="mb-3">
         <div className="flex items-center gap-4">
           <Avatar initials={initiales} src={conseiller?.avatarUrl} size={60} className="text-lg" />
