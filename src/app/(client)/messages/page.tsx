@@ -5,6 +5,7 @@ import { Chat } from "@/components/messages/chat";
 import { AutoRefresh } from "@/components/messages/auto-refresh";
 import { sendClientMessage } from "./actions";
 import { loadThread } from "@/components/messages/load";
+import { BackLink } from "@/components/ui/back-link";
 
 export const metadata = { title: "Messages" };
 
@@ -17,7 +18,7 @@ export default async function MessagesPage() {
   ]);
 
   return (
-    <Page title="Messages" subtitle="L’équipe Acco vous répond ici, généralement dans la journée." className="flex flex-col">
+    <Page title={<><BackLink fallback="/accompagnement" label="Accompagnement" className="mb-3" />Messages</>} subtitle="L’équipe Acco vous répond ici, généralement dans la journée." className="flex flex-col">
       <AutoRefresh seconds={20} />
       <Chat messages={messages} me={{ id: user.id, firstName: user.firstName, role: "CLIENT" }} sites={sites} placeholder="Écrivez à l’équipe…" emptyText="Posez-nous une question, envoyez une photo, dites-nous tout." action={sendClientMessage} />
     </Page>

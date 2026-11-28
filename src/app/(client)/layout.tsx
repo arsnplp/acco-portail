@@ -17,7 +17,7 @@ export default async function ClientLayout({ children }: { children: React.React
     <>
       <Header initials={initials(user)} avatarUrl={user.avatarUrl} />
       {children}
-      <BottomNav items={CLIENT_NAV} badges={{ "/messages": unread }} />
+      <BottomNav items={CLIENT_NAV} badges={{ "/accompagnement": unread }} />
     </>
   );
 }

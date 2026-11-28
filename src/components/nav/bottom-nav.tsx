@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, LayoutGrid, Sparkles, MessageCircle, type LucideIcon } from "lucide-react";
+import { Home, LayoutGrid, Sparkles, HeartHandshake, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon; badge?: number; aussi?: string[] };
@@ -11,7 +11,7 @@ export const CLIENT_NAV: NavItem[] = [
   { href: "/", label: "Accueil", icon: Home },
   { href: "/services", label: "Mes services", icon: LayoutGrid, aussi: ["/sites"] },
   { href: "/studio", label: "Studio", icon: Sparkles },
-  { href: "/messages", label: "Messages", icon: MessageCircle },
+  { href: "/accompagnement", label: "Accompagnement", icon: HeartHandshake, aussi: ["/messages", "/historique", "/conseils", "/difficultes"] },
 ];
 
 export function BottomNav({ items, badges = {} }: { items: NavItem[]; badges?: Record<string, number> }) {
