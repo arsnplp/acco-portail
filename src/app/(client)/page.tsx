@@ -10,6 +10,8 @@ import { Badge, Dot } from "@/components/ui/badge";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { timeAgo, fmtPrice, fmtDateShort, addDays, weekIndex } from "@/lib/format";
 import { EnablePush } from "@/components/push/enable-push";
+import { BannierePhoto } from "@/components/client/banniere-photo";
+import { HeroStudio, CarteImage } from "@/components/client/vitrines";
 import { pendingReviewPrompt } from "@/lib/review-prompt";
 import { activePromo } from "@/lib/offers";
 import { PROJECT_STEPS } from "@/lib/labels";
@@ -58,7 +60,8 @@ export default async function AccueilPage() {
   const hour = new Date().getHours();
 
   return (
-    <Page title={`${hour < 18 ? "Bonjour" : "Bonsoir"} ${user.firstName ?? ""}`.trim()} subtitle={client.name}>
+    <Page>
+      <BannierePhoto image="home" couleur="bg-blue" surtitre="Votre espace client" titre={`${hour < 18 ? "Bonjour" : "Bonsoir"}${user.firstName ? `, ${user.firstName}` : ""}.`} texte={`${client.name} · Votre activité évolue. Nous sommes à vos côtés.`} index="ACCO / Votre quotidien" />
       <EnablePush compact />
 
       {prompt && reviewUrl?.value ? (
@@ -117,6 +120,8 @@ export default async function AccueilPage() {
         {sites.length === 0 && <Empty icon={Globe} title="Aucun site pour le moment" />}
       </div>
 
+      <HeroStudio />
+
       {contrats.length > 0 && (
         <>
           <SectionTitle icon={FileTextIcon}>Vos contrats</SectionTitle>
@@ -144,6 +149,11 @@ export default async function AccueilPage() {
             </Card>
           ))} />
       )}
+      <h2 className="mb-3 mt-8 text-xl font-bold text-title">Pour votre entreprise.</h2>
+      <div className="grid gap-3">
+        <CarteImage image="season" couleur="bg-green" surtitre="Conseil de saison" titre="Préparez les fêtes." texte="Créez une publication pour présenter vos offres de fin d’année." href="/studio/creer" lien="Créer un visuel" />
+        <CarteImage image="journal" couleur="bg-blue" surtitre="Le journal ACCO" titre="Comment apparaître sur Google près de chez vous ?" texte="Un conseil à lire en 5 minutes." href="https://acco-lab.fr" lien="Découvrir le blog ACCO" externe />
+      </div>
       <p className="mt-6 text-center text-xs text-muted"><Link href="/compte/recommandations" className="underline-offset-2 hover:underline">Recommander Acco</Link> · <Link href="/offres" className="underline-offset-2 hover:underline">Voir les offres</Link></p>
     </Page>
   );
